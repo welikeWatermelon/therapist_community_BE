@@ -1,0 +1,143 @@
+package com.therapyCommunity_Vol1.backend.post.service;
+
+import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
+import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.dto.*;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class PostService {
+
+    private final TherapyPostRepository therapyPostRepository;
+    private final UserRepository userRepository;
+
+    @Transactional
+    public TherapyPostDetailResponse createPost(
+            Long userId,
+            CreateTherapyPostRequest request
+    ) {
+        User author = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        TherapyPost post = new TherapyPost(
+                request.getTitle(),
+                request.getContent(),
+                request.getTherapyArea(),
+                request.getAgeGroup(),
+                author
+        );
+        TherapyPost saved = therapyPostRepository.save(post);
+
+        return TherapyPostDetailResponse.from(saved);
+    }
+
+    public PostListResponse getPosts(
+            int page,
+            int size,
+            PostSortType sortType
+    ) {
+        Sort sort = switch (sortType) {
+            case MOST_VIEWED -> Sort.by(
+                    Sort.Order.desc("viewCount"),
+                    Sort.Order.desc("id")
+            );
+            case LATEST -> Sort.by(
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.desc("id")
+            );
+        };
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<TherapyPost> result =
+                therapyPostRepository.findByDeletedAtIsNull(pageable);
+
+        List<TherapyPostSummaryResponse> posts = result.getContent()
+                .stream()
+                .map(TherapyPostSummaryResponse::from)
+                .toList();
+
+        return new PostListResponse(
+                posts,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.hasNext()
+        );
+    }
+
+    @Transactional
+    public TherapyPostDetailResponse getPostDetail(Long postId) {
+        TherapyPost post = getActivePost(postId);
+
+        post.increaseViewCount();
+
+        return TherapyPostDetailResponse.from(post);
+    }
+
+    @Transactional
+    public TherapyPostDetailResponse updatePost(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId,
+            UpdateTherapyPostRequest request
+    ) {
+        TherapyPost post = getActivePost(postId);
+        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+
+        post.update(
+                request.getTitle(),
+                request.getContent(),
+                request.getTherapyArea(),
+                request.getAgeGroup()
+        );
+        return TherapyPostDetailResponse.from(post);
+    }
+
+    @Transactional
+    public void deletePost(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId
+    ) {
+        TherapyPost post = getActivePost(postId);
+        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+
+        post.softDelete();
+    }
+
+
+    private TherapyPost getActivePost(Long postId) {
+        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+    }
+
+    private void validateAuthorOrAdmin(
+            TherapyPost post,
+            Long currentUserId,
+            UserRole currentUserRole
+    ) {
+        boolean isAdmin = currentUserRole == UserRole.ADMIN;
+        boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
+
+        if(!isAdmin && !isAuthor) {
+            throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
+        }
+    }
+}
