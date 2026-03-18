@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.auth.service.AuthService;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.GlobalExceptionHandler;
+import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,14 +62,14 @@ class AuthControllerTest {
     void 로그인_성공시_user_응답과_refresh_cookie를_반환한다() throws Exception {
         LoginResponse response = new LoginResponse(
                 false,
-                new LoginResponse.UserSummary(
+                new CurrentUserResponse(
                         1L,
                         "user@example.com",
                         "닉네임",
                         null,
                         "USER",
                         false,
-                        new LoginResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
+                        new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
                 ),
                 new LoginResponse.Tokens("access-token", 1800L)
         );
