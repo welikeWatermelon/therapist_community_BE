@@ -1,34 +1,81 @@
 package com.therapyCommunity_Vol1.backend.comment.dto;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
 public class CommentResponse {
 
+    private static final String DELETED_PLACEHOLDER = "삭제된 댓글입니다.";
+
     private Long id;
     private Long postId;
     private Long parentCommentId;
+    private Long authorId;
     private String authorNickname;
+    private String authorRole;
     private String content;
     private boolean deleted;
+    private boolean canEdit;
+    private boolean canDelete;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<CommentResponse> replies;
 
-    public static CommentResponse from(TherapyPostComment comment) {
+    public static CommentResponse from(
+            TherapyPostComment comment,
+            Long currentUserId,
+            UserRole currentUserRole
+    ) {
+        boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
         return new CommentResponse(
                 comment.getId(),
                 comment.getPost().getId(),
                 comment.getParentComment() != null ? comment.getParentComment().getId() : null,
+                comment.getAuthor().getId(),
                 comment.getAuthor().getNickname(),
-                comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent(),
+                comment.getAuthor().getRole().getCode(),
+                comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),
+                canManage,
+                canManage,
                 comment.getCreatedAt(),
-                comment.getUpdatedAt()
+                comment.getUpdatedAt(),
+                List.of()
         );
+    }
+
+    public CommentResponse withReplies(List<CommentResponse> replies) {
+        return new CommentResponse(
+                id,
+                postId,
+                parentCommentId,
+                authorId,
+                authorNickname,
+                authorRole,
+                content,
+                deleted,
+                canEdit,
+                canDelete,
+                createdAt,
+                updatedAt,
+                replies
+        );
+    }
+
+    private static boolean canManage(
+            TherapyPostComment comment,
+            Long currentUserId,
+            UserRole currentUserRole
+    ) {
+        boolean isAdmin = currentUserRole == UserRole.ADMIN;
+        boolean isAuthor = comment.getAuthor().getId().equals(currentUserId);
+        return isAdmin || isAuthor;
     }
 }

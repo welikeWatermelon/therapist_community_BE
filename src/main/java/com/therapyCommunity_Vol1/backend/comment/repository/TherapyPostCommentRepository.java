@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TherapyPostCommentRepository extends JpaRepository<TherapyPostComment, Long> {
-    @EntityGraph(attributePaths = {"author", "parentComment"})
+    @EntityGraph(attributePaths = {"author", "parentComment", "post"})
     List<TherapyPostComment> findByPostIdOrderByCreatedAtAsc(Long postId);
 
     @EntityGraph(attributePaths = {"author", "parentComment", "post"})
@@ -17,5 +17,4 @@ public interface TherapyPostCommentRepository extends JpaRepository<TherapyPostC
     @EntityGraph(attributePaths = {"author", "parentComment", "post"})
     Optional<TherapyPostComment> findById(Long id);
 }
-
 
