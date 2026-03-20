@@ -16,10 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +26,7 @@ public class CommentService {
     private final TherapyPostCommentRepository commentRepository;
     private final TherapyPostRepository postRepository;
     private final UserRepository userRepository;
+    private final CommentThreadAssembler commentThreadAssembler;
 
     @Transactional
     public CommentResponse createComment(
@@ -83,26 +81,7 @@ public class CommentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
 
         List<TherapyPostComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
-        Map<Long, CommentResponse> rootComments = new LinkedHashMap<>();
-        Map<Long, List<CommentResponse>> repliesByParentId = new LinkedHashMap<>();
-
-        for (TherapyPostComment comment : comments) {
-            CommentResponse response = CommentResponse.from(comment, currentUserId, currentUserRole);
-
-            if (comment.getParentComment() == null) {
-                rootComments.put(comment.getId(), response);
-                continue;
-            }
-
-            repliesByParentId.computeIfAbsent(
-                    comment.getParentComment().getId(),
-                    ignored -> new ArrayList<>()
-            ).add(response);
-        }
-
-        return rootComments.values().stream()
-                .map(root -> root.withReplies(repliesByParentId.getOrDefault(root.getId(), List.of())))
-                .toList();
+        return commentThreadAssembler.assemble(comments, currentUserId, currentUserRole);
     }
 
     @Transactional

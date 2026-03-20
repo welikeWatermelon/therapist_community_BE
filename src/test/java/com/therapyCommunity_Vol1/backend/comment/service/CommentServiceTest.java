@@ -28,6 +28,7 @@ class CommentServiceTest {
     private TherapyPostCommentRepository commentRepository;
     private TherapyPostRepository postRepository;
     private UserRepository userRepository;
+    private CommentThreadAssembler commentThreadAssembler;
     private CommentService commentService;
 
     @BeforeEach
@@ -35,7 +36,8 @@ class CommentServiceTest {
         commentRepository = mock(TherapyPostCommentRepository.class);
         postRepository = mock(TherapyPostRepository.class);
         userRepository = mock(UserRepository.class);
-        commentService = new CommentService(commentRepository, postRepository, userRepository);
+        commentThreadAssembler = new CommentThreadAssembler();
+        commentService = new CommentService(commentRepository, postRepository, userRepository, commentThreadAssembler);
     }
 
     @Test
