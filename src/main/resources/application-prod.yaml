@@ -4,3 +4,5 @@ spring:
       enabled: false
   jpa:
     open-in-view: false
+server:
+  forward-headers-strategy: framework
