@@ -20,6 +20,9 @@ public enum ErrorCode {
 
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_404", "게시글을 찾을 수 없습니다."),
     POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_403", "게시글에 대한 권한이 없습니다."),
+    INVALID_POST_ATTACHMENT(HttpStatus.BAD_REQUEST, "POST_400_ATTACHMENT", "유효하지 않은 첨부 파일입니다."),
+    POST_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_ATTACHMENT_404", "첨부 파일을 찾을 수 없습니다."),
+    POST_ATTACHMENT_RESOURCE_ONLY(HttpStatus.BAD_REQUEST, "POST_400_RESOURCE_ONLY", "자료형 게시글에만 첨부 파일을 업로드할 수 있습니다."),
 
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_404", "댓글을 찾을 수 없습니다."),
     COMMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "COMMENT_403", "댓글에 대한 권한이 없습니다."),

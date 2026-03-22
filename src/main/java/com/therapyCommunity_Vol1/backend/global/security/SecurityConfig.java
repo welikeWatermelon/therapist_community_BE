@@ -62,6 +62,8 @@ public class SecurityConfig {
                     .requestMatchers(
                             "/api/v1/posts/**",
                             "/api/v1/comments/**",
+                            "/api/v1/me/downloads",
+                            "/api/v1/me/downloads/**",
                             "/api/v1/me/scraps",
                             "/api/v1/me/scraps/**"
                     ).hasAnyRole("THERAPIST","ADMIN")

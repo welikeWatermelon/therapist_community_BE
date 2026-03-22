@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
 import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import lombok.Getter;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 public class TherapyPostSummaryResponse {
 
     private Long id;
+    private PostType postType;
     private String title;
     private String contentPreview;
     private String authorNickname;
@@ -21,6 +23,7 @@ public class TherapyPostSummaryResponse {
 
     public TherapyPostSummaryResponse(
             Long id,
+            PostType postType,
             String title,
             String contentPreview,
             String authorNickname,
@@ -30,6 +33,7 @@ public class TherapyPostSummaryResponse {
             LocalDateTime createdAt
     ) {
         this.id = id;
+        this.postType = postType;
         this.title = title;
         this.contentPreview = contentPreview;
         this.authorNickname = authorNickname;
@@ -42,6 +46,7 @@ public class TherapyPostSummaryResponse {
     public static TherapyPostSummaryResponse from(TherapyPost post) {
         return new TherapyPostSummaryResponse(
                 post.getId(),
+                post.getPostType(),
                 post.getTitle(),
                 makePreview(post.getContent()),
                 post.getAuthor().getNickname(),

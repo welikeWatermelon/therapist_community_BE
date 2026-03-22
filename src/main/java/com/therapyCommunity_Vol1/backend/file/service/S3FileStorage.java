@@ -42,46 +42,17 @@ public class S3FileStorage implements FileStorageService {
     public StoredFileInfo storeTherapistVerificationImage(MultipartFile file) {
         try {
             validateImage(file);
+            return store(file, "therapist-verifications");
+        } catch (Exception e) {
+            throw new RuntimeException("파일 저장 실패", e);
+        }
+    }
 
-            String originalFilename = file.getOriginalFilename() != null
-                    ? file.getOriginalFilename()
-                    : "unknown";
-
-            String extension = extractExtension(originalFilename);
-            String storedFilename = UUID.randomUUID() + extension;
-            String key = "therapist-verifications/" + storedFilename;
-
-            String contentType = file.getContentType() != null
-                    ? file.getContentType()
-                    : "application/octet-stream";
-
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(contentType)
-                    .build();
-
-            ContentStreamProvider streamProvider = () -> {
-                try {
-                    return file.getInputStream();
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            };
-
-            RequestBody requestBody = RequestBody.fromContentProvider(
-                    streamProvider,
-                    file.getSize(),
-                    contentType
-            );
-
-            s3Client.putObject(putObjectRequest, requestBody);
-
-            return new StoredFileInfo(
-                    key,
-                    originalFilename,
-                    contentType
-            );
+    @Override
+    public StoredFileInfo storePostAttachment(MultipartFile file) {
+        try {
+            validatePdf(file);
+            return store(file, "post-attachments");
         } catch (Exception e) {
             throw new RuntimeException("파일 저장 실패", e);
         }
@@ -125,6 +96,48 @@ public class S3FileStorage implements FileStorageService {
         } catch (Exception e) {
             throw new RuntimeException("파일 삭제 실패", e);
         }
+    }
+
+    private StoredFileInfo store(MultipartFile file, String directory) {
+        String originalFilename = file.getOriginalFilename() != null
+                ? file.getOriginalFilename()
+                : "unknown";
+
+        String extension = extractExtension(originalFilename);
+        String storedFilename = UUID.randomUUID() + extension;
+        String key = directory + "/" + storedFilename;
+
+        String contentType = file.getContentType() != null
+                ? file.getContentType()
+                : "application/octet-stream";
+
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .build();
+
+        ContentStreamProvider streamProvider = () -> {
+            try {
+                return file.getInputStream();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+
+        RequestBody requestBody = RequestBody.fromContentProvider(
+                streamProvider,
+                file.getSize(),
+                contentType
+        );
+
+        s3Client.putObject(putObjectRequest, requestBody);
+
+        return new StoredFileInfo(
+                key,
+                originalFilename,
+                contentType
+        );
     }
 
     private static final long MAX_LICENSE_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -176,6 +189,49 @@ public class S3FileStorage implements FileStorageService {
             return "";
         }
         return originalFilename.substring(index);
+    }
+
+    private static final long MAX_POST_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+    private static final Set<String> ALLOWED_POST_ATTACHMENT_MIME_TYPES =
+            Set.of("application/pdf");
+    private static final Set<String> ALLOWED_POST_ATTACHMENT_EXTENSIONS =
+            Set.of("pdf");
+
+    private void validatePdf(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        if (file.getSize() > MAX_POST_ATTACHMENT_SIZE) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        String originalFilename = file.getOriginalFilename() == null
+                ? ""
+                : file.getOriginalFilename();
+        String ext = extractExtension(originalFilename);
+        if (ext.startsWith(".")) {
+            ext = ext.substring(1);
+        }
+        if (!ALLOWED_POST_ATTACHMENT_EXTENSIONS.contains(ext.toLowerCase(Locale.ROOT))) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        String contentType = file.getContentType() == null
+                ? ""
+                : file.getContentType().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_POST_ATTACHMENT_MIME_TYPES.contains(contentType)) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        try (InputStream inputStream = file.getInputStream()) {
+            byte[] header = inputStream.readNBytes(5);
+            if (header.length < 5 || !"%PDF-".equals(new String(header))) {
+                throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+            }
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
     }
 
 }

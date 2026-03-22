@@ -4,6 +4,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -25,6 +26,7 @@ import java.util.List;
 public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
+    private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -34,11 +36,12 @@ public class PostService {
     ) {
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        TherapyPost post = new TherapyPost(
+        TherapyPost post = TherapyPost.create(
                 request.getTitle(),
                 request.getContent(),
                 request.getTherapyArea(),
                 request.getAgeGroup(),
+                request.getPostType(),
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);
@@ -88,7 +91,13 @@ public class PostService {
 
         post.increaseViewCount();
 
-        return TherapyPostDetailResponse.from(post);
+        List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
+                .findByPostIdOrderByCreatedAtAsc(postId)
+                .stream()
+                .map(PostAttachmentResponse::from)
+                .toList();
+
+        return TherapyPostDetailResponse.from(post, attachments);
     }
 
     @Transactional
