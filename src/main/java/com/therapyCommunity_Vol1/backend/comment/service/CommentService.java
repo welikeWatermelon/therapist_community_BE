@@ -7,6 +7,7 @@ import com.therapyCommunity_Vol1.backend.comment.dto.UpdateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.service.NotificationService;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -26,6 +27,7 @@ public class CommentService {
     private final TherapyPostCommentRepository commentRepository;
     private final TherapyPostRepository postRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommentResponse createComment(
@@ -67,6 +69,19 @@ public class CommentService {
         }
 
         TherapyPostComment saved = commentRepository.save(comment);
+
+        // 알림 생성
+        if (request.getParentCommentId() == null) {
+            // 댓글: 게시글 작성자에게 알림
+            notificationService.createCommentNotification(
+                    post.getAuthor(), author, post.getId(), saved.getId());
+        } else {
+            // 대댓글: 부모 댓글 작성자에게 알림
+            TherapyPostComment parentComment = commentRepository.findByIdAndDeletedAtIsNull(request.getParentCommentId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.INVALID_PARENT_COMMENT));
+            notificationService.createReplyNotification(
+                    parentComment.getAuthor(), author, parentComment.getId(), saved.getId());
+        }
 
         return CommentResponse.from(saved);
     }

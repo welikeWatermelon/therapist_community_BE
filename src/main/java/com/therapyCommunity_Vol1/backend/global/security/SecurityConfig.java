@@ -56,7 +56,8 @@ public class SecurityConfig {
                             "/api/v1/me/scraps",
                             "/api/v1/me/scraps/**"
                     ).hasAnyRole("THERAPIST","ADMIN")
-
+                    // 알림 (모든 인증된 사용자)
+                    .requestMatchers("/api/v1/notifications/**").authenticated()
                     //나머지는 로그인 필요
                     .anyRequest().authenticated()
             );

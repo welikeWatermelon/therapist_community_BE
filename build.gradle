@@ -50,6 +50,8 @@ dependencies {
 
 	implementation platform("software.amazon.awssdk:bom:2.32.22")
 	implementation "software.amazon.awssdk:s3"
+
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 }
 
 tasks.named('test') {

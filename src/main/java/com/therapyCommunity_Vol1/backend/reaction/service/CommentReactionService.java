@@ -4,6 +4,7 @@ import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.service.NotificationService;
 import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostCommentReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.CommentReactionStatusResponse;
@@ -23,6 +24,7 @@ public class CommentReactionService {
     private final TherapyPostCommentRepository commentRepository;
     private final UserRepository userRepository;
     private final TherapyPostCommentReactionRepository commentReactionRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommentReactionStatusResponse toggleReaction(
@@ -50,6 +52,11 @@ public class CommentReactionService {
                             request.getReactionType()
                     );
                     commentReactionRepository.save(reaction);
+                    // LIKE 반응만 알림 생성 (DISLIKE 제외)
+                    if (request.getReactionType() == CommentReactionType.LIKE) {
+                        notificationService.createCommentReactionNotification(
+                                comment.getAuthor(), user, commentId);
+                    }
                 });
         return getReactionStatus(currentUserId, commentId);
     }

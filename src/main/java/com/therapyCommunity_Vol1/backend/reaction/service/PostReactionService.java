@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.reaction.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.service.NotificationService;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
@@ -23,6 +24,7 @@ public class PostReactionService {
     private final TherapyPostReactionRepository postReactionRepository;
     private final TherapyPostRepository therapyPostRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public PostReactionStatusResponse toggleReaction(
@@ -50,6 +52,9 @@ public class PostReactionService {
                             request.getReactionType()
                     );
                     postReactionRepository.save(reaction);
+                    // 새 반응 생성 시 게시글 작성자에게 알림
+                    notificationService.createPostReactionNotification(
+                            post.getAuthor(), user, postId, request.getReactionType().getLabel());
                 });
         return getReactionStatus(currentUserId, postId);
     }
