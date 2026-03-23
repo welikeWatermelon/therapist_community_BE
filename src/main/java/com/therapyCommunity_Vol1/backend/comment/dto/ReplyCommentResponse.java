@@ -6,11 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Getter
 @AllArgsConstructor
-public class CommentResponse {
+public class ReplyCommentResponse {
 
     private static final String DELETED_PLACEHOLDER = "삭제된 댓글입니다.";
 
@@ -26,15 +25,14 @@ public class CommentResponse {
     private boolean canDelete;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<ReplyCommentResponse> replies;
 
-    public static CommentResponse from(
+    public static ReplyCommentResponse from(
             TherapyPostComment comment,
             Long currentUserId,
             UserRole currentUserRole
     ) {
         boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
-        return new CommentResponse(
+        return new ReplyCommentResponse(
                 comment.getId(),
                 comment.getPost().getId(),
                 comment.getParentComment() != null ? comment.getParentComment().getId() : null,
@@ -46,26 +44,7 @@ public class CommentResponse {
                 canManage,
                 canManage,
                 comment.getCreatedAt(),
-                comment.getUpdatedAt(),
-                List.of()
-        );
-    }
-
-    public CommentResponse withReplies(List<ReplyCommentResponse> replies) {
-        return new CommentResponse(
-                id,
-                postId,
-                parentCommentId,
-                authorId,
-                authorNickname,
-                authorRole,
-                content,
-                deleted,
-                canEdit,
-                canDelete,
-                createdAt,
-                updatedAt,
-                replies
+                comment.getUpdatedAt()
         );
     }
 

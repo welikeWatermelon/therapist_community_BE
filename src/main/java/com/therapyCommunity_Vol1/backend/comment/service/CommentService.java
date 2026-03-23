@@ -28,6 +28,7 @@ public class CommentService {
     private final TherapyPostRepository postRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final CommentThreadAssembler commentThreadAssembler;
 
     @Transactional
     public CommentResponse createComment(
@@ -83,17 +84,19 @@ public class CommentService {
                     parentComment.getAuthor(), author, parentComment.getId(), saved.getId());
         }
 
-        return CommentResponse.from(saved);
+        return CommentResponse.from(saved, currentUserId, author.getRole());
     }
 
-    public List<CommentResponse> getComments(Long postId) {
+    public List<CommentResponse> getComments(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId
+    ) {
         postRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
 
-        return commentRepository.findByPostIdOrderByCreatedAtAsc(postId)
-                .stream()
-                .map(CommentResponse::from)
-                .toList();
+        List<TherapyPostComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
+        return commentThreadAssembler.assemble(comments, currentUserId, currentUserRole);
     }
 
     @Transactional
@@ -110,7 +113,7 @@ public class CommentService {
 
         comment.update(request.getContent());
 
-        return CommentResponse.from(comment);
+        return CommentResponse.from(comment, currentUserId, currentUserRole);
     }
 
     @Transactional

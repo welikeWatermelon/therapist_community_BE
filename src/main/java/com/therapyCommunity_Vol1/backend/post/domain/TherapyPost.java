@@ -34,6 +34,10 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "age_group", nullable = false, length = 50)
     private AgeGroup ageGroup;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "post_type", nullable = false, length = 50)
+    private PostType postType;
+
     @Column(name = "view_count", nullable = false)
     private Long viewCount;
 
@@ -51,10 +55,22 @@ public class TherapyPost extends BaseEntity {
             AgeGroup ageGroup,
             User author
     ) {
+        this(title, content, therapyArea, ageGroup, PostType.COMMUNITY, author);
+    }
+
+    public TherapyPost(
+            String title,
+            String content,
+            TherapyArea therapyArea,
+            AgeGroup ageGroup,
+            PostType postType,
+            User author
+    ) {
         this.title = title;
         this.content = content;
         this.therapyArea = therapyArea;
         this.ageGroup = ageGroup;
+        this.postType = postType;
         this.author = author;
         this.viewCount = 0L;
     }
@@ -66,11 +82,23 @@ public class TherapyPost extends BaseEntity {
             AgeGroup ageGroup,
             User author
     ) {
+        return create(title, content, therapyArea, ageGroup, PostType.COMMUNITY, author);
+    }
+
+    public static TherapyPost create(
+            String title,
+            String content,
+            TherapyArea therapyArea,
+            AgeGroup ageGroup,
+            PostType postType,
+            User author
+    ) {
         return new TherapyPost(
                 title,
                 content,
                 therapyArea,
                 ageGroup,
+                postType,
                 author
         );
     }

@@ -1,0 +1,234 @@
+package com.therapyCommunity_Vol1.backend.post.service;
+
+import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
+import com.therapyCommunity_Vol1.backend.global.storage.StoredFileInfo;
+import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.post.domain.*;
+import com.therapyCommunity_Vol1.backend.post.dto.DownloadListResponse;
+import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepository;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class PostAttachmentServiceTest {
+
+    private TherapyPostRepository therapyPostRepository;
+    private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private TherapyPostDownloadRepository therapyPostDownloadRepository;
+    private UserRepository userRepository;
+    private FileStorageService fileStorageService;
+    private PostAttachmentService postAttachmentService;
+
+    @BeforeEach
+    void setUp() {
+        therapyPostRepository = mock(TherapyPostRepository.class);
+        therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
+        therapyPostDownloadRepository = mock(TherapyPostDownloadRepository.class);
+        userRepository = mock(UserRepository.class);
+        fileStorageService = mock(FileStorageService.class);
+
+        postAttachmentService = new PostAttachmentService(
+                therapyPostRepository,
+                therapyPostAttachmentRepository,
+                therapyPostDownloadRepository,
+                userRepository,
+                fileStorageService
+        );
+    }
+
+    @Test
+    void 자료형_게시글에_pdf_첨부를_업로드할_수_있다() {
+        Long userId = 1L;
+        User author = therapist(userId, "author@test.com", "author");
+        TherapyPost post = resourcePost(10L, author);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "guide.pdf",
+                "application/pdf",
+                "%PDF-sample".getBytes()
+        );
+
+        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(fileStorageService.storePostAttachment(file)).thenReturn(
+                new StoredFileInfo("post-attachments/guide.pdf", "guide.pdf", "application/pdf")
+        );
+        when(therapyPostAttachmentRepository.save(any(TherapyPostAttachment.class))).thenAnswer(invocation -> {
+            TherapyPostAttachment attachment = invocation.getArgument(0);
+            ReflectionTestUtils.setField(attachment, "id", 100L);
+            ReflectionTestUtils.setField(attachment, "createdAt", LocalDateTime.of(2026, 3, 22, 10, 0));
+            return attachment;
+        });
+
+        PostAttachmentResponse response = postAttachmentService.uploadAttachment(
+                userId,
+                UserRole.THERAPIST,
+                10L,
+                file
+        );
+
+        assertThat(response.getId()).isEqualTo(100L);
+        assertThat(response.getOriginalFilename()).isEqualTo("guide.pdf");
+        assertThat(response.getContentType()).isEqualTo("application/pdf");
+        assertThat(response.getExtension()).isEqualTo("pdf");
+        assertThat(response.getDownloadUrl()).isEqualTo("/api/v1/posts/10/attachments/100/download");
+        verify(fileStorageService).storePostAttachment(file);
+        verify(therapyPostAttachmentRepository).save(any(TherapyPostAttachment.class));
+    }
+
+    @Test
+    void 일반_게시글에는_첨부파일을_업로드할_수_없다() {
+        Long userId = 1L;
+        User author = therapist(userId, "author@test.com", "author");
+        TherapyPost post = communityPost(10L, author);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "guide.pdf",
+                "application/pdf",
+                "%PDF-sample".getBytes()
+        );
+
+        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postAttachmentService.uploadAttachment(
+                userId,
+                UserRole.THERAPIST,
+                10L,
+                file
+        ))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.POST_ATTACHMENT_RESOURCE_ONLY);
+
+        verify(fileStorageService, never()).storePostAttachment(any());
+        verify(therapyPostAttachmentRepository, never()).save(any());
+    }
+
+    @Test
+    void 첨부파일_다운로드시_다운로드_이력을_신규_저장한다() {
+        Long userId = 2L;
+        User author = therapist(1L, "author@test.com", "author");
+        User downloader = therapist(userId, "reader@test.com", "reader");
+        TherapyPost post = resourcePost(10L, author);
+        TherapyPostAttachment attachment = attachment(99L, post);
+        StoredFileResource storedFile = new StoredFileResource(
+                new ByteArrayResource("pdf".getBytes()),
+                "application/pdf",
+                "guide.pdf"
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
+        when(fileStorageService.loadAsResource("post-attachments/guide.pdf", "application/pdf", "guide.pdf"))
+                .thenReturn(storedFile);
+        when(therapyPostDownloadRepository.findByPostIdAndUserId(10L, userId)).thenReturn(Optional.empty());
+
+        StoredFileResource response = postAttachmentService.downloadAttachment(userId, 10L, 99L);
+
+        assertThat(response.getOriginalFilename()).isEqualTo("guide.pdf");
+        verify(therapyPostDownloadRepository).save(any(TherapyPostDownload.class));
+    }
+
+    @Test
+    void 내_다운로드_목록을_최신순으로_조회한다() {
+        Long userId = 2L;
+        User author = therapist(1L, "author@test.com", "author");
+        User downloader = therapist(userId, "reader@test.com", "reader");
+        TherapyPost post = resourcePost(10L, author);
+
+        TherapyPostDownload download = TherapyPostDownload.create(post, downloader);
+        ReflectionTestUtils.setField(download, "id", 30L);
+        ReflectionTestUtils.setField(download, "firstDownloadedAt", LocalDateTime.of(2026, 3, 20, 10, 0));
+        ReflectionTestUtils.setField(download, "lastDownloadedAt", LocalDateTime.of(2026, 3, 22, 12, 0));
+        ReflectionTestUtils.setField(download, "downloadCount", 3L);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(eq(userId), any()))
+                .thenReturn(new PageImpl<>(
+                        List.of(download),
+                        PageRequest.of(0, 10),
+                        1
+                ));
+
+        DownloadListResponse response = postAttachmentService.getMyDownloads(userId, 0, 10);
+
+        assertThat(response.getDownloads()).hasSize(1);
+        assertThat(response.getDownloads().get(0).getPostId()).isEqualTo(10L);
+        assertThat(response.getDownloads().get(0).getPostType()).isEqualTo(PostType.RESOURCE);
+        assertThat(response.getDownloads().get(0).getDownloadCount()).isEqualTo(3L);
+        assertThat(response.isHasNext()).isFalse();
+    }
+
+    private User therapist(Long id, String email, String nickname) {
+        return User.builder()
+                .id(id)
+                .email(email)
+                .nickname(nickname)
+                .role(UserRole.THERAPIST)
+                .build();
+    }
+
+    private TherapyPost resourcePost(Long id, User author) {
+        TherapyPost post = TherapyPost.create(
+                "자료 제목",
+                "<p>자료 본문</p>",
+                TherapyArea.SPEECH,
+                AgeGroup.AGE_6_12,
+                PostType.RESOURCE,
+                author
+        );
+        ReflectionTestUtils.setField(post, "id", id);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.of(2026, 3, 20, 9, 0));
+        return post;
+    }
+
+    private TherapyPost communityPost(Long id, User author) {
+        TherapyPost post = TherapyPost.create(
+                "커뮤니티 제목",
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                AgeGroup.AGE_6_12,
+                PostType.COMMUNITY,
+                author
+        );
+        ReflectionTestUtils.setField(post, "id", id);
+        return post;
+    }
+
+    private TherapyPostAttachment attachment(Long id, TherapyPost post) {
+        TherapyPostAttachment attachment = TherapyPostAttachment.create(
+                post,
+                "post-attachments/guide.pdf",
+                "guide.pdf",
+                "application/pdf",
+                1234L,
+                "pdf"
+        );
+        ReflectionTestUtils.setField(attachment, "id", id);
+        ReflectionTestUtils.setField(attachment, "createdAt", LocalDateTime.of(2026, 3, 22, 9, 0));
+        return attachment;
+    }
+}

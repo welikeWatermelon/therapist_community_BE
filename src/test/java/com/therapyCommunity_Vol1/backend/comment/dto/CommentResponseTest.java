@@ -47,10 +47,13 @@ class CommentResponseTest {
         comment.softDelete();
 
         // when
-        CommentResponse response = CommentResponse.from(comment);
+        CommentResponse response = CommentResponse.from(comment, 2L, UserRole.THERAPIST);
 
         // then
         assertThat(response.isDeleted()).isTrue();
         assertThat(response.getContent()).isEqualTo("삭제된 댓글입니다.");
+        assertThat(response.isCanEdit()).isFalse();
+        assertThat(response.isCanDelete()).isFalse();
+        assertThat(response.getReplies()).isEmpty();
     }
 }

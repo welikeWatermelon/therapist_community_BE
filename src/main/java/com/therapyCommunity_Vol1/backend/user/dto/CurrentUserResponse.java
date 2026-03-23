@@ -1,0 +1,58 @@
+package com.therapyCommunity_Vol1.backend.user.dto;
+
+import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+public record CurrentUserResponse(
+        Long id,
+        String email,
+        String nickname,
+        String profileImageUrl,
+        String role,
+        boolean canAccessCommunity,
+        TherapistVerificationSummary therapistVerification
+) {
+
+    public static CurrentUserResponse from(User user, Optional<TherapistVerification> verification) {
+        return new CurrentUserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getNickname(),
+                user.getProfileImageUrl(),
+                user.getRole().getCode(),
+                canAccessCommunity(user),
+                TherapistVerificationSummary.from(verification)
+        );
+    }
+
+    private static boolean canAccessCommunity(User user) {
+        return user.getRole() == UserRole.THERAPIST || user.getRole() == UserRole.ADMIN;
+    }
+
+    public record TherapistVerificationSummary(
+            String status,
+            LocalDateTime requestedAt,
+            LocalDateTime reviewedAt,
+            String rejectionReason
+    ) {
+        private static final String NOT_REQUESTED = "NOT_REQUESTED";
+
+        public static TherapistVerificationSummary from(Optional<TherapistVerification> verification) {
+            if (verification.isEmpty()) {
+                return new TherapistVerificationSummary(NOT_REQUESTED, null, null, null);
+            }
+
+            TherapistVerification therapistVerification = verification.get();
+            return new TherapistVerificationSummary(
+                    therapistVerification.getStatus().getCode(),
+                    therapistVerification.getCreatedAt(),
+                    therapistVerification.getReviewedAt(),
+                    therapistVerification.getRejectReason()
+            );
+        }
+    }
+}

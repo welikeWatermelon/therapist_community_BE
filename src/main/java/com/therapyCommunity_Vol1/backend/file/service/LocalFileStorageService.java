@@ -13,11 +13,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -32,6 +35,7 @@ public class LocalFileStorageService implements FileStorageService {
         try {
             this.uploadRootPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Files.createDirectories(this.uploadRootPath.resolve("therapist-verifications"));
+            Files.createDirectories(this.uploadRootPath.resolve("post-attachments"));
         } catch (IOException e) {
             throw new RuntimeException("로컬 업로드 디렉터리 생성 실패", e);
         }
@@ -39,6 +43,16 @@ public class LocalFileStorageService implements FileStorageService {
 
     @Override
     public StoredFileInfo storeTherapistVerificationImage(MultipartFile file) {
+        return store(file, "therapist-verifications");
+    }
+
+    @Override
+    public StoredFileInfo storePostAttachment(MultipartFile file) {
+        validatePdf(file);
+        return store(file, "post-attachments");
+    }
+
+    private StoredFileInfo store(MultipartFile file, String directory) {
         try {
             String originalFilename = file.getOriginalFilename() != null
                     ? file.getOriginalFilename()
@@ -48,13 +62,13 @@ public class LocalFileStorageService implements FileStorageService {
             String storedFilename = UUID.randomUUID() + extension;
 
             Path target = uploadRootPath
-                    .resolve("therapist-verifications")
+                    .resolve(directory)
                     .resolve(storedFilename);
 
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
             return new StoredFileInfo(
-                    "therapist-verifications/" + storedFilename,
+                    directory + "/" + storedFilename,
                     originalFilename,
                     file.getContentType() != null ? file.getContentType() : "application/octet-stream"
             );
@@ -103,5 +117,48 @@ public class LocalFileStorageService implements FileStorageService {
             return "";
         }
         return originalFilename.substring(index);
+    }
+
+    private static final long MAX_POST_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+    private static final Set<String> ALLOWED_POST_ATTACHMENT_MIME_TYPES =
+            Set.of("application/pdf");
+    private static final Set<String> ALLOWED_POST_ATTACHMENT_EXTENSIONS =
+            Set.of("pdf");
+
+    private void validatePdf(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        if (file.getSize() > MAX_POST_ATTACHMENT_SIZE) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        String originalFilename = file.getOriginalFilename() == null
+                ? ""
+                : file.getOriginalFilename();
+        String extension = extractExtension(originalFilename);
+        if (extension.startsWith(".")) {
+            extension = extension.substring(1);
+        }
+        if (!ALLOWED_POST_ATTACHMENT_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        String contentType = file.getContentType() == null
+                ? ""
+                : file.getContentType().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_POST_ATTACHMENT_MIME_TYPES.contains(contentType)) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+
+        try (InputStream inputStream = file.getInputStream()) {
+            byte[] header = inputStream.readNBytes(5);
+            if (header.length < 5 || !"%PDF-".equals(new String(header))) {
+                throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+            }
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
     }
 }

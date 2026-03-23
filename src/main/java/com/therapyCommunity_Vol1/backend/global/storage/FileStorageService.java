@@ -5,6 +5,8 @@ import org.springframework.web.multipart.MultipartFile;
 public interface FileStorageService {
     StoredFileInfo storeTherapistVerificationImage(MultipartFile file);
 
+    StoredFileInfo storePostAttachment(MultipartFile file);
+
     StoredFileResource loadAsResource(
             String storedPath,
             String contentType,

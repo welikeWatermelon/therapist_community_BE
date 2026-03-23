@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -22,14 +23,20 @@ import static org.mockito.Mockito.*;
 class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
+    private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private UserRepository userRepository;
     private PostService postService;
 
     @BeforeEach
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
+        therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
         userRepository = mock(UserRepository.class);
-        postService = new PostService(therapyPostRepository, userRepository);
+        postService = new PostService(
+                therapyPostRepository,
+                therapyPostAttachmentRepository,
+                userRepository
+        );
     }
 
     @Test
@@ -41,6 +48,7 @@ class PostServiceTest {
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "제목",
                 "<p>본문</p>",
+                PostType.RESOURCE,
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5
         );
@@ -57,6 +65,7 @@ class PostServiceTest {
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
+                PostType.RESOURCE,
                 author
         );
         ReflectionTestUtils.setField(savedPost, "id", 100L);
@@ -74,6 +83,7 @@ class PostServiceTest {
         assertThat(response.getId()).isEqualTo(100L);
         assertThat(response.getTitle()).isEqualTo("제목");
         assertThat(response.getAuthorNickname()).isEqualTo("tester");
+        assertThat(response.getPostType()).isEqualTo(PostType.RESOURCE);
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
         verify(therapyPostRepository).save(any(TherapyPost.class));
     }
@@ -147,6 +157,8 @@ class PostServiceTest {
 
         when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
                 .thenReturn(Optional.of(post));
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of());
 
         // when
         TherapyPostDetailResponse response = postService.getPostDetail(1L);
@@ -163,6 +175,8 @@ class PostServiceTest {
         // given
         when(therapyPostRepository.findByIdAndDeletedAtIsNull(999L))
                 .thenReturn(Optional.empty());
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(999L))
+                .thenReturn(List.of());
 
         // when / then
         assertThatThrownBy(() -> postService.getPostDetail(999L))

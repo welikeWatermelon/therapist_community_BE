@@ -13,6 +13,7 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -28,6 +29,8 @@ class CommentServiceTest {
     private TherapyPostCommentRepository commentRepository;
     private TherapyPostRepository postRepository;
     private UserRepository userRepository;
+    private NotificationService notificationService;
+    private CommentThreadAssembler commentThreadAssembler;
     private CommentService commentService;
 
     @BeforeEach
@@ -35,7 +38,9 @@ class CommentServiceTest {
         commentRepository = mock(TherapyPostCommentRepository.class);
         postRepository = mock(TherapyPostRepository.class);
         userRepository = mock(UserRepository.class);
-        commentService = new CommentService(commentRepository, postRepository, userRepository);
+        notificationService = mock(NotificationService.class);
+        commentThreadAssembler = new CommentThreadAssembler();
+        commentService = new CommentService(commentRepository, postRepository, userRepository, notificationService, commentThreadAssembler);
     }
 
     @Test
@@ -76,6 +81,10 @@ class CommentServiceTest {
         assertThat(response.getId()).isEqualTo(100L);
         assertThat(response.getParentCommentId()).isNull();
         assertThat(response.getContent()).isEqualTo("루트 댓글");
+        assertThat(response.getAuthorId()).isEqualTo(currentUserId);
+        assertThat(response.getAuthorRole()).isEqualTo("THERAPIST");
+        assertThat(response.isCanEdit()).isTrue();
+        assertThat(response.getReplies()).isEmpty();
     }
 
     @Test
@@ -119,6 +128,7 @@ class CommentServiceTest {
         // then
         assertThat(response.getId()).isEqualTo(101L);
         assertThat(response.getParentCommentId()).isEqualTo(50L);
+        assertThat(response.isCanDelete()).isTrue();
     }
 
     @Test
@@ -252,10 +262,99 @@ class CommentServiceTest {
         when(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId())).thenReturn(List.of(comment));
 
         // when
-        List<CommentResponse> responses = commentService.getComments(10L);
+        List<CommentResponse> responses = commentService.getComments(1L, UserRole.THERAPIST, 10L);
 
         // then
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getContent()).isEqualTo("댓글");
+        assertThat(responses.get(0).isCanEdit()).isTrue();
+        assertThat(responses.get(0).getReplies()).isEmpty();
+    }
+
+    @Test
+    void 댓글_목록_조회시_대댓글을_replies로_조립한다() {
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+        User replyAuthor = User.builder()
+                .id(2L)
+                .email("reply@test.com")
+                .nickname("replier")
+                .role(UserRole.USER)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "제목",
+                "<p>본문입니다</p>",
+                TherapyArea.COGNITIVE,
+                AgeGroup.AGE_6_12,
+                author
+        );
+        ReflectionTestUtils.setField(post, "id", 10L);
+
+        TherapyPostComment root = TherapyPostComment.createRoot(post, author, "부모 댓글");
+        ReflectionTestUtils.setField(root, "id", 100L);
+        ReflectionTestUtils.setField(root, "createdAt", java.time.LocalDateTime.of(2026, 3, 16, 10, 0));
+
+        TherapyPostComment reply = TherapyPostComment.createReply(post, replyAuthor, root, "대댓글");
+        ReflectionTestUtils.setField(reply, "id", 101L);
+        ReflectionTestUtils.setField(reply, "createdAt", java.time.LocalDateTime.of(2026, 3, 16, 10, 5));
+
+        when(postRepository.findByIdAndDeletedAtIsNull(post.getId())).thenReturn(Optional.of(post));
+        when(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId())).thenReturn(List.of(root, reply));
+
+        List<CommentResponse> responses = commentService.getComments(1L, UserRole.THERAPIST, 10L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getId()).isEqualTo(100L);
+        assertThat(responses.get(0).getReplies()).hasSize(1);
+        assertThat(responses.get(0).getReplies().get(0).getId()).isEqualTo(101L);
+        assertThat(responses.get(0).getReplies().get(0).getParentCommentId()).isEqualTo(100L);
+        assertThat(responses.get(0).getReplies().get(0).isCanEdit()).isFalse();
+    }
+
+    @Test
+    void 삭제된_부모댓글도_자리를_유지한채_replies를_보여준다() {
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+        User replyAuthor = User.builder()
+                .id(2L)
+                .email("reply@test.com")
+                .nickname("replier")
+                .role(UserRole.USER)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "제목",
+                "<p>본문입니다</p>",
+                TherapyArea.COGNITIVE,
+                AgeGroup.AGE_6_12,
+                author
+        );
+        ReflectionTestUtils.setField(post, "id", 10L);
+
+        TherapyPostComment root = TherapyPostComment.createRoot(post, author, "부모 댓글");
+        ReflectionTestUtils.setField(root, "id", 100L);
+        root.softDelete();
+
+        TherapyPostComment reply = TherapyPostComment.createReply(post, replyAuthor, root, "대댓글");
+        ReflectionTestUtils.setField(reply, "id", 101L);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(post.getId())).thenReturn(Optional.of(post));
+        when(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId())).thenReturn(List.of(root, reply));
+
+        List<CommentResponse> responses = commentService.getComments(1L, UserRole.THERAPIST, 10L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).isDeleted()).isTrue();
+        assertThat(responses.get(0).getContent()).isEqualTo("삭제된 댓글입니다.");
+        assertThat(responses.get(0).getReplies()).hasSize(1);
     }
 }
