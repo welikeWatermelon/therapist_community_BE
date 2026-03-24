@@ -21,7 +21,7 @@
 
 이번 범위:
 - EC2 + Nginx + systemd 배포
-- 도메인: api.melonnetherapist.com
+- 도메인: api.melonnetherapists.com
 - 수동 승인 포함 GitHub Actions 초안
 - CloudWatch 로그 수집 + 2개 알람 설정
 ```
@@ -29,15 +29,15 @@
 ## 2) 배포 대상
 
 - 인프라: EC2 + Nginx + systemd
-- 도메인: `api.melonnetherapist.com`
+- 도메인: `api.melonnetherapists.com`
 - 애플리케이션 포트: `8080`
 - 외부 진입: `443 -> Nginx -> 127.0.0.1:8080`
 
 현재 백엔드 기준 공개 확인 URL:
 
-- Swagger UI: `https://api.melonnetherapist.com/swagger-ui/index.html`
-- OpenAPI JSON: `https://api.melonnetherapist.com/v3/api-docs`
-- 헬스체크: `https://api.melonnetherapist.com/api/v1/home`
+- Swagger UI: `https://api.melonnetherapists.com/swagger-ui/index.html`
+- OpenAPI JSON: `https://api.melonnetherapists.com/v3/api-docs`
+- 헬스체크: `https://api.melonnetherapists.com/api/v1/home`
 
 주의:
 - `/api/v1/health` 는 보안 설정에는 열려 있지만 현재 코드에는 엔드포인트 구현이 없습니다.
@@ -117,23 +117,20 @@ APP_AWS_S3_BUCKET=<S3_BUCKET_NAME>
 
 CORS 관련:
 
-- 운영 허용 origin 요구사항: `https://app.melonnetherapist.com`
-- 현재 상태: [SecurityConfig.java](/Users/tom/dev/buildersMvp/backend/src/main/java/com/therapyCommunity_Vol1/backend/global/security/SecurityConfig.java#L72) 에 하드코딩되어 있음
-- 즉, CORS origin은 지금은 환경변수가 아니라 코드 변경 대상입니다.
+- 운영 허용 origin 요구사항: `https://app.melonnetherapists.com`, `https://www.melonnetherapists.com`
+- 운영 프로필 기준 설정 위치: [application-prod.yaml](/Users/tom/dev/buildersMvp/backend/src/main/resources/application-prod.yaml#L7)
+- 로컬 기본값 설정 위치: [application.yaml](/Users/tom/dev/buildersMvp/backend/src/main/resources/application.yaml#L13)
 
 현재 허용 origin:
 
-- `http://localhost:3000`
-- `http://127.0.0.1:3000`
-- `http://localhost:5173`
-- `http://127.0.0.1:5173`
-- `https://app.melonnetherapist.com`
+- 로컬 기본값: `http://localhost:3000`, `http://127.0.0.1:3000`, `http://localhost:5173`, `http://127.0.0.1:5173`
+- 운영(prod) 값: `https://app.melonnetherapists.com`, `https://www.melonnetherapists.com`
 
 ## 5) Nginx 기준
 
 클라우드 팀 작업 범위:
 
-- `api.melonnetherapist.com` 에 대한 TLS 종료
+- `api.melonnetherapists.com` 에 대한 TLS 종료
 - `443` 요청을 `127.0.0.1:8080` 으로 프록시
 - `X-Forwarded-*` 헤더 전달
 - 업로드 고려 시 `client_max_body_size` 설정

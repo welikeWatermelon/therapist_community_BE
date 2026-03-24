@@ -4,5 +4,10 @@ spring:
       enabled: false
   jpa:
     open-in-view: false
+
+app:
+  cors:
+    allowed-origins: https://app.melonnetherapists.com,https://www.melonnetherapists.com
+
 server:
   forward-headers-strategy: framework
