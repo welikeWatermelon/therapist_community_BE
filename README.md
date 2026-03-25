@@ -24,11 +24,11 @@ Spring Boot 3 기반 백엔드 API 서버입니다.
 
 ## Main Docs
 
-- Cloud quick start: [docs/cloud/README.md](docs/cloud/README.md)
+- Cloud handoff package: [docs/CLOUD_HANDOFF_PACKAGE.md](docs/CLOUD_HANDOFF_PACKAGE.md)
 - Frontend handoff: [docs/FRONTEND_HANDOFF.md](docs/FRONTEND_HANDOFF.md)
 - Frontend compact share: [docs/FRONTEND_SHARE_COMPACT.md](docs/FRONTEND_SHARE_COMPACT.md)
-- Systemd deployment: [docs/SYSTEMD_DEPLOYMENT.md](docs/SYSTEMD_DEPLOYMENT.md)
-- Cloud handoff package: [docs/CLOUD_HANDOFF_PACKAGE.md](docs/CLOUD_HANDOFF_PACKAGE.md)
+- Legacy cloud quick start redirect: [docs/cloud/README.md](docs/cloud/README.md)
+- Legacy systemd redirect: [docs/SYSTEMD_DEPLOYMENT.md](docs/SYSTEMD_DEPLOYMENT.md)
 
 ## Runtime Notes
 

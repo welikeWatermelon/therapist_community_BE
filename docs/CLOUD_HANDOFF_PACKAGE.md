@@ -1,6 +1,8 @@
 # Cloud Handoff Package
 
-클라우드 팀에 전달할 기준 문서입니다. 이 문서 하나와 저장소 링크를 같이 전달하면 됩니다.
+클라우드/배포 관련 단일 기준 문서입니다.
+EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 문서만 기준으로 봅니다.
+기존 [docs/SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md), [docs/cloud/README.md](/Users/tom/dev/buildersMvp/backend/docs/cloud/README.md)의 운영 내용은 이 문서로 통합했습니다.
 
 ## 1) 전달 방법
 
@@ -107,7 +109,7 @@ JWT_REFRESH_TTL_SEC=1209600
 
 APP_AWS_REGION=ap-northeast-2
 APP_AWS_S3_BUCKET=<S3_BUCKET_NAME>
-APP_CORS_ALLOWED_ORIGINS=https://app.example.com
+APP_CORS_ALLOWED_ORIGINS=https://www.melonnetherapists.com
 ```
 
 주의:
@@ -117,7 +119,9 @@ APP_CORS_ALLOWED_ORIGINS=https://app.example.com
 
 CORS 관련:
 - 운영/개발 서버의 허용 origin은 `APP_CORS_ALLOWED_ORIGINS`로 주입합니다.
-- 예: `https://app.example.com`
+- 운영 예시: `https://www.melonnetherapists.com`
+- 여러 도메인을 허용해야 하면 쉼표로 구분합니다.
+- `localhost:3000`, `localhost:5173`은 공통 설정의 로컬 개발 기본값입니다. `prod`에서는 `application-prod.yaml`이 `APP_CORS_ALLOWED_ORIGINS`로 이를 덮어쓰므로 운영 환경에 넣지 않으면 열리지 않습니다.
 
 ## 5) Nginx 기준
 
@@ -127,6 +131,8 @@ CORS 관련:
 - `443` 요청을 `127.0.0.1:8080` 으로 프록시
 - `X-Forwarded-*` 헤더 전달
 - 업로드 고려 시 `client_max_body_size` 설정
+- EC2 Security Group에서 `22`, `80`, `443` 허용
+- RDS Security Group에서 EC2 Security Group의 `5432` 접근 허용
 
 현재 코드 기준 업로드 제한:
 
@@ -233,9 +239,17 @@ MVP 권장 규칙:
 - AWS IAM 자격증명 또는 IAM Role 정책 정보
 - 테스트 계정 비밀번호
 
+EC2 IAM Role 최소 권한 예시:
+
+- `s3:GetObject`
+- `s3:PutObject`
+- `s3:DeleteObject`
+- 필요 시 `s3:ListBucket`
+
 ## 12) 현재 코드 기준 메모
 
 - 헬스체크는 현재 `/api/v1/home` 가 실제 구현 엔드포인트입니다.
-- CORS origin은 현재 환경변수화되어 있지 않습니다.
+- `prod`/`dev`의 CORS origin은 `APP_CORS_ALLOWED_ORIGINS`로 환경변수화되어 있습니다.
+- `application.yaml`의 `localhost:3000`, `localhost:5173` 기본값은 로컬 프론트 개발 편의를 위한 값입니다.
 - Swagger/OpenAPI 는 기본 제공 경로가 열려 있습니다.
 - systemd 운영은 이미 [SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md) 에 더 자세한 절차가 있습니다.
