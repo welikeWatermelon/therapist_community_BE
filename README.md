@@ -24,6 +24,7 @@ Spring Boot 3 기반 백엔드 API 서버입니다.
 
 ## Main Docs
 
+- Cloud quick start: [docs/cloud/README.md](docs/cloud/README.md)
 - Frontend handoff: [docs/FRONTEND_HANDOFF.md](docs/FRONTEND_HANDOFF.md)
 - Frontend compact share: [docs/FRONTEND_SHARE_COMPACT.md](docs/FRONTEND_SHARE_COMPACT.md)
 - Systemd deployment: [docs/SYSTEMD_DEPLOYMENT.md](docs/SYSTEMD_DEPLOYMENT.md)

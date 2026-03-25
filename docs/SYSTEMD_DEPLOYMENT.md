@@ -27,15 +27,18 @@ SPRING_DATASOURCE_PASSWORD=<DB_PASSWORD>
 
 JWT_ACCESS_SECRET=<LONG_RANDOM_SECRET>
 JWT_ACCESS_TTL_SEC=1800
+JWT_REFRESH_TTL_SEC=1209600
 
 APP_AWS_REGION=ap-northeast-2
-APP_AWS_S3_BUCKET=melonne-stg-images
+APP_AWS_S3_BUCKET=<S3_BUCKET_NAME>
+APP_CORS_ALLOWED_ORIGINS=https://app.example.com
 EOF
 ```
 
 주의:
 - 현재 코드에서 `S3Config`가 `app.aws.region`을 필수로 읽습니다.
 - `S3FileStorage`가 `app.aws.s3.bucket`을 필수로 읽습니다.
+- `app.cors.allowed-origins`도 서버 프로필에서 필수입니다.
 - 누락되면 앱 시작 시 `UnsatisfiedDependencyException`으로 실패합니다.
 
 ### 1-3. systemd 서비스 등록
@@ -124,9 +127,10 @@ curl http://localhost:8080/api/v1/home
 - `Could not resolve placeholder 'app.aws.region'`
 
 해결:
-- `/etc/backend/backend.env`에 아래 2개가 있는지 확인
+- `/etc/backend/backend.env`에 아래 값들이 있는지 확인
   - `APP_AWS_REGION`
   - `APP_AWS_S3_BUCKET`
+  - `APP_CORS_ALLOWED_ORIGINS`
 - 반영 후 재시작
 
 ```bash

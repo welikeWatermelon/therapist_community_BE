@@ -102,29 +102,22 @@ SPRING_DATASOURCE_USERNAME=<DB_USER>
 SPRING_DATASOURCE_PASSWORD=<DB_PASSWORD>
 
 JWT_ACCESS_SECRET=<LONG_RANDOM_SECRET>
-JWT_REFRESH_SECRET=<LONG_RANDOM_SECRET>
 JWT_ACCESS_TTL_SEC=1800
 JWT_REFRESH_TTL_SEC=1209600
 
 APP_AWS_REGION=ap-northeast-2
 APP_AWS_S3_BUCKET=<S3_BUCKET_NAME>
+APP_CORS_ALLOWED_ORIGINS=https://app.example.com
 ```
 
 주의:
 
 - `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL_SEC`, `JWT_REFRESH_TTL_SEC` 는 현재 코드에서 직접 사용합니다.
-- `JWT_REFRESH_SECRET` 은 운영 설정셋에는 포함하는 편이 맞지만, 현재 코드에서는 아직 직접 참조하지 않습니다.
+- `APP_CORS_ALLOWED_ORIGINS` 는 서버 프로필 YAML에서 필수입니다.
 
 CORS 관련:
-
-- 운영 허용 origin 요구사항: `https://app.melonnetherapists.com`, `https://www.melonnetherapists.com`
-- 운영 프로필 기준 설정 위치: [application-prod.yaml](/Users/tom/dev/buildersMvp/backend/src/main/resources/application-prod.yaml#L7)
-- 로컬 기본값 설정 위치: [application.yaml](/Users/tom/dev/buildersMvp/backend/src/main/resources/application.yaml#L13)
-
-현재 허용 origin:
-
-- 로컬 기본값: `http://localhost:3000`, `http://127.0.0.1:3000`, `http://localhost:5173`, `http://127.0.0.1:5173`
-- 운영(prod) 값: `https://app.melonnetherapists.com`, `https://www.melonnetherapists.com`
+- 운영/개발 서버의 허용 origin은 `APP_CORS_ALLOWED_ORIGINS`로 주입합니다.
+- 예: `https://app.example.com`
 
 ## 5) Nginx 기준
 
@@ -137,7 +130,7 @@ CORS 관련:
 
 현재 코드 기준 업로드 제한:
 
-- `5MB`
+- `10MB`
 
 ## 6) 롤백 기준
 

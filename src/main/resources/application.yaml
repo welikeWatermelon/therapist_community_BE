@@ -1,6 +1,12 @@
 spring:
   application:
     name: backend
+  jpa:
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 auth:
   cookie:
