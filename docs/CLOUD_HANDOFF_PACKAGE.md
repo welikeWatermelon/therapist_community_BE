@@ -2,13 +2,17 @@
 
 클라우드/배포 관련 단일 기준 문서입니다.
 EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 문서만 기준으로 봅니다.
+<<<<<<< Updated upstream
 기존 [docs/SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md), [docs/cloud/README.md](/Users/tom/dev/buildersMvp/backend/docs/cloud/README.md)의 운영 내용은 이 문서로 통합했습니다.
+=======
+기존 [docs/SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md)의 운영 내용은 이 문서로 통합했습니다.
+>>>>>>> Stashed changes
 
 ## 1) 전달 방법
 
 클라우드 팀에는 아래 3가지만 주면 됩니다.
 
-1. 저장소 링크와 배포 대상 브랜치 규칙
+1. 저장소 링크와 배포 대상 브랜치 규칙 
 2. 이 문서 링크
 3. 시크릿 값 별도 전달 채널
 
@@ -17,7 +21,8 @@ EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 
 ```text
 [Backend -> Cloud Handoff]
 - Repo: <REPO_URL> https://github.com/AIRO-offical/therapist_community_BE.git
-- Branch for deploy: main
+- Branch for deploy: deploy
+- Branch guide: docs/BRANCH_OPERATIONS_GUIDE.md
 - Handoff doc: docs/CLOUD_HANDOFF_PACKAGE.md
 - Secrets: 1Password/DM로 별도 전달
 
@@ -184,15 +189,18 @@ sudo systemctl restart backend
 
 ## 8) 브랜치 전략
 
-MVP 권장 규칙:
+현재 저장소는 아래 과도기 전략을 사용합니다.
 
-- 배포 브랜치: `main`
-- 기능 개발: `feature/*`
+- 배포 브랜치: `deploy`
+- 개발 통합 브랜치: `main`
+- 기능 개발: `feat/*`
 - 긴급 수정: `hotfix/*`
-- `main` 직접 푸시 금지
-- PR 리뷰 1명 필수
-- Squash merge 후 `main`
-- `main` 보호 규칙: CI 통과 필수
+- `deploy`, `main` 직접 푸시 금지
+- 운영 서버는 `deploy`만 배포
+- 기능 브랜치는 `main`에서 분기
+- hotfix 브랜치는 `deploy`에서 분기
+
+상세 규칙은 [docs/BRANCH_OPERATIONS_GUIDE.md](/Users/tom/dev/buildersMvp/backend/docs/BRANCH_OPERATIONS_GUIDE.md) 문서를 기준으로 봅니다.
 
 ## 9) CI/CD 분담
 
