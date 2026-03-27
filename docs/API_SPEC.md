@@ -177,12 +177,15 @@
     "title": "제목",
     "content": "내용",
     "postType": "CASE_STUDY",
+    "authorId": 1,
     "authorNickname": "닉네임",
     "therapyArea": "CBT",
     "ageGroup": "ADULT",
     "viewCount": 0,
     "createdAt": "2025-01-01T00:00:00",
     "updatedAt": "2025-01-01T00:00:00",
+    "canEdit": true,
+    "canDelete": true,
     "attachments": []
   }
 }
@@ -232,15 +235,48 @@
 
 ### GET `/api/v1/posts/{postId}` — 게시글 상세 조회
 
-**인증:** 불필요
+**인증:** 필요
 
-**응답:** 게시글 작성 응답과 동일 구조
+**응답:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "title": "제목",
+    "content": "내용",
+    "postType": "RESOURCE",
+    "authorId": 1,
+    "authorNickname": "닉네임",
+    "therapyArea": "CBT",
+    "ageGroup": "ADULT",
+    "viewCount": 42,
+    "createdAt": "2025-01-01T00:00:00",
+    "updatedAt": "2025-01-01T00:00:00",
+    "canEdit": true,
+    "canDelete": true,
+    "attachments": [
+      {
+        "id": 10,
+        "originalFilename": "report.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 102400,
+        "extension": "pdf",
+        "downloadUrl": "/api/v1/posts/1/attachments/10/download",
+        "createdAt": "2025-01-01T00:00:00"
+      }
+    ]
+  }
+}
+```
+
+첨부파일이 없는 게시글은 `attachments: []` 로 응답합니다.
 
 ---
 
 ### PATCH `/api/v1/posts/{postId}` — 게시글 수정
 
-**인증:** 필요 (작성자 본인)
+**인증:** 필요 (작성자 본인 또는 관리자)
 
 **요청:**
 ```json
@@ -258,7 +294,7 @@
 
 ### DELETE `/api/v1/posts/{postId}` — 게시글 삭제
 
-**인증:** 필요 (작성자 본인)
+**인증:** 필요 (작성자 본인 또는 관리자)
 
 **응답:** `204 No Content`
 
