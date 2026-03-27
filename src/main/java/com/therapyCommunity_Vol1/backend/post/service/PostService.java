@@ -46,7 +46,7 @@ public class PostService {
         );
         TherapyPost saved = therapyPostRepository.save(post);
 
-        return TherapyPostDetailResponse.from(saved);
+        return TherapyPostDetailResponse.from(saved, userId, author.getRole());
     }
 
     public PostListResponse getPosts(
@@ -86,7 +86,11 @@ public class PostService {
     }
 
     @Transactional
-    public TherapyPostDetailResponse getPostDetail(Long postId) {
+    public TherapyPostDetailResponse getPostDetail(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId
+    ) {
         TherapyPost post = getActivePost(postId);
 
         post.increaseViewCount();
@@ -97,7 +101,7 @@ public class PostService {
                 .map(PostAttachmentResponse::from)
                 .toList();
 
-        return TherapyPostDetailResponse.from(post, attachments);
+        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole);
     }
 
     @Transactional
@@ -116,7 +120,7 @@ public class PostService {
                 request.getTherapyArea(),
                 request.getAgeGroup()
         );
-        return TherapyPostDetailResponse.from(post);
+        return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
     }
 
     @Transactional

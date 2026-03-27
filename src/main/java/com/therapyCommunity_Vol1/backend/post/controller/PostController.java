@@ -48,9 +48,14 @@ public class PostController {
 
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<TherapyPostDetailResponse>> getPostDetail(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId
     ) {
-        TherapyPostDetailResponse response = postService.getPostDetail(postId);
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                userDetails.getUser().getId(),
+                userDetails.getUser().getRole(),
+                postId
+        );
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }

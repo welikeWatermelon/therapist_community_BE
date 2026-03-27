@@ -82,9 +82,12 @@ class PostServiceTest {
         // then
         assertThat(response.getId()).isEqualTo(100L);
         assertThat(response.getTitle()).isEqualTo("제목");
+        assertThat(response.getAuthorId()).isEqualTo(userId);
         assertThat(response.getAuthorNickname()).isEqualTo("tester");
         assertThat(response.getPostType()).isEqualTo(PostType.RESOURCE);
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
+        assertThat(response.isCanEdit()).isTrue();
+        assertThat(response.isCanDelete()).isTrue();
         verify(therapyPostRepository).save(any(TherapyPost.class));
     }
 
@@ -161,12 +164,19 @@ class PostServiceTest {
                 .thenReturn(List.of());
 
         // when
-        TherapyPostDetailResponse response = postService.getPostDetail(1L);
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                1L,
+                UserRole.THERAPIST,
+                1L
+        );
 
         // then
         assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getAuthorId()).isEqualTo(1L);
         assertThat(response.getViewCount()).isEqualTo(11L);
         assertThat(response.getContent()).isEqualTo("<p>본문</p>");
+        assertThat(response.isCanEdit()).isTrue();
+        assertThat(response.isCanDelete()).isTrue();
     }
 
     @Test
@@ -179,8 +189,92 @@ class PostServiceTest {
                 .thenReturn(List.of());
 
         // when / then
-        assertThatThrownBy(() -> postService.getPostDetail(999L))
+        assertThatThrownBy(() -> postService.getPostDetail(
+                1L,
+                UserRole.THERAPIST,
+                999L
+        ))
                 .isInstanceOf(CustomException.class);
+    }
+
+    @Test
+    void 게시글_상세조회_작성자아니면_권한없음() {
+
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "제목",
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                AgeGroup.AGE_3_5,
+                author
+        );
+
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(post));
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of());
+
+        // when
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                2L,
+                UserRole.THERAPIST,
+                1L
+        );
+
+        // then
+        assertThat(response.isCanEdit()).isFalse();
+        assertThat(response.isCanDelete()).isFalse();
+    }
+
+    @Test
+    void 게시글_상세조회_관리자는_권한있음() {
+
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "제목",
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                AgeGroup.AGE_3_5,
+                author
+        );
+
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(post));
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of());
+
+        // when
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                99L,
+                UserRole.ADMIN,
+                1L
+        );
+
+        // then
+        assertThat(response.isCanEdit()).isTrue();
+        assertThat(response.isCanDelete()).isTrue();
     }
 
     @Test
@@ -230,6 +324,9 @@ class PostServiceTest {
         assertThat(response.getTitle()).isEqualTo("수정 제목");
         assertThat(response.getContent()).isEqualTo("<p>수정 본문</p>");
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.COGNITIVE);
+        assertThat(response.getAuthorId()).isEqualTo(currentUserId);
+        assertThat(response.isCanEdit()).isTrue();
+        assertThat(response.isCanDelete()).isTrue();
     }
 
     @Test
