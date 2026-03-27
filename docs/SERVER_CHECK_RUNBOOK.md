@@ -5,6 +5,7 @@
 운영 서버가 실제로 정상 동작 중인지 빠르게 확인하고, 장애와 단순 요청 오류를 구분하기 위한 수동 점검 절차를 정리한다.
 
 이 문서는 2026년 3월 25일에 실제 EC2 서버를 점검하며 사용한 명령과 해석 기준을 기준으로 작성했다.
+배포 절차, 환경변수, CloudWatch 설정은 [CLOUD_HANDOFF_PACKAGE.md](./CLOUD_HANDOFF_PACKAGE.md)를 기준으로 보고, 이 문서는 점검과 원인 분리에만 사용한다.
 
 ---
 
@@ -13,7 +14,7 @@
 - SSH 접속
 
 ```bash
-ssh -i /Users/tom/dev/buildersMvp/melonne-key.pem ubuntu@43.203.40.3
+ssh -i <KEY_PATH> ubuntu@43.203.40.3
 ```
 
 - 서버 정보
@@ -45,7 +46,7 @@ ssh -i /Users/tom/dev/buildersMvp/melonne-key.pem ubuntu@43.203.40.3
 명령:
 
 ```bash
-ssh -i /Users/tom/dev/buildersMvp/melonne-key.pem ubuntu@43.203.40.3 \
+ssh -i <KEY_PATH> ubuntu@43.203.40.3 \
 'hostname; uptime; ss -ltnp; ps -ef | grep -E "java|gradle|nginx|backend" | grep -v grep'
 ```
 
@@ -312,8 +313,8 @@ field 'ageGroup': rejected value [null]
 
 관련 코드:
 
-- [PostController.java](/Users/tom/dev/buildersMvp/backend/src/main/java/com/therapyCommunity_Vol1/backend/post/controller/PostController.java)
-- [CreateTherapyPostRequest.java](/Users/tom/dev/buildersMvp/backend/src/main/java/com/therapyCommunity_Vol1/backend/post/dto/CreateTherapyPostRequest.java)
+- [PostController.java](../src/main/java/com/therapyCommunity_Vol1/backend/post/controller/PostController.java)
+- [CreateTherapyPostRequest.java](../src/main/java/com/therapyCommunity_Vol1/backend/post/dto/CreateTherapyPostRequest.java)
 
 필수 필드:
 
@@ -378,7 +379,7 @@ private AgeGroup ageGroup;
 
 ```bash
 # SSH 접속
-ssh -i /Users/tom/dev/buildersMvp/melonne-key.pem ubuntu@43.203.40.3
+ssh -i <KEY_PATH> ubuntu@43.203.40.3
 
 # 서비스 상태
 sudo systemctl status backend --no-pager -l | sed -n '1,25p'

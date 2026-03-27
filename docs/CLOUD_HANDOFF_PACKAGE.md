@@ -2,11 +2,8 @@
 
 클라우드/배포 관련 단일 기준 문서입니다.
 EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 문서만 기준으로 봅니다.
-<<<<<<< Updated upstream
-기존 [docs/SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md), [docs/cloud/README.md](/Users/tom/dev/buildersMvp/backend/docs/cloud/README.md)의 운영 내용은 이 문서로 통합했습니다.
-=======
-기존 [docs/SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md)의 운영 내용은 이 문서로 통합했습니다.
->>>>>>> Stashed changes
+기존에 흩어져 있던 systemd, cloud setup, CloudWatch 운영 내용은 이 문서로 통합했습니다.
+서버 진단 절차는 [SERVER_CHECK_RUNBOOK.md](./SERVER_CHECK_RUNBOOK.md)에서 따로 관리합니다.
 
 ## 1) 전달 방법
 
@@ -20,7 +17,7 @@ EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 
 
 ```text
 [Backend -> Cloud Handoff]
-- Repo: <REPO_URL> https://github.com/AIRO-offical/therapist_community_BE.git
+- Repo: <REPO_URL>
 - Branch for deploy: deploy
 - Branch guide: docs/BRANCH_OPERATIONS_GUIDE.md
 - Handoff doc: docs/CLOUD_HANDOFF_PACKAGE.md
@@ -178,14 +175,16 @@ sudo systemctl restart backend
 
 로그 발생 위치:
 
-- [TherapistVerificationService.java](/Users/tom/dev/buildersMvp/backend/src/main/java/com/therapyCommunity_Vol1/backend/therapist/service/TherapistVerificationService.java)
+- [TherapistVerificationService.java](../src/main/java/com/therapyCommunity_Vol1/backend/therapist/service/TherapistVerificationService.java)
 
 클라우드 팀 작업:
 
-1. CloudWatch Agent 또는 journald 수집 구성
-2. 위 2개 문자열에 대한 metric filter 생성
-3. SNS 이메일 알람 연결
-4. `Sum >= 1` 기준으로 알람 설정
+1. CloudWatch Agent 또는 journald 수집 구성을 통해 `/ec2/backend` 같은 Log Group으로 `journalctl -u backend` 를 수집
+2. `FILE_DELETE_FAILED` -> `Backend/FileDeleteFailedCount` metric filter 생성
+3. `THERAPIST_APPLY_FAILED_AFTER_UPLOAD` -> `Backend/TherapistApplyFailedAfterUploadCount` metric filter 생성
+4. SNS Topic 생성 후 이메일 또는 Slack 구독 연결
+5. 두 metric 모두 `Sum >= 1`, missing data `not breaching` 기준으로 알람 설정
+6. 실패 로그를 1건 발생시켜 metric 증가와 알림 수신을 검증
 
 ## 8) 브랜치 전략
 
@@ -200,7 +199,7 @@ sudo systemctl restart backend
 - 기능 브랜치는 `main`에서 분기
 - hotfix 브랜치는 `deploy`에서 분기
 
-상세 규칙은 [docs/BRANCH_OPERATIONS_GUIDE.md](/Users/tom/dev/buildersMvp/backend/docs/BRANCH_OPERATIONS_GUIDE.md) 문서를 기준으로 봅니다.
+상세 규칙은 [BRANCH_OPERATIONS_GUIDE.md](./BRANCH_OPERATIONS_GUIDE.md) 문서를 기준으로 봅니다.
 
 ## 9) CI/CD 분담
 
@@ -260,4 +259,4 @@ EC2 IAM Role 최소 권한 예시:
 - `prod`/`dev`의 CORS origin은 `APP_CORS_ALLOWED_ORIGINS`로 환경변수화되어 있습니다.
 - `application.yaml`의 `localhost:3000`, `localhost:5173` 기본값은 로컬 프론트 개발 편의를 위한 값입니다.
 - Swagger/OpenAPI 는 기본 제공 경로가 열려 있습니다.
-- systemd 운영은 이미 [SYSTEMD_DEPLOYMENT.md](/Users/tom/dev/buildersMvp/backend/docs/SYSTEMD_DEPLOYMENT.md) 에 더 자세한 절차가 있습니다.
+- 서버 점검은 [SERVER_CHECK_RUNBOOK.md](./SERVER_CHECK_RUNBOOK.md) 기준으로 확인합니다.
