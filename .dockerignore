@@ -1,7 +1,8 @@
 .git
 .gitignore
 .gradle
-build
+build/*
+!build/libs/
 out
 .idea
 *.iml

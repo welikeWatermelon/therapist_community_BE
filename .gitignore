@@ -43,3 +43,4 @@ src/main/resources/application-local.yaml
 # Local runtime artifacts
 app.log
 uploads/
+backend.env
