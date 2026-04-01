@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.file.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
@@ -8,7 +9,6 @@ import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -27,8 +27,12 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
+@ConditionalOnProperty(
+    name = "app.aws.enabled",
+    havingValue = "true",
+    matchIfMissing = false
+)
 @Primary
-@Profile("!local")
 @Service
 @RequiredArgsConstructor
 public class S3FileStorage implements FileStorageService {

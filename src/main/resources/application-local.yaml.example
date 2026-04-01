@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:55432/builders
+    username: builders
+    password: <your-db-password>
+  jpa:
+    hibernate:
+      ddl-auto: update  # 로컬 전용. 실제 스키마 변경은 반드시 Flyway 마이그레이션으로 관리할 것
+jwt:
+  access-secret: <your-access-secret>
+  refresh-secret: <your-refresh-secret>
+  access-ttl-sec: 1800
+  refresh-ttl-sec: 1209600
+app:
+  upload-dir: uploads
+  aws:
+    enabled: false
+    region: ap-northeast-2
+    s3:
+      bucket: <your-s3-bucket>
