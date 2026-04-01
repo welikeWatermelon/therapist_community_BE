@@ -6,11 +6,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    open-in-view: false
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
   h2:
     console:
       enabled: false

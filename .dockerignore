@@ -1,3 +1,4 @@
+# 도커 빌드 전에 ./gradlew bootJar를 먼저 실행해야 합니다
 .git
 .gitignore
 .gradle
