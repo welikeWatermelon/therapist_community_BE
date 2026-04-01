@@ -5,7 +5,7 @@ spring:
     password: <your-db-password>
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update  # 로컬 전용. 실제 스키마 변경은 반드시 Flyway 마이그레이션으로 관리할 것
 jwt:
   access-secret: <your-access-secret>
   refresh-secret: <your-refresh-secret>
