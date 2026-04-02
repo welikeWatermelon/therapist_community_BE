@@ -122,7 +122,8 @@ class PostServiceTest {
                 .thenReturn(page);
 
         // when
-        PostListResponse response = postService.getPosts(0, 10, PostSortType.LATEST);
+        PostSearchCondition condition = new PostSearchCondition(null, null, null);
+        PostListResponse response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
 
         // then
         assertThat(response.getPosts()).hasSize(1);

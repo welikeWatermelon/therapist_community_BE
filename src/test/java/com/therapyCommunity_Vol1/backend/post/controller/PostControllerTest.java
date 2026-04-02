@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.post.controller;
 
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.dto.PostListResponse;
+import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -42,7 +45,8 @@ class PostControllerTest {
                 0,
                 false
         );
-        given(postService.getPosts(0, 10, PostSortType.LATEST)).willReturn(serviceResponse);
+        given(postService.getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class)))
+                .willReturn(serviceResponse);
 
         // when
         mockMvc.perform(get("/api/v1/posts")
@@ -58,6 +62,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.totalPages").value(0))
                 .andExpect(jsonPath("$.data.posts").isArray());
 
-        verify(postService).getPosts(0, 10, PostSortType.LATEST);
+        verify(postService).getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class));
     }
 }

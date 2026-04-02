@@ -48,6 +48,9 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "search_vector", insertable = false, updatable = false)
+    private String searchVector;
+
     public TherapyPost(
             String title,
             String content,
