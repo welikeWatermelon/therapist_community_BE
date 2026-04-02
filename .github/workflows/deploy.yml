@@ -1,4 +1,4 @@
-name: "CI/CD — main to staging"
+name: "CI/CD — main to dev"
 
 on:
   push:
@@ -52,22 +52,58 @@ jobs:
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v0.1.10
+      - name: Deploy to EC2 (zero-downtime)
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
+
+            IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest"
+
+            # 1. ECR 로그인 & 이미지 풀
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
               docker login --username AWS --password-stdin \
               ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-            docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest
+            docker pull "$IMAGE"
+
+            # 2. 새 컨테이너를 임시 포트(8081)로 실행
+            docker rm -f builders-backend-new || true
+            docker run -d \
+              --name builders-backend-new \
+              --env-file /etc/backend/backend.env \
+              -p 8081:8080 \
+              "$IMAGE"
+
+            # 3. 헬스체크 (최대 60초, 5초 간격)
+            echo "Waiting for new container health check..."
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
+                echo "Health check passed on attempt $i"
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "Health check failed after 60s — rolling back"
+                docker rm -f builders-backend-new || true
+                exit 1
+              fi
+              sleep 5
+            done
+
+            # 4. 기존 컨테이너 종료
             docker stop builders-backend || true
             docker rm builders-backend || true
+
+            # 5. 새 컨테이너를 정식 포트(8080)로 교체
+            docker stop builders-backend-new
+            docker rm builders-backend-new
             docker run -d \
               --name builders-backend \
               --env-file /etc/backend/backend.env \
               -p 8080:8080 \
               --restart unless-stopped \
-              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest
+              "$IMAGE"
+
+            echo "Zero-downtime deploy complete"
