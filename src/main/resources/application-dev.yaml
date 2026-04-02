@@ -19,6 +19,7 @@ app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
   aws:
+    enabled: false
     region: ${APP_AWS_REGION}
     s3:
       bucket: ${APP_AWS_S3_BUCKET}
