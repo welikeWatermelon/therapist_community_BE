@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-@Profile("local")
+@Profile({"local", "dev"})
 public class LocalFileStorageService implements FileStorageService {
 
     private final Path uploadRootPath;
