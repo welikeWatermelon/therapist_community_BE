@@ -42,6 +42,21 @@ public class PostAttachmentController {
                 .body(ApiResponse.success(response));
     }
 
+    @DeleteMapping("/{attachmentId}")
+    public ResponseEntity<Void> deleteAttachment(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @PathVariable Long attachmentId
+    ) {
+        postAttachmentService.deleteAttachment(
+                userDetails.getUser().getId(),
+                userDetails.getUser().getRole(),
+                postId,
+                attachmentId
+        );
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{attachmentId}/download")
     public ResponseEntity<Resource> downloadAttachment(
             @AuthenticationPrincipal CustomUserDetails userDetails,

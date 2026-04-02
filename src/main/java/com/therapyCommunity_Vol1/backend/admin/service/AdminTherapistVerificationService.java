@@ -75,7 +75,6 @@ public class AdminTherapistVerificationService {
         validatePending(verification);
 
         verification.approve(admin);
-        verification.getUser().promoteToTherapist();
 
         return TherapistVerificationResponse.from(
                 verification,
@@ -98,10 +97,12 @@ public class AdminTherapistVerificationService {
         validatePending(verification);
 
         verification.reject(admin, request.getRejectReason());
+        verification.getUser().demoteToUser();
 
         return TherapistVerificationResponse.from(
                 verification,
-                "/api/v1/admin/therapist-verifications/" + verification.getId() + "/image"
+                "/api/v1/admin/therapist-verifications/" + verification.getId() + "/image",
+                true
         );
     }
 

@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.common.HangulUtils;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
@@ -41,7 +42,6 @@ public class PostService {
                 request.getContent(),
                 request.getTherapyArea(),
                 request.getAgeGroup(),
-                request.getPostType(),
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);
@@ -52,23 +52,43 @@ public class PostService {
     public PostListResponse getPosts(
             int page,
             int size,
-            PostSortType sortType
+            PostSortType sortType,
+            PostSearchCondition condition
     ) {
-        Sort sort = switch (sortType) {
-            case MOST_VIEWED -> Sort.by(
-                    Sort.Order.desc("viewCount"),
-                    Sort.Order.desc("id")
-            );
-            case LATEST -> Sort.by(
-                    Sort.Order.desc("createdAt"),
-                    Sort.Order.desc("id")
-            );
-        };
+        Page<TherapyPost> result;
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Sort sort = toSort(sortType);
 
-        Page<TherapyPost> result =
-                therapyPostRepository.findByDeletedAtIsNull(pageable);
+        if (condition.isEmpty()) {
+            Pageable pageable = PageRequest.of(page, size, sort);
+            result = therapyPostRepository.findByDeletedAtIsNull(pageable);
+        } else if (condition.hasKeyword()) {
+            String keyword = condition.getKeyword().trim();
+            if (HangulUtils.isChoseongOnly(keyword)) {
+                Pageable pageable = PageRequest.of(page, size, sort);
+                result = therapyPostRepository.searchByChoseong(
+                        keyword,
+                        condition.getTherapyArea(),
+                        condition.getPostType(),
+                        pageable
+                );
+            } else {
+                Pageable pageable = PageRequest.of(page, size, sort);
+                result = therapyPostRepository.searchByKeyword(
+                        keyword,
+                        condition.getTherapyArea(),
+                        condition.getPostType(),
+                        pageable
+                );
+            }
+        } else {
+            Pageable pageable = PageRequest.of(page, size, sort);
+            result = therapyPostRepository.searchByFilter(
+                    condition.getTherapyArea(),
+                    condition.getPostType(),
+                    pageable
+            );
+        }
 
         List<TherapyPostSummaryResponse> posts = result.getContent()
                 .stream()
@@ -83,6 +103,19 @@ public class PostService {
                 result.getTotalPages(),
                 result.hasNext()
         );
+    }
+
+    private Sort toSort(PostSortType sortType) {
+        return switch (sortType) {
+            case MOST_VIEWED -> Sort.by(
+                    Sort.Order.desc("viewCount"),
+                    Sort.Order.desc("id")
+            );
+            case LATEST -> Sort.by(
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.desc("id")
+            );
+        };
     }
 
     @Transactional

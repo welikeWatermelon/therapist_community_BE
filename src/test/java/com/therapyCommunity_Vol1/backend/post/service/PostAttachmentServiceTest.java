@@ -98,10 +98,12 @@ class PostAttachmentServiceTest {
     }
 
     @Test
-    void 일반_게시글에는_첨부파일을_업로드할_수_없다() {
+    void 첨부파일_업로드시_PostType이_RESOURCE로_변경된다() {
         Long userId = 1L;
         User author = therapist(userId, "author@test.com", "author");
         TherapyPost post = communityPost(10L, author);
+
+        assertThat(post.getPostType()).isEqualTo(PostType.COMMUNITY);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -111,19 +113,19 @@ class PostAttachmentServiceTest {
         );
 
         when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(fileStorageService.storePostAttachment(file)).thenReturn(
+                new StoredFileInfo("post-attachments/guide.pdf", "guide.pdf", "application/pdf")
+        );
+        when(therapyPostAttachmentRepository.save(any(TherapyPostAttachment.class))).thenAnswer(invocation -> {
+            TherapyPostAttachment attachment = invocation.getArgument(0);
+            ReflectionTestUtils.setField(attachment, "id", 100L);
+            ReflectionTestUtils.setField(attachment, "createdAt", LocalDateTime.of(2026, 3, 22, 10, 0));
+            return attachment;
+        });
 
-        assertThatThrownBy(() -> postAttachmentService.uploadAttachment(
-                userId,
-                UserRole.THERAPIST,
-                10L,
-                file
-        ))
-                .isInstanceOf(CustomException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.POST_ATTACHMENT_RESOURCE_ONLY);
+        postAttachmentService.uploadAttachment(userId, UserRole.THERAPIST, 10L, file);
 
-        verify(fileStorageService, never()).storePostAttachment(any());
-        verify(therapyPostAttachmentRepository, never()).save(any());
+        assertThat(post.getPostType()).isEqualTo(PostType.RESOURCE);
     }
 
     @Test

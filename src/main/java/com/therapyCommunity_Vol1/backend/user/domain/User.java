@@ -39,4 +39,8 @@ public class User extends BaseEntity {
     public void promoteToTherapist() {
         this.role = UserRole.THERAPIST;
     }
+
+    public void demoteToUser() {
+        this.role = UserRole.USER;
+    }
 }

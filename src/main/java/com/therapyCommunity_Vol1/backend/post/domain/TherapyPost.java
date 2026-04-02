@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.domain;
 
+import com.therapyCommunity_Vol1.backend.global.common.HangulUtils;
 import com.therapyCommunity_Vol1.backend.global.domain.BaseEntity;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -48,6 +49,9 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "title_choseong", length = 200)
+    private String titleChoseong;
+
     public TherapyPost(
             String title,
             String content,
@@ -73,6 +77,7 @@ public class TherapyPost extends BaseEntity {
         this.postType = postType;
         this.author = author;
         this.viewCount = 0L;
+        this.titleChoseong = HangulUtils.extractChoseong(title);
     }
 
     public static TherapyPost create(
@@ -117,6 +122,11 @@ public class TherapyPost extends BaseEntity {
         this.content = content;
         this.therapyArea = therapyArea;
         this.ageGroup = ageGroup;
+        this.titleChoseong = HangulUtils.extractChoseong(title);
+    }
+
+    public void updatePostType(PostType postType) {
+        this.postType = postType;
     }
 
     public void softDelete() {

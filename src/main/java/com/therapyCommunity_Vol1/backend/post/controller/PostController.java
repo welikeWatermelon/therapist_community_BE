@@ -3,8 +3,11 @@ package com.therapyCommunity_Vol1.backend.post.controller;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
+import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.dto.CreateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.dto.PostListResponse;
+import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostDetailResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UpdateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
@@ -38,10 +41,13 @@ public class PostController {
     public ResponseEntity<ApiResponse<PostListResponse>> getPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "LATEST") PostSortType sortType
+            @RequestParam(defaultValue = "LATEST") PostSortType sortType,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) TherapyArea therapyArea,
+            @RequestParam(required = false) PostType postType
     ) {
-
-        PostListResponse response = postService.getPosts(page, size, sortType);
+        PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
+        PostListResponse response = postService.getPosts(page, size, sortType, condition);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
