@@ -1,4 +1,4 @@
-package com.therapyCommunity_Vol1.backend.scrap;
+package com.therapyCommunity_Vol1.backend.scrap.repository;
 
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
 import org.springframework.data.domain.Page;

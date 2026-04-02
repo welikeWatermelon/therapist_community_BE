@@ -4,9 +4,7 @@ import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.reaction.dto.CommentReactionStatusResponse;
 import com.therapyCommunity_Vol1.backend.reaction.dto.ToggleCommentReactionRequest;
-import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository;
 import com.therapyCommunity_Vol1.backend.reaction.service.CommentReactionService;
-import com.therapyCommunity_Vol1.backend.reaction.service.PostReactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +17,6 @@ import org.springframework.web.bind.annotation.*;
 public class CommentReactionController {
 
     private final CommentReactionService commentReactionService;
-    private final TherapyPostCommentReactionRepository therapyPostCommentReactionRepository;
-    private final PostReactionService postReactionService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<CommentReactionStatusResponse>> getReactionStatus(

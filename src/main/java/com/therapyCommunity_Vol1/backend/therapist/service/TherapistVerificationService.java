@@ -120,6 +120,10 @@ public class TherapistVerificationService {
         }
     }
 
+    public Optional<TherapistVerification> findByUserId(Long userId) {
+        return therapistVerificationRepository.findByUserId(userId);
+    }
+
     public TherapistVerificationResponse getMyVerification(Long currentUserId) {
         return therapistVerificationRepository.findByUserId(currentUserId)
                 .map(verification -> TherapistVerificationResponse.from(
