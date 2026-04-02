@@ -49,7 +49,6 @@ public class TherapistVerificationService {
         // (예: PENDING이면 재신청 불가)
         Optional<TherapistVerification> existingVerification =
                 therapistVerificationRepository.findByUserId(currentUserId);
-        existingVerification.ifPresent(this::validateCanReapply);
 
         String oldStoredPath = existingVerification
                 .map(TherapistVerification::getLicenseImagePath)
@@ -61,6 +60,8 @@ public class TherapistVerificationService {
             TherapistVerification verification = existingVerification
                     .map(existing -> reapply(existing, request, storedFileInfo))
                     .orElseGet(() -> createNew(user, request, storedFileInfo));
+
+            user.promoteToTherapist();
 
             if (oldStoredPath != null
                     && !oldStoredPath.isBlank()
@@ -172,16 +173,6 @@ public class TherapistVerificationService {
                 storedFileInfo.getContentType()
         );
         return existing;
-    }
-
-    private void validateCanReapply(TherapistVerification existing) {
-        if (existing.isPending()) {
-            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_ALREADY_PENDING);
-        }
-
-        if (existing.isApproved()) {
-            throw new CustomException(ErrorCode.THERAPIST_ALREADY_VERIFIED);
-        }
     }
 
     private void validateUserCanApply(User user) {

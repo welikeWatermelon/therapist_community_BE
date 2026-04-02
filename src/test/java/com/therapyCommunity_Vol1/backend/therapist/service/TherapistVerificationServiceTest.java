@@ -81,11 +81,12 @@ class TherapistVerificationServiceTest {
         // then
         assertThat(response.getLicenseCode()).isEqualTo("LICENSE-001");
         assertThat(response.getStatus().getCode()).isEqualTo("PENDING");
+        assertThat(user.getRole()).isEqualTo(UserRole.THERAPIST);
         verify(therapistVerificationRepository).save(any(TherapistVerification.class));
     }
 
     @Test
-    void 이미_pending이면_재신청_실패() {
+    void 이미_치료사면_재신청_실패() {
 
         // given
         MockMultipartFile image = new MockMultipartFile(
@@ -103,20 +104,10 @@ class TherapistVerificationServiceTest {
                 .id(1L)
                 .email("user@test.com")
                 .nickname("user")
-                .role(UserRole.USER)
+                .role(UserRole.THERAPIST)
                 .build();
 
-        TherapistVerification pending = TherapistVerification.create(
-                user,
-                "LICENSE-001",
-                "therapist-verifications/a.png",
-                "license.png",
-                "image/png"
-        );
-
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationRepository.existsByLicenseCodeAndUserIdNot("LICENSE-001", 1L)).thenReturn(false);
-        when(therapistVerificationRepository.findByUserId(1L)).thenReturn(Optional.of(pending));
 
         // when / then
         assertThatThrownBy(() -> therapistVerificationService.apply(1L, request))
