@@ -42,7 +42,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push Docker image
         run: |
@@ -59,10 +59,10 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            aws ecr get-login-password --region ap-northeast-2 | \
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
               docker login --username AWS --password-stdin \
-              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com
-            docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest
+              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+            docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest
             docker stop builders-backend || true
             docker rm builders-backend || true
             docker run -d \
@@ -70,4 +70,4 @@ jobs:
               --env-file /etc/backend/backend.env \
               -p 8080:8080 \
               --restart unless-stopped \
-              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest
+              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest
