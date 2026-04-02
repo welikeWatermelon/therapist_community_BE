@@ -48,7 +48,6 @@ class PostServiceTest {
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "제목",
                 "<p>본문</p>",
-                PostType.RESOURCE,
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5
         );
@@ -65,7 +64,6 @@ class PostServiceTest {
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
-                PostType.RESOURCE,
                 author
         );
         ReflectionTestUtils.setField(savedPost, "id", 100L);
@@ -84,7 +82,7 @@ class PostServiceTest {
         assertThat(response.getTitle()).isEqualTo("제목");
         assertThat(response.getAuthorId()).isEqualTo(userId);
         assertThat(response.getAuthorNickname()).isEqualTo("tester");
-        assertThat(response.getPostType()).isEqualTo(PostType.RESOURCE);
+        assertThat(response.getPostType()).isEqualTo(PostType.COMMUNITY);
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
         assertThat(response.isCanEdit()).isTrue();
         assertThat(response.isCanDelete()).isTrue();

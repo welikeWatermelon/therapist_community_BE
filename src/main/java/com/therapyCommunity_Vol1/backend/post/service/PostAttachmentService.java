@@ -51,7 +51,6 @@ public class PostAttachmentService {
     ) {
         TherapyPost post = getActivePost(postId);
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
-        validateResourcePost(post);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostAttachment(file);
 
@@ -65,7 +64,9 @@ public class PostAttachmentService {
                     extractExtension(storedFileInfo.getOriginalFilename())
             );
 
-            return PostAttachmentResponse.from(therapyPostAttachmentRepository.save(attachment));
+            TherapyPostAttachment saved = therapyPostAttachmentRepository.save(attachment);
+            post.updatePostType(PostType.RESOURCE);
+            return PostAttachmentResponse.from(saved);
         } catch (RuntimeException e) {
             safeDelete(storedFileInfo.getStoredPath(), currentUserId);
             throw e;
@@ -93,6 +94,30 @@ public class PostAttachmentService {
 
         recordDownload(post, user);
         return storedFile;
+    }
+
+    @Transactional
+    public void deleteAttachment(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId,
+            Long attachmentId
+    ) {
+        TherapyPost post = getActivePost(postId);
+        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+
+        TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
+                .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
+
+        String storedPath = attachment.getStoredPath();
+        therapyPostAttachmentRepository.delete(attachment);
+
+        boolean hasRemainingAttachments = !therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(postId).isEmpty();
+        if (!hasRemainingAttachments) {
+            post.updatePostType(PostType.COMMUNITY);
+        }
+
+        safeDelete(storedPath, currentUserId);
     }
 
     public DownloadListResponse getMyDownloads(Long currentUserId, int page, int size) {
@@ -131,12 +156,6 @@ public class PostAttachmentService {
                         TherapyPostDownload::recordDownload,
                         () -> therapyPostDownloadRepository.save(TherapyPostDownload.create(post, user))
                 );
-    }
-
-    private void validateResourcePost(TherapyPost post) {
-        if (post.getPostType() != PostType.RESOURCE) {
-            throw new CustomException(ErrorCode.POST_ATTACHMENT_RESOURCE_ONLY);
-        }
     }
 
     private void validateAuthorOrAdmin(

@@ -41,7 +41,6 @@ public class PostService {
                 request.getContent(),
                 request.getTherapyArea(),
                 request.getAgeGroup(),
-                request.getPostType(),
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);

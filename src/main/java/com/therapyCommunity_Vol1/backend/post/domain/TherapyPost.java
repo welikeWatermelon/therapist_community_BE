@@ -119,6 +119,10 @@ public class TherapyPost extends BaseEntity {
         this.ageGroup = ageGroup;
     }
 
+    public void updatePostType(PostType postType) {
+        this.postType = postType;
+    }
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
