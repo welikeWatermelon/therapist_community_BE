@@ -3,7 +3,7 @@ package com.therapyCommunity_Vol1.backend.user.service;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
-import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
@@ -23,14 +23,14 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     private UserRepository userRepository;
-    private TherapistVerificationRepository therapistVerificationRepository;
+    private TherapistVerificationService therapistVerificationService;
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        therapistVerificationRepository = mock(TherapistVerificationRepository.class);
-        userService = new UserService(userRepository, therapistVerificationRepository);
+        therapistVerificationService = mock(TherapistVerificationService.class);
+        userService = new UserService(userRepository, therapistVerificationService);
     }
 
     @Test
@@ -43,7 +43,7 @@ class UserServiceTest {
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.empty());
 
         CurrentUserResponse response = userService.getCurrentUser(1L);
 
@@ -72,7 +72,7 @@ class UserServiceTest {
         ReflectionTestUtils.setField(verification, "createdAt", requestedAt);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationRepository.findByUserId(1L)).thenReturn(Optional.of(verification));
+        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.of(verification));
 
         CurrentUserResponse response = userService.getCurrentUser(1L);
 

@@ -9,7 +9,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.JwtTokenProvider;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
-import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -42,7 +42,7 @@ AuthServiceTest {
     JwtTokenProvider jwtTokenProvider;
     RefreshTokenRepository refreshTokenRepository;
     RefreshTokenManager refreshTokenManager;
-    TherapistVerificationRepository therapistVerificationRepository;
+    TherapistVerificationService therapistVerificationService;
 
     AuthService authService;
 
@@ -53,7 +53,7 @@ AuthServiceTest {
         jwtTokenProvider = mock(JwtTokenProvider.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
         refreshTokenManager = mock(RefreshTokenManager.class);
-        therapistVerificationRepository = mock(TherapistVerificationRepository.class);
+        therapistVerificationService = mock(TherapistVerificationService.class);
 
         authService = new AuthService(
                 userRepository,
@@ -61,7 +61,7 @@ AuthServiceTest {
                 jwtTokenProvider,
                 refreshTokenRepository,
                 refreshTokenManager,
-                therapistVerificationRepository
+                therapistVerificationService
         );
         ReflectionTestUtils.setField(authService, "refreshTokenTtlSec", 1209600L);
     }
@@ -84,7 +84,7 @@ AuthServiceTest {
         when(jwtTokenProvider.getAccessTokenValiditySec()).thenReturn(1800L);
         when(refreshTokenManager.generateRawToken()).thenReturn("raw-refresh-token");
         when(refreshTokenManager.hash("raw-refresh-token")).thenReturn("hashed-refresh-token");
-        when(therapistVerificationRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.empty());
         when(refreshTokenRepository.save(any(RefreshToken.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -140,7 +140,7 @@ AuthServiceTest {
         when(jwtTokenProvider.getAccessTokenValiditySec()).thenReturn(1800L);
         when(refreshTokenManager.generateRawToken()).thenReturn("raw-refresh-token");
         when(refreshTokenManager.hash("raw-refresh-token")).thenReturn("hashed-refresh-token");
-        when(therapistVerificationRepository.findByUserId(1L)).thenReturn(Optional.of(verification));
+        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.of(verification));
         when(refreshTokenRepository.save(any(RefreshToken.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

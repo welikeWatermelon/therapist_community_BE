@@ -4,7 +4,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
-import com.therapyCommunity_Vol1.backend.scrap.TherapyPostScrapRepository;
+import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapListResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
