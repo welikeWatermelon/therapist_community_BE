@@ -10,6 +10,7 @@ import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.JwtTokenProvider;
+import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -20,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.swing.text.html.Option;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -81,7 +83,7 @@ public class AuthService {
 
         IssuedRefreshToken issuedRefreshToken =
                 issueRefreshToken(user, UUID.randomUUID(), userAgent, ipAddress);
-        var verification =
+        Optional<TherapistVerification> verification =
                 therapistVerificationService.findByUserId(user.getId());
 
         return new LoginResult(
