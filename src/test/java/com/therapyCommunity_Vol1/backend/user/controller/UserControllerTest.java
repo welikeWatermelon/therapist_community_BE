@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.user.controller;
 
+import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -19,7 +20,8 @@ class UserControllerTest {
     @Test
     void 내정보를_조회하면_현재_유저_요약을_반환한다() {
         UserService userService = mock(UserService.class);
-        UserController userController = new UserController(userService);
+        RefreshTokenCookieManager cookieManager = mock(RefreshTokenCookieManager.class);
+        UserController userController = new UserController(userService, cookieManager);
         User user = User.builder()
                 .id(1L)
                 .email("user@example.com")

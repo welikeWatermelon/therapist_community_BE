@@ -1,6 +1,8 @@
 package com.therapyCommunity_Vol1.backend.comment.repository;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -16,5 +18,8 @@ public interface TherapyPostCommentRepository extends JpaRepository<TherapyPostC
 
     @EntityGraph(attributePaths = {"author", "parentComment", "post"})
     Optional<TherapyPostComment> findById(Long id);
+
+    @EntityGraph(attributePaths = "post")
+    Page<TherapyPostComment> findByAuthorIdOrderByCreatedAtDesc(Long authorId, Pageable pageable);
 }
 

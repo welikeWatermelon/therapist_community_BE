@@ -2,6 +2,9 @@ package com.therapyCommunity_Vol1.backend.user.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -24,13 +27,25 @@ class UserServiceTest {
 
     private UserRepository userRepository;
     private TherapistVerificationService therapistVerificationService;
+    private TherapyPostRepository therapyPostRepository;
+    private TherapyPostCommentRepository therapyPostCommentRepository;
+    private RefreshTokenRepository refreshTokenRepository;
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         therapistVerificationService = mock(TherapistVerificationService.class);
-        userService = new UserService(userRepository, therapistVerificationService);
+        therapyPostRepository = mock(TherapyPostRepository.class);
+        therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
+        refreshTokenRepository = mock(RefreshTokenRepository.class);
+        userService = new UserService(
+                userRepository,
+                therapistVerificationService,
+                therapyPostRepository,
+                therapyPostCommentRepository,
+                refreshTokenRepository
+        );
     }
 
     @Test

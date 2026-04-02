@@ -19,6 +19,9 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     Optional<TherapyPost> findByIdAndDeletedAtIsNull(Long id);
 
+    @EntityGraph(attributePaths = "author")
+    Page<TherapyPost> findByAuthorIdAndDeletedAtIsNull(Long authorId, Pageable pageable);
+
     // 초성 검색 (ㅇㅇㅊㄹ → 언어치료)
     @EntityGraph(attributePaths = "author")
     @Query("""

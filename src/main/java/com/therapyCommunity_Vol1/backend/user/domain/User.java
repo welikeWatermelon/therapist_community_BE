@@ -43,4 +43,17 @@ public class User extends BaseEntity {
     public void demoteToUser() {
         this.role = UserRole.USER;
     }
+
+    public void updateProfile(String nickname, String profileImageUrl) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
+    }
+
+    public void withdraw() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }
