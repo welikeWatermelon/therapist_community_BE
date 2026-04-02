@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> {
@@ -20,38 +19,40 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     Optional<TherapyPost> findByIdAndDeletedAtIsNull(Long id);
 
-    // keyword 검색: Step 1 — native query로 ID + 페이징만 조회
-    @Query(value = """
-            SELECT p.id FROM therapy_posts p
-            WHERE p.deleted_at IS NULL
-              AND p.search_vector @@ plainto_tsquery('simple', :keyword)
-              AND (:therapyArea IS NULL OR p.therapy_area = :therapyArea)
-              AND (:postType IS NULL OR p.post_type = :postType)
-            ORDER BY
-              ts_rank(p.search_vector, plainto_tsquery('simple', :keyword)) DESC,
-              p.created_at DESC, p.id DESC
-            """,
-            countQuery = """
-            SELECT count(*) FROM therapy_posts p
-            WHERE p.deleted_at IS NULL
-              AND p.search_vector @@ plainto_tsquery('simple', :keyword)
-              AND (:therapyArea IS NULL OR p.therapy_area = :therapyArea)
-              AND (:postType IS NULL OR p.post_type = :postType)
-            """,
-            nativeQuery = true)
-    Page<Long> searchIdsByKeyword(
-            @Param("keyword") String keyword,
-            @Param("therapyArea") String therapyArea,
-            @Param("postType") String postType,
+    // 초성 검색 (ㅇㅇㅊㄹ → 언어치료)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.titleChoseong LIKE %:choseong%
+              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
+              AND (:postType IS NULL OR p.postType = :postType)
+            """)
+    Page<TherapyPost> searchByChoseong(
+            @Param("choseong") String choseong,
+            @Param("therapyArea") TherapyArea therapyArea,
+            @Param("postType") PostType postType,
             Pageable pageable
     );
 
-    // keyword 검색: Step 2 — ID 목록으로 엔티티 + author 한번에 fetch
+    // 일반 텍스트 검색 (title OR content 대소문자 무시 LIKE)
     @EntityGraph(attributePaths = "author")
-    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids")
-    List<TherapyPost> findAllWithAuthorByIdIn(@Param("ids") List<Long> ids);
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
+              AND (:postType IS NULL OR p.postType = :postType)
+            """)
+    Page<TherapyPost> searchByKeyword(
+            @Param("keyword") String keyword,
+            @Param("therapyArea") TherapyArea therapyArea,
+            @Param("postType") PostType postType,
+            Pageable pageable
+    );
 
-    // 필터만 (keyword 없음): JPQL + EntityGraph
+    // 필터만 (keyword 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p

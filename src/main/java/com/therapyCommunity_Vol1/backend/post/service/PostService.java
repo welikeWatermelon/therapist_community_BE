@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.common.HangulUtils;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
@@ -12,7 +13,6 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -20,9 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -60,14 +57,31 @@ public class PostService {
     ) {
         Page<TherapyPost> result;
 
+        Sort sort = toSort(sortType);
+
         if (condition.isEmpty()) {
-            Sort sort = toSort(sortType);
             Pageable pageable = PageRequest.of(page, size, sort);
             result = therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
-            result = searchByKeyword(page, size, condition);
+            String keyword = condition.getKeyword().trim();
+            if (HangulUtils.isChoseongOnly(keyword)) {
+                Pageable pageable = PageRequest.of(page, size, sort);
+                result = therapyPostRepository.searchByChoseong(
+                        keyword,
+                        condition.getTherapyArea(),
+                        condition.getPostType(),
+                        pageable
+                );
+            } else {
+                Pageable pageable = PageRequest.of(page, size, sort);
+                result = therapyPostRepository.searchByKeyword(
+                        keyword,
+                        condition.getTherapyArea(),
+                        condition.getPostType(),
+                        pageable
+                );
+            }
         } else {
-            Sort sort = toSort(sortType);
             Pageable pageable = PageRequest.of(page, size, sort);
             result = therapyPostRepository.searchByFilter(
                     condition.getTherapyArea(),
@@ -89,32 +103,6 @@ public class PostService {
                 result.getTotalPages(),
                 result.hasNext()
         );
-    }
-
-    private Page<TherapyPost> searchByKeyword(int page, int size, PostSearchCondition condition) {
-        Pageable pageable = PageRequest.of(page, size);
-
-        Page<Long> idPage = therapyPostRepository.searchIdsByKeyword(
-                condition.getKeyword(),
-                condition.hasTherapyArea() ? condition.getTherapyArea().name() : null,
-                condition.hasPostType() ? condition.getPostType().name() : null,
-                pageable
-        );
-
-        List<Long> ids = idPage.getContent();
-        if (ids.isEmpty()) {
-            return new PageImpl<>(List.of(), pageable, idPage.getTotalElements());
-        }
-
-        Map<Long, TherapyPost> postMap = therapyPostRepository.findAllWithAuthorByIdIn(ids)
-                .stream()
-                .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
-
-        List<TherapyPost> ordered = ids.stream()
-                .map(postMap::get)
-                .toList();
-
-        return new PageImpl<>(ordered, pageable, idPage.getTotalElements());
     }
 
     private Sort toSort(PostSortType sortType) {
