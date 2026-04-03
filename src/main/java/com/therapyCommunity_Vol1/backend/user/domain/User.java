@@ -56,4 +56,12 @@ public class User extends BaseEntity {
     public void withdraw() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    public boolean isWithdrawn() {
+        return this.deletedAt != null;
+    }
+
+    public String getDisplayNickname() {
+        return isWithdrawn() ? "탈퇴한 회원" : this.nickname;
+    }
 }

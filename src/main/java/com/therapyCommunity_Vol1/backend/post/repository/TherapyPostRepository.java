@@ -27,7 +27,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND p.titleChoseong LIKE %:choseong%
+              AND p.titleChoseong LIKE CONCAT('%', :choseong, '%') ESCAPE '\\'
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
             """)
@@ -43,8 +43,8 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                   OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+                   OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
             """)

@@ -49,7 +49,7 @@ public class TherapyPostSummaryResponse {
                 post.getPostType(),
                 post.getTitle(),
                 makePreview(post.getContent()),
-                post.getAuthor().getNickname(),
+                post.getAuthor().getDisplayNickname(),
                 post.getTherapyArea(),
                 post.getAgeGroup(),
                 post.getViewCount(),

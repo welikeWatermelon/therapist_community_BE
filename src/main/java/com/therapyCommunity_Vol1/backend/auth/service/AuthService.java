@@ -76,8 +76,11 @@ public class AuthService {
             String userAgent,
             String ipAddress
     ) {
-        User user = findUserByEmailOrThrow(request.getEmail());
-        validatePasswordOrThrow(request.getPassword(), user.getPasswordHash());
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        }
         String accessToken = createAccessToken(user);
         long accessTokenExpiresInSec = jwtTokenProvider.getAccessTokenValiditySec();
 

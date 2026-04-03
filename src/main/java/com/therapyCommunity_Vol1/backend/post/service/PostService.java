@@ -63,7 +63,7 @@ public class PostService {
             Pageable pageable = PageRequest.of(page, size, sort);
             result = therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
-            String keyword = condition.getKeyword().trim();
+            String keyword = condition.getEscapedKeyword().trim();
             if (HangulUtils.isChoseongOnly(keyword)) {
                 Pageable pageable = PageRequest.of(page, size, sort);
                 result = therapyPostRepository.searchByChoseong(

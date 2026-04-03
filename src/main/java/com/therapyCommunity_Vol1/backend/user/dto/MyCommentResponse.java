@@ -12,10 +12,13 @@ public record MyCommentResponse(
         LocalDateTime createdAt,
         boolean isDeleted
 ) {
+    private static final String DELETED_CONTENT = "삭제된 댓글입니다";
+
     public static MyCommentResponse from(TherapyPostComment comment) {
+        String content = comment.isDeleted() ? DELETED_CONTENT : comment.getContent();
         return new MyCommentResponse(
                 comment.getId(),
-                comment.getContent(),
+                content,
                 comment.getPost().getId(),
                 comment.getPost().getTitle(),
                 comment.getCreatedAt(),

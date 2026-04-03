@@ -14,5 +14,5 @@ public class PostListResponse {
     private int size;
     private long totalElements;
     private int totalPages;
-    private Boolean hasNext;
+    private boolean hasNext;
 }

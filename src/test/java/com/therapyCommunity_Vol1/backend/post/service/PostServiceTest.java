@@ -130,7 +130,7 @@ class PostServiceTest {
         assertThat(response.getPosts().get(0).getTitle()).isEqualTo("제목");
         assertThat(response.getPosts().get(0).getAuthorNickname()).isEqualTo("tester");
         assertThat(response.getTotalElements()).isEqualTo(1);
-        assertThat(response.getHasNext()).isFalse();
+        assertThat(response.isHasNext()).isFalse();
     }
 
     @Test

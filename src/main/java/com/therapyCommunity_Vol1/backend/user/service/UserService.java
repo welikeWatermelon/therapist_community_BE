@@ -62,9 +62,9 @@ public class UserService {
     }
 
     public MyCommentListResponse getMyComments(Long currentUserId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
-        var result = therapyPostCommentRepository.findByAuthorIdOrderByCreatedAtDesc(currentUserId, pageable);
+        var result = therapyPostCommentRepository.findByAuthorId(currentUserId, pageable);
 
         var comments = result.getContent()
                 .stream()
