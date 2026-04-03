@@ -30,7 +30,7 @@ public class AuthController {
     @Operation(security = {})
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup (
-            @RequestBody SignupRequest request
+            @Valid @RequestBody SignupRequest request
     ) {
         SignupResponse response = authService.signup(request);
 

@@ -17,6 +17,13 @@ public class PostSearchCondition {
         return keyword != null && !keyword.isBlank();
     }
 
+    public String getEscapedKeyword() {
+        if (keyword == null) return null;
+        return keyword.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+    }
+
     public boolean hasTherapyArea() {
         return therapyArea != null;
     }
