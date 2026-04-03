@@ -10,7 +10,7 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_403", "접근이 권한 없습니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_404", "요청한 리소스를 찾을 수 없습니다."),
-    CONFLICT(HttpStatus.CONFLICT, "COMMON_409","이미 존재하 데이터입니다"),
+    CONFLICT(HttpStatus.CONFLICT, "COMMON_409","이미 존재하는 데이터입니다"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404","사용자를 찾을 수 없습니다."),
     NICKNAME_ALREADY_USED(HttpStatus.CONFLICT, "USER_409_NICKNAME", "이미 사용 중인 닉네임입니다."),

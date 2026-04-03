@@ -54,7 +54,7 @@ public class TherapyPostDetailResponse {
                 post.getContent(),
                 post.getPostType(),
                 post.getAuthor().getId(),
-                post.getAuthor().getNickname(),
+                post.getAuthor().getDisplayNickname(),
                 post.getTherapyArea(),
                 post.getAgeGroup(),
                 post.getViewCount(),

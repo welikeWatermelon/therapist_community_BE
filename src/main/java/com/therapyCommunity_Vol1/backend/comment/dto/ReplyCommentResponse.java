@@ -37,7 +37,7 @@ public class ReplyCommentResponse {
                 comment.getPost().getId(),
                 comment.getParentComment() != null ? comment.getParentComment().getId() : null,
                 comment.getAuthor().getId(),
-                comment.getAuthor().getNickname(),
+                comment.getAuthor().getDisplayNickname(),
                 comment.getAuthor().getRole().getCode(),
                 comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),

@@ -38,7 +38,7 @@ public class ScrappedPostResponse {
                 scrap.getPost().getId(),
                 scrap.getPost().getTitle(),
                 preview,
-                scrap.getPost().getAuthor().getNickname(),
+                scrap.getPost().getAuthor().getDisplayNickname(),
                 scrap.getPost().getTherapyArea(),
                 scrap.getPost().getAgeGroup(),
                 scrap.getPost().getViewCount(),

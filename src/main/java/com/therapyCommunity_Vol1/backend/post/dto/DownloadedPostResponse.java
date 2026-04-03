@@ -41,7 +41,7 @@ public class DownloadedPostResponse {
                 download.getPost().getPostType(),
                 download.getPost().getTitle(),
                 preview,
-                download.getPost().getAuthor().getNickname(),
+                download.getPost().getAuthor().getDisplayNickname(),
                 download.getPost().getTherapyArea(),
                 download.getPost().getAgeGroup(),
                 download.getFirstDownloadedAt(),

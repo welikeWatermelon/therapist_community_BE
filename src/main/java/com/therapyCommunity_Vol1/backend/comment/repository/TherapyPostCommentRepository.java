@@ -20,6 +20,6 @@ public interface TherapyPostCommentRepository extends JpaRepository<TherapyPostC
     Optional<TherapyPostComment> findById(Long id);
 
     @EntityGraph(attributePaths = "post")
-    Page<TherapyPostComment> findByAuthorIdOrderByCreatedAtDesc(Long authorId, Pageable pageable);
+    Page<TherapyPostComment> findByAuthorId(Long authorId, Pageable pageable);
 }
 
