@@ -37,7 +37,7 @@ public class LocalFileStorageService implements FileStorageService {
             Files.createDirectories(this.uploadRootPath.resolve("post-attachments"));
             Files.createDirectories(this.uploadRootPath.resolve("profile-images"));
         } catch (IOException e) {
-            throw new RuntimeException("로컬 업로드 디렉터리 생성 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 
@@ -79,7 +79,7 @@ public class LocalFileStorageService implements FileStorageService {
                     file.getContentType() != null ? file.getContentType() : "application/octet-stream"
             );
         } catch (IOException e) {
-            throw new RuntimeException("파일 저장 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 
@@ -109,11 +109,11 @@ public class LocalFileStorageService implements FileStorageService {
             Path target = uploadRootPath.resolve(storedPath).normalize();
 
             if (!target.startsWith(uploadRootPath)) {
-                throw new RuntimeException("잘못된 파일 경로");
+                throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
             }
             Files.deleteIfExists(target);
         } catch (Exception e) {
-            throw new RuntimeException("파일 삭제 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 

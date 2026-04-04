@@ -94,6 +94,7 @@ public class UserService {
         return imageUrl;
     }
 
+    @Transactional
     public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request) {
         User user = findUserOrThrow(currentUserId);
 
