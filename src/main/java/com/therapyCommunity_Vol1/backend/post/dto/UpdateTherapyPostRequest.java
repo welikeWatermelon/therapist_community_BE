@@ -13,13 +13,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateTherapyPostRequest {
 
-    @NotBlank(message = "제목은 필수입니다.")
-    private String title;
-
     @NotBlank(message = "내용은 필수입니다")
     private String content;
 
-    @NotNull(message = "치료 종류는 필수입니다.")
     private TherapyArea therapyArea;
 
     @NotNull(message = "연령대는 필수입니다.")

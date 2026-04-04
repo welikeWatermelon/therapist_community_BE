@@ -54,7 +54,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -98,7 +97,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -142,7 +140,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -179,7 +176,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -212,7 +208,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -244,7 +239,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문입니다</p>",
                 TherapyArea.COGNITIVE,
                 AgeGroup.AGE_6_12,
@@ -284,7 +278,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문입니다</p>",
                 TherapyArea.COGNITIVE,
                 AgeGroup.AGE_6_12,
@@ -329,7 +322,6 @@ class CommentServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문입니다</p>",
                 TherapyArea.COGNITIVE,
                 AgeGroup.AGE_6_12,

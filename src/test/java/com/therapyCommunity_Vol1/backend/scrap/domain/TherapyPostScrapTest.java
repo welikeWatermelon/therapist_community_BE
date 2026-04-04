@@ -23,7 +23,6 @@ class TherapyPostScrapTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,

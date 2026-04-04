@@ -52,7 +52,6 @@ class ScrapServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -86,7 +85,6 @@ class ScrapServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -119,7 +117,7 @@ class ScrapServiceTest {
                 .role(UserRole.THERAPIST)
                 .build();
 
-        TherapyPost post = TherapyPost.create("제목",
+        TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -152,7 +150,7 @@ class ScrapServiceTest {
                 .role(UserRole.THERAPIST)
                 .build();
 
-        TherapyPost post = TherapyPost.create("제목",
+        TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -173,7 +171,6 @@ class ScrapServiceTest {
 
         // then
         assertThat(response.getScraps()).hasSize(1);
-        assertThat(response.getScraps().get(0).getTitle()).isEqualTo("제목");
         assertThat(response.getTotalElements()).isEqualTo(1L);
     }
 }

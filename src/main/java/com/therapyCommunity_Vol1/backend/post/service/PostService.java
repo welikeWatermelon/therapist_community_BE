@@ -1,6 +1,5 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
-import com.therapyCommunity_Vol1.backend.global.common.HangulUtils;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
@@ -38,7 +37,6 @@ public class PostService {
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         TherapyPost post = TherapyPost.create(
-                request.getTitle(),
                 request.getContent(),
                 request.getTherapyArea(),
                 request.getAgeGroup(),
@@ -59,30 +57,19 @@ public class PostService {
 
         Sort sort = toSort(sortType);
 
+        Pageable pageable = PageRequest.of(page, size, sort);
+
         if (condition.isEmpty()) {
-            Pageable pageable = PageRequest.of(page, size, sort);
             result = therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
             String keyword = condition.getEscapedKeyword().trim();
-            if (HangulUtils.isChoseongOnly(keyword)) {
-                Pageable pageable = PageRequest.of(page, size, sort);
-                result = therapyPostRepository.searchByChoseong(
-                        keyword,
-                        condition.getTherapyArea(),
-                        condition.getPostType(),
-                        pageable
-                );
-            } else {
-                Pageable pageable = PageRequest.of(page, size, sort);
-                result = therapyPostRepository.searchByKeyword(
-                        keyword,
-                        condition.getTherapyArea(),
-                        condition.getPostType(),
-                        pageable
-                );
-            }
+            result = therapyPostRepository.searchByKeyword(
+                    keyword,
+                    condition.getTherapyArea(),
+                    condition.getPostType(),
+                    pageable
+            );
         } else {
-            Pageable pageable = PageRequest.of(page, size, sort);
             result = therapyPostRepository.searchByFilter(
                     condition.getTherapyArea(),
                     condition.getPostType(),
@@ -148,7 +135,6 @@ public class PostService {
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
 
         post.update(
-                request.getTitle(),
                 request.getContent(),
                 request.getTherapyArea(),
                 request.getAgeGroup()

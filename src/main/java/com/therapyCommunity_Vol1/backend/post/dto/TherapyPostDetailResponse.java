@@ -16,7 +16,6 @@ import java.util.List;
 public class TherapyPostDetailResponse {
 
     private Long id;
-    private String title;
     private String content;
     private PostType postType;
     private Long authorId;
@@ -50,7 +49,6 @@ public class TherapyPostDetailResponse {
         boolean canManage = canManage(post, currentUserId, currentUserRole);
         return new TherapyPostDetailResponse(
                 post.getId(),
-                post.getTitle(),
                 post.getContent(),
                 post.getPostType(),
                 post.getAuthor().getId(),

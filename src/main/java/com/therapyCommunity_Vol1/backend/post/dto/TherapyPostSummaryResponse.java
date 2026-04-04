@@ -13,7 +13,6 @@ public class TherapyPostSummaryResponse {
 
     private Long id;
     private PostType postType;
-    private String title;
     private String contentPreview;
     private String authorNickname;
     private TherapyArea therapyArea;
@@ -24,7 +23,6 @@ public class TherapyPostSummaryResponse {
     public TherapyPostSummaryResponse(
             Long id,
             PostType postType,
-            String title,
             String contentPreview,
             String authorNickname,
             TherapyArea therapyArea,
@@ -34,7 +32,6 @@ public class TherapyPostSummaryResponse {
     ) {
         this.id = id;
         this.postType = postType;
-        this.title = title;
         this.contentPreview = contentPreview;
         this.authorNickname = authorNickname;
         this.therapyArea = therapyArea;
@@ -47,7 +44,6 @@ public class TherapyPostSummaryResponse {
         return new TherapyPostSummaryResponse(
                 post.getId(),
                 post.getPostType(),
-                post.getTitle(),
                 makePreview(post.getContent()),
                 post.getAuthor().getDisplayNickname(),
                 post.getTherapyArea(),

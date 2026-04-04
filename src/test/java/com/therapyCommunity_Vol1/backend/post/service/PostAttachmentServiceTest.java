@@ -195,13 +195,12 @@ class PostAttachmentServiceTest {
 
     private TherapyPost resourcePost(Long id, User author) {
         TherapyPost post = TherapyPost.create(
-                "자료 제목",
                 "<p>자료 본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_6_12,
-                PostType.RESOURCE,
                 author
         );
+        post.updatePostType(PostType.RESOURCE);
         ReflectionTestUtils.setField(post, "id", id);
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.of(2026, 3, 20, 9, 0));
         return post;
@@ -209,11 +208,9 @@ class PostAttachmentServiceTest {
 
     private TherapyPost communityPost(Long id, User author) {
         TherapyPost post = TherapyPost.create(
-                "커뮤니티 제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_6_12,
-                PostType.COMMUNITY,
                 author
         );
         ReflectionTestUtils.setField(post, "id", id);

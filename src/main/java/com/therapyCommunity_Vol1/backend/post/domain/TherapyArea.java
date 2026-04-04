@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.post.domain;
 
 public enum TherapyArea {
 
+    UNSPECIFIED("선택안함"),
     SENSORY_INTEGRATION("감각통합"),
     SPEECH("언어치료"),
     OCCUPATIONAL("작업치료"),
