@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.therapist.dto.ApplyTherapistVerificationRequest;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;

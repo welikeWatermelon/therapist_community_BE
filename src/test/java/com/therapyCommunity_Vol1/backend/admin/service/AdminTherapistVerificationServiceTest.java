@@ -1,7 +1,7 @@
 package com.therapyCommunity_Vol1.backend.admin.service;
 
 import com.therapyCommunity_Vol1.backend.admin.dto.RejectTherapistVerificationRequest;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
 import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;

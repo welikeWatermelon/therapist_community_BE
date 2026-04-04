@@ -1,7 +1,7 @@
 package com.therapyCommunity_Vol1.backend.post.controller;
 
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostAttachmentService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;

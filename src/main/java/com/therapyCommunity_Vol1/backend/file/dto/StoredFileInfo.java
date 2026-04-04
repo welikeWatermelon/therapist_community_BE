@@ -1,4 +1,4 @@
-package com.therapyCommunity_Vol1.backend.global.storage;
+package com.therapyCommunity_Vol1.backend.file.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

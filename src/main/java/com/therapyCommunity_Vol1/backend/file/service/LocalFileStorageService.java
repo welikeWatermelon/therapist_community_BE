@@ -2,9 +2,8 @@ package com.therapyCommunity_Vol1.backend.file.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileInfo;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;

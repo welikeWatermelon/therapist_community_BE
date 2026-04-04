@@ -1,8 +1,8 @@
 package com.therapyCommunity_Vol1.backend.therapist.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileInfo;
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.dto.ApplyTherapistVerificationRequest;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
