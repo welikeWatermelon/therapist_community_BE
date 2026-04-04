@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -119,11 +120,11 @@ class PostServiceTest {
 
         // when
         PostSearchCondition condition = new PostSearchCondition(null, null, null);
-        PostListResponse response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
 
         // then
-        assertThat(response.getPosts()).hasSize(1);
-        assertThat(response.getPosts().get(0).getAuthorNickname()).isEqualTo("tester");
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getAuthorNickname()).isEqualTo("tester");
         assertThat(response.getTotalElements()).isEqualTo(1);
         assertThat(response.isHasNext()).isFalse();
     }

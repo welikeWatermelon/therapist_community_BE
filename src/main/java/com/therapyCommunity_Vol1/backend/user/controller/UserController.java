@@ -4,10 +4,11 @@ import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
-import com.therapyCommunity_Vol1.backend.post.dto.PostListResponse;
+import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
-import com.therapyCommunity_Vol1.backend.user.dto.MyCommentListResponse;
+import com.therapyCommunity_Vol1.backend.user.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,23 +43,23 @@ public class UserController {
 
     @Operation(summary = "내가 쓴 게시글", description = "내가 작성한 게시글 목록 (최신순, 페이징)")
     @GetMapping("/posts")
-    public ResponseEntity<ApiResponse<PostListResponse>> getMyPosts(
+    public ResponseEntity<ApiResponse<PagedResponse<TherapyPostSummaryResponse>>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PostListResponse response = userService.getMyPosts(userDetails.getUser().getId(), page, size);
+        PagedResponse<TherapyPostSummaryResponse> response = userService.getMyPosts(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @Operation(summary = "내가 쓴 댓글", description = "내가 작성한 댓글 목록 (삭제된 댓글 포함, content 마스킹)")
     @GetMapping("/comments")
-    public ResponseEntity<ApiResponse<MyCommentListResponse>> getMyComments(
+    public ResponseEntity<ApiResponse<PagedResponse<MyCommentResponse>>> getMyComments(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        MyCommentListResponse response = userService.getMyComments(userDetails.getUser().getId(), page, size);
+        PagedResponse<MyCommentResponse> response = userService.getMyComments(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

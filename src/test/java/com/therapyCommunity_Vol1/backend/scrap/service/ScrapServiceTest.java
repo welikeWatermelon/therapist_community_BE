@@ -6,7 +6,8 @@ import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
-import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -167,10 +168,10 @@ class ScrapServiceTest {
                 .thenReturn(page);
 
         // when
-        ScrapListResponse response = scrapService.getMyScraps(currentUserId, 0, 10);
+        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(currentUserId, 0, 10);
 
         // then
-        assertThat(response.getScraps()).hasSize(1);
+        assertThat(response.getItems()).hasSize(1);
         assertThat(response.getTotalElements()).isEqualTo(1L);
     }
 }

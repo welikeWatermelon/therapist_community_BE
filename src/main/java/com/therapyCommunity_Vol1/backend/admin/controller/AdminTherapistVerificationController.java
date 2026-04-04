@@ -4,7 +4,7 @@ package com.therapyCommunity_Vol1.backend.admin.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.therapyCommunity_Vol1.backend.admin.dto.RejectTherapistVerificationRequest;
-import com.therapyCommunity_Vol1.backend.admin.dto.TherapistVerificationPageResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.admin.service.AdminTherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
@@ -33,13 +33,13 @@ public class AdminTherapistVerificationController {
 
     @Operation(summary = "인증 신청 목록", description = "상태별 필터(PENDING/APPROVED/REJECTED), 페이징")
     @GetMapping
-    public ResponseEntity<ApiResponse<TherapistVerificationPageResponse>> getVerifications(
+    public ResponseEntity<ApiResponse<PagedResponse<TherapistVerificationResponse>>> getVerifications(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         TherapistVerificationStatus parsedStatus = parseStatus(status);
-        TherapistVerificationPageResponse response =
+        PagedResponse<TherapistVerificationResponse> response =
                 adminTherapistVerificationService.getVerifications(parsedStatus, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(response));

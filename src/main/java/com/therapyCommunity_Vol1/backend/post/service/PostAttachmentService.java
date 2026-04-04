@@ -9,7 +9,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostAttachment;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostDownload;
-import com.therapyCommunity_Vol1.backend.post.dto.DownloadListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.DownloadedPostResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
@@ -120,7 +120,7 @@ public class PostAttachmentService {
         safeDelete(storedPath, currentUserId);
     }
 
-    public DownloadListResponse getMyDownloads(Long currentUserId, int page, int size) {
+    public PagedResponse<DownloadedPostResponse> getMyDownloads(Long currentUserId, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -133,16 +133,9 @@ public class PostAttachmentService {
         Page<TherapyPostDownload> result =
                 therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable);
 
-        return new DownloadListResponse(
-                result.getContent().stream()
+        return PagedResponse.from(result, result.getContent().stream()
                         .map(DownloadedPostResponse::from)
-                        .toList(),
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+                        .toList());
     }
 
     private TherapyPost getActivePost(Long postId) {

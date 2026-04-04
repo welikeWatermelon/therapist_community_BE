@@ -4,7 +4,7 @@ import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
-import com.therapyCommunity_Vol1.backend.post.dto.DownloadListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.DownloadedPostResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostAttachmentService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -90,7 +90,7 @@ class MyDownloadControllerTest {
                 3L
         );
 
-        DownloadListResponse response = new DownloadListResponse(
+        PagedResponse<DownloadedPostResponse> response = new PagedResponse<>(
                 List.of(download),
                 0,
                 10,
@@ -107,9 +107,9 @@ class MyDownloadControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.downloads[0].postId").value(10))
-                .andExpect(jsonPath("$.data.downloads[0].postType").value("RESOURCE"))
-                .andExpect(jsonPath("$.data.downloads[0].downloadCount").value(3))
+                .andExpect(jsonPath("$.data.items[0].postId").value(10))
+                .andExpect(jsonPath("$.data.items[0].postType").value("RESOURCE"))
+                .andExpect(jsonPath("$.data.items[0].downloadCount").value(3))
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.hasNext").value(false));
 
