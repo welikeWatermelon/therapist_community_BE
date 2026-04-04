@@ -3,9 +3,8 @@ package com.therapyCommunity_Vol1.backend.file.service;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileInfo;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
@@ -35,7 +34,7 @@ import java.util.UUID;
 @Primary
 @Service
 @RequiredArgsConstructor
-public class S3FileStorage implements FileStorageService {
+public class S3FileStorageService implements FileStorageService {
 
     private final S3Client s3Client;
 
