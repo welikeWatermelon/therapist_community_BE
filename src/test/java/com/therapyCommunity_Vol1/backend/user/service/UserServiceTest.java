@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.user.service;
 
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
@@ -30,6 +31,7 @@ class UserServiceTest {
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostCommentRepository therapyPostCommentRepository;
     private RefreshTokenRepository refreshTokenRepository;
+    private FileStorageService fileStorageService;
     private UserService userService;
 
     @BeforeEach
@@ -39,12 +41,14 @@ class UserServiceTest {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
+        fileStorageService = mock(FileStorageService.class);
         userService = new UserService(
                 userRepository,
                 therapistVerificationService,
                 therapyPostRepository,
                 therapyPostCommentRepository,
-                refreshTokenRepository
+                refreshTokenRepository,
+                fileStorageService
         );
     }
 

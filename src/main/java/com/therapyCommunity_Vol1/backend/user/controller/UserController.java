@@ -13,9 +13,14 @@ import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 @Tag(name = "마이페이지", description = "내 정보, 내 게시글/댓글, 프로필 수정, 회원 탈퇴")
 @RestController
@@ -55,6 +60,17 @@ public class UserController {
     ) {
         MyCommentListResponse response = userService.getMyComments(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "프로필 이미지 업로드", description = "이미지 파일 업로드 → URL 반환. jpg/png/webp, 5MB 이하")
+    @PostMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadProfileImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestPart("file") MultipartFile file
+    ) {
+        String imageUrl = userService.uploadProfileImage(userDetails.getUser().getId(), file);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(Map.of("profileImageUrl", imageUrl)));
     }
 
     @Operation(summary = "프로필 수정", description = "닉네임(2~20자), 프로필 이미지 URL 변경. null이면 기존 값 유지")

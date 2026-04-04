@@ -9,6 +9,8 @@ public interface FileStorageService {
 
     StoredFileInfo storePostAttachment(MultipartFile file);
 
+    StoredFileInfo storeProfileImage(MultipartFile file);
+
     StoredFileResource loadAsResource(
             String storedPath,
             String contentType,
