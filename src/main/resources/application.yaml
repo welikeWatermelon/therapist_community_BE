@@ -1,6 +1,10 @@
 spring:
   application:
     name: backend
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Seoul
   jpa:
     open-in-view: false
   servlet:
@@ -14,6 +18,10 @@ auth:
       path: /api/v1/auth
       same-site: Lax
       secure: true
+server:
+  error:
+    whitelabel:
+      enabled: false
 management:
   endpoints:
     web:
