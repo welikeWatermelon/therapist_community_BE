@@ -22,8 +22,7 @@ class TherapyPostSummaryResponseTest {
                 .build();
         String content = "<p>" + "a".repeat(250) + "</p>";
 
-        TherapyPost post = new TherapyPost(
-                "제목",
+        TherapyPost post = TherapyPost.create(
                 content,
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,

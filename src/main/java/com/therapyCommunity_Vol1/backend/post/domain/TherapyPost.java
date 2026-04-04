@@ -1,6 +1,5 @@
 package com.therapyCommunity_Vol1.backend.post.domain;
 
-import com.therapyCommunity_Vol1.backend.global.common.HangulUtils;
 import com.therapyCommunity_Vol1.backend.global.domain.BaseEntity;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -21,14 +20,14 @@ public class TherapyPost extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 200, nullable = false)
+    @Column(length = 200)
     private String title;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "therapy_area", nullable = false, length = 50)
+    @Column(name = "therapy_area", length = 50)
     private TherapyArea therapyArea;
 
     @Enumerated(EnumType.STRING)
@@ -52,60 +51,27 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "title_choseong", length = 200)
     private String titleChoseong;
 
-    public TherapyPost(
-            String title,
+    private TherapyPost(
             String content,
             TherapyArea therapyArea,
             AgeGroup ageGroup,
             User author
     ) {
-        this(title, content, therapyArea, ageGroup, PostType.COMMUNITY, author);
-    }
-
-    public TherapyPost(
-            String title,
-            String content,
-            TherapyArea therapyArea,
-            AgeGroup ageGroup,
-            PostType postType,
-            User author
-    ) {
-        this.title = title;
         this.content = content;
-        this.therapyArea = therapyArea;
+        this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
         this.ageGroup = ageGroup;
-        this.postType = postType;
+        this.postType = PostType.COMMUNITY;
         this.author = author;
         this.viewCount = 0L;
-        this.titleChoseong = HangulUtils.extractChoseong(title);
     }
 
     public static TherapyPost create(
-            String title,
             String content,
             TherapyArea therapyArea,
             AgeGroup ageGroup,
             User author
     ) {
-        return create(title, content, therapyArea, ageGroup, PostType.COMMUNITY, author);
-    }
-
-    public static TherapyPost create(
-            String title,
-            String content,
-            TherapyArea therapyArea,
-            AgeGroup ageGroup,
-            PostType postType,
-            User author
-    ) {
-        return new TherapyPost(
-                title,
-                content,
-                therapyArea,
-                ageGroup,
-                postType,
-                author
-        );
+        return new TherapyPost(content, therapyArea, ageGroup, author);
     }
 
     public void increaseViewCount() {
@@ -113,16 +79,13 @@ public class TherapyPost extends BaseEntity {
     }
 
     public void update(
-            String title,
             String content,
             TherapyArea therapyArea,
             AgeGroup ageGroup
     ) {
-        this.title = title;
         this.content = content;
-        this.therapyArea = therapyArea;
+        this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
         this.ageGroup = ageGroup;
-        this.titleChoseong = HangulUtils.extractChoseong(title);
     }
 
     public void updatePostType(PostType postType) {

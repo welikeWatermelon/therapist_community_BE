@@ -46,7 +46,6 @@ class PostServiceTest {
         Long userId = 1L;
 
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5
@@ -60,7 +59,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost savedPost = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -79,7 +77,6 @@ class PostServiceTest {
 
         // then
         assertThat(response.getId()).isEqualTo(100L);
-        assertThat(response.getTitle()).isEqualTo("제목");
         assertThat(response.getAuthorId()).isEqualTo(userId);
         assertThat(response.getAuthorNickname()).isEqualTo("tester");
         assertThat(response.getPostType()).isEqualTo(PostType.COMMUNITY);
@@ -101,7 +98,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문입니다</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -127,7 +123,6 @@ class PostServiceTest {
 
         // then
         assertThat(response.getPosts()).hasSize(1);
-        assertThat(response.getPosts().get(0).getTitle()).isEqualTo("제목");
         assertThat(response.getPosts().get(0).getAuthorNickname()).isEqualTo("tester");
         assertThat(response.getTotalElements()).isEqualTo(1);
         assertThat(response.isHasNext()).isFalse();
@@ -145,7 +140,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -208,7 +202,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -248,7 +241,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -290,7 +282,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "기존 제목",
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -301,7 +292,6 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
-                "수정 제목",
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
                 AgeGroup.AGE_6_12
@@ -320,7 +310,6 @@ class PostServiceTest {
                 );
 
         // then
-        assertThat(response.getTitle()).isEqualTo("수정 제목");
         assertThat(response.getContent()).isEqualTo("<p>수정 본문</p>");
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.COGNITIVE);
         assertThat(response.getAuthorId()).isEqualTo(currentUserId);
@@ -340,7 +329,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "기존 제목",
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -348,7 +336,6 @@ class PostServiceTest {
         );
 
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
-                "수정 제목",
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
                 AgeGroup.AGE_6_12
@@ -382,7 +369,6 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "기존 제목",
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,

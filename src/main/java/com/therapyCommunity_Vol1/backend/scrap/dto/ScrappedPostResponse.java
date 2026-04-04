@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ScrappedPostResponse {
     private Long postId;
-    private String title;
     private String contentPreview;
     private String authorNickname;
     private TherapyArea therapyArea;
@@ -36,7 +35,6 @@ public class ScrappedPostResponse {
 
         return new ScrappedPostResponse(
                 scrap.getPost().getId(),
-                scrap.getPost().getTitle(),
                 preview,
                 scrap.getPost().getAuthor().getDisplayNickname(),
                 scrap.getPost().getTherapyArea(),

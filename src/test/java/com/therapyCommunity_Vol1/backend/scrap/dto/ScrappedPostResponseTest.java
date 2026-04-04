@@ -24,7 +24,6 @@ class ScrappedPostResponseTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>" + "a".repeat(250) + "</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,

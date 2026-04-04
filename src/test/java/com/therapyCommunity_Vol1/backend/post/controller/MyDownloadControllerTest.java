@@ -81,7 +81,6 @@ class MyDownloadControllerTest {
         DownloadedPostResponse download = new DownloadedPostResponse(
                 10L,
                 PostType.RESOURCE,
-                "자료 제목",
                 "자료 요약",
                 "author",
                 TherapyArea.SPEECH,

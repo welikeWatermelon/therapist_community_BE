@@ -22,29 +22,12 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     Page<TherapyPost> findByAuthorIdAndDeletedAtIsNull(Long authorId, Pageable pageable);
 
-    // 초성 검색 (ㅇㅇㅊㄹ → 언어치료)
+    // 텍스트 검색 (content ILIKE)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND p.titleChoseong LIKE CONCAT('%', :choseong, '%') ESCAPE '\\'
-              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
-              AND (:postType IS NULL OR p.postType = :postType)
-            """)
-    Page<TherapyPost> searchByChoseong(
-            @Param("choseong") String choseong,
-            @Param("therapyArea") TherapyArea therapyArea,
-            @Param("postType") PostType postType,
-            Pageable pageable
-    );
-
-    // 일반 텍스트 검색 (title OR content 대소문자 무시 LIKE)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND (LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
-                   OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')
+              AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
             """)

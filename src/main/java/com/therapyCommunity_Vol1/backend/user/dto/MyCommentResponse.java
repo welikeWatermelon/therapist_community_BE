@@ -8,7 +8,6 @@ public record MyCommentResponse(
         Long commentId,
         String content,
         Long postId,
-        String postTitle,
         LocalDateTime createdAt,
         boolean isDeleted
 ) {
@@ -20,7 +19,6 @@ public record MyCommentResponse(
                 comment.getId(),
                 content,
                 comment.getPost().getId(),
-                comment.getPost().getTitle(),
                 comment.getCreatedAt(),
                 comment.isDeleted()
         );

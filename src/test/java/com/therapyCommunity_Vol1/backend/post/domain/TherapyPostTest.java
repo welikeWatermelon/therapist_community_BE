@@ -20,7 +20,6 @@ class TherapyPostTest {
 
         //when
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -28,7 +27,6 @@ class TherapyPostTest {
         );
 
         // then
-        assertThat(post.getTitle()).isEqualTo("제목");
         assertThat(post.getContent()).isEqualTo("<p>본문</p>");
         assertThat(post.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
         assertThat(post.getAgeGroup()).isEqualTo(AgeGroup.AGE_3_5);
@@ -48,7 +46,6 @@ class TherapyPostTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -74,7 +71,6 @@ class TherapyPostTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
@@ -83,14 +79,12 @@ class TherapyPostTest {
 
         //when
         post.update(
-                "수정된 제목",
                 "<p>수정된 본문</p>",
                 TherapyArea.COGNITIVE,
                 AgeGroup.AGE_6_12
         );
 
         // then
-        assertThat(post.getTitle()).isEqualTo("수정된 제목");
         assertThat(post.getContent()).isEqualTo("<p>수정된 본문</p>");
         assertThat(post.getTherapyArea()).isEqualTo(TherapyArea.COGNITIVE);
         assertThat(post.getAgeGroup()).isEqualTo(AgeGroup.AGE_6_12);
@@ -107,7 +101,6 @@ class TherapyPostTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
                 AgeGroup.AGE_3_5,
