@@ -62,6 +62,16 @@ public class S3FileStorageService implements FileStorageService {
     }
 
     @Override
+    public StoredFileInfo storeProfileImage(MultipartFile file) {
+        try {
+            validateImage(file);
+            return store(file, "profile-images");
+        } catch (Exception e) {
+            throw new RuntimeException("파일 저장 실패", e);
+        }
+    }
+
+    @Override
     public StoredFileResource loadAsResource(
             String storedPath,
             String contentType,

@@ -35,6 +35,7 @@ public class LocalFileStorageService implements FileStorageService {
             this.uploadRootPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Files.createDirectories(this.uploadRootPath.resolve("therapist-verifications"));
             Files.createDirectories(this.uploadRootPath.resolve("post-attachments"));
+            Files.createDirectories(this.uploadRootPath.resolve("profile-images"));
         } catch (IOException e) {
             throw new RuntimeException("로컬 업로드 디렉터리 생성 실패", e);
         }
@@ -49,6 +50,12 @@ public class LocalFileStorageService implements FileStorageService {
     public StoredFileInfo storePostAttachment(MultipartFile file) {
         validatePdf(file);
         return store(file, "post-attachments");
+    }
+
+    @Override
+    public StoredFileInfo storeProfileImage(MultipartFile file) {
+        validateProfileImage(file);
+        return store(file, "profile-images");
     }
 
     private StoredFileInfo store(MultipartFile file, String directory) {
@@ -158,6 +165,40 @@ public class LocalFileStorageService implements FileStorageService {
             }
         } catch (IOException e) {
             throw new CustomException(ErrorCode.INVALID_POST_ATTACHMENT);
+        }
+    }
+
+    private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_MIME_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "webp");
+
+    private void validateProfileImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (file.getSize() > MAX_PROFILE_IMAGE_SIZE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String originalFilename = file.getOriginalFilename() == null
+                ? ""
+                : file.getOriginalFilename();
+        String extension = extractExtension(originalFilename);
+        if (extension.startsWith(".")) {
+            extension = extension.substring(1);
+        }
+        if (!ALLOWED_PROFILE_IMAGE_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String contentType = file.getContentType() == null
+                ? ""
+                : file.getContentType().toLowerCase(Locale.ROOT);
+        if (!ALLOWED_PROFILE_IMAGE_MIME_TYPES.contains(contentType)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
     }
 }
