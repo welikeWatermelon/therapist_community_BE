@@ -134,8 +134,8 @@ class AuthControllerTest {
 
     @Test
     void 리프레시_cookie가_없으면_인증예외를_반환한다() throws Exception {
-        assertThatThrownBy(() -> mockMvc.perform(post("/api/v1/auth/refresh")).andReturn())
-                .hasCauseInstanceOf(CustomException.class);
+        mockMvc.perform(post("/api/v1/auth/refresh"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
