@@ -4,6 +4,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -39,7 +40,7 @@ public class PostService {
         TherapyPost post = TherapyPost.create(
                 request.getContent(),
                 request.getTherapyArea(),
-                request.getAgeGroup(),
+                request.getVisibility(),
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);
@@ -112,6 +113,7 @@ public class PostService {
             Long postId
     ) {
         TherapyPost post = getActivePost(postId);
+        validateVisibility(post, currentUserId, currentUserRole);
 
         post.increaseViewCount();
 
@@ -137,7 +139,7 @@ public class PostService {
         post.update(
                 request.getContent(),
                 request.getTherapyArea(),
-                request.getAgeGroup()
+                request.getVisibility()
         );
         return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
     }
@@ -158,6 +160,16 @@ public class PostService {
     private TherapyPost getActivePost(Long postId) {
         return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+    }
+
+    private void validateVisibility(TherapyPost post, Long currentUserId, UserRole currentUserRole) {
+        if (post.getVisibility() == Visibility.PRIVATE) {
+            boolean isAdmin = currentUserRole == UserRole.ADMIN;
+            boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
+            if (!isAdmin && !isAuthor) {
+                throw new CustomException(ErrorCode.POST_NOT_FOUND);
+            }
+        }
     }
 
     private void validateAuthorOrAdmin(

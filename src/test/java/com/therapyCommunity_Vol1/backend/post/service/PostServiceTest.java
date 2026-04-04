@@ -48,7 +48,7 @@ class PostServiceTest {
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5
+                Visibility.PUBLIC
         );
 
         User author = User.builder()
@@ -61,7 +61,7 @@ class PostServiceTest {
         TherapyPost savedPost = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(savedPost, "id", 100L);
@@ -100,7 +100,7 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문입니다</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 1L);
@@ -142,7 +142,7 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -204,7 +204,7 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -243,7 +243,7 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -284,7 +284,7 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 1L);
@@ -294,7 +294,7 @@ class PostServiceTest {
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12
+                Visibility.PRIVATE
         );
 
         when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
@@ -331,14 +331,14 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12
+                Visibility.PRIVATE
         );
 
         when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
@@ -371,7 +371,7 @@ class PostServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 

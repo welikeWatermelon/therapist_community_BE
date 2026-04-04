@@ -1,9 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,5 @@ public class UpdateTherapyPostRequest {
 
     private TherapyArea therapyArea;
 
-    @NotNull(message = "연령대는 필수입니다.")
-    private AgeGroup ageGroup;
+    private Visibility visibility;
 }
-

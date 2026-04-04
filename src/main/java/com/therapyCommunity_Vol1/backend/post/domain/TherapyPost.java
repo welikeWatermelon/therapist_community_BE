@@ -31,7 +31,7 @@ public class TherapyPost extends BaseEntity {
     private TherapyArea therapyArea;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "age_group", nullable = false, length = 50)
+    @Column(name = "age_group", length = 50)
     private AgeGroup ageGroup;
 
     @Enumerated(EnumType.STRING)
@@ -51,16 +51,20 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "title_choseong", length = 200)
     private String titleChoseong;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private Visibility visibility;
+
     private TherapyPost(
             String content,
             TherapyArea therapyArea,
-            AgeGroup ageGroup,
+            Visibility visibility,
             User author
     ) {
         this.content = content;
         this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
-        this.ageGroup = ageGroup;
         this.postType = PostType.COMMUNITY;
+        this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.author = author;
         this.viewCount = 0L;
     }
@@ -68,10 +72,10 @@ public class TherapyPost extends BaseEntity {
     public static TherapyPost create(
             String content,
             TherapyArea therapyArea,
-            AgeGroup ageGroup,
+            Visibility visibility,
             User author
     ) {
-        return new TherapyPost(content, therapyArea, ageGroup, author);
+        return new TherapyPost(content, therapyArea, visibility, author);
     }
 
     public void increaseViewCount() {
@@ -81,11 +85,11 @@ public class TherapyPost extends BaseEntity {
     public void update(
             String content,
             TherapyArea therapyArea,
-            AgeGroup ageGroup
+            Visibility visibility
     ) {
         this.content = content;
         this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
-        this.ageGroup = ageGroup;
+        this.visibility = visibility != null ? visibility : this.visibility;
     }
 
     public void updatePostType(PostType postType) {
