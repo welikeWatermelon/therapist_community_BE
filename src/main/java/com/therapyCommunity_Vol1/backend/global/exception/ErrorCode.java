@@ -36,7 +36,9 @@ public enum ErrorCode {
     THERAPIST_ALREADY_VERIFIED(HttpStatus.CONFLICT, "THERAPIST_409_VERIFIED", "이미 치료사 인증이 완료된 사용자입니다."),
     LICENSE_CODE_ALREADY_USED(HttpStatus.CONFLICT, "THERAPIST_409_LICENSE_CODE", "이미 사용 중인 치료사 번호입니다."),
     INVALID_LICENSE_IMAGE(HttpStatus.BAD_REQUEST, "THERAPIST_400_IMAGE", "유효하지 않은 치료사 증빙 이미지입니다."),
-    THERAPIST_VERIFICATION_NOT_PENDING(HttpStatus.CONFLICT, "THERAPIST_409_NOT_PENDING", "대기 중(PENDING) 상태의 신청만 처리할 수 있습니다.");
+    THERAPIST_VERIFICATION_NOT_PENDING(HttpStatus.CONFLICT, "THERAPIST_409_NOT_PENDING", "대기 중(PENDING) 상태의 신청만 처리할 수 있습니다."),
+
+    FILE_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_500", "파일 저장/삭제 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;

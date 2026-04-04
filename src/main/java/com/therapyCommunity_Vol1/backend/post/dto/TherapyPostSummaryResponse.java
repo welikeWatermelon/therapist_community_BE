@@ -1,9 +1,9 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -16,7 +16,7 @@ public class TherapyPostSummaryResponse {
     private String contentPreview;
     private String authorNickname;
     private TherapyArea therapyArea;
-    private AgeGroup ageGroup;
+    private Visibility visibility;
     private Long viewCount;
     private LocalDateTime createdAt;
 
@@ -26,7 +26,7 @@ public class TherapyPostSummaryResponse {
             String contentPreview,
             String authorNickname,
             TherapyArea therapyArea,
-            AgeGroup ageGroup,
+            Visibility visibility,
             Long viewCount,
             LocalDateTime createdAt
     ) {
@@ -35,7 +35,7 @@ public class TherapyPostSummaryResponse {
         this.contentPreview = contentPreview;
         this.authorNickname = authorNickname;
         this.therapyArea = therapyArea;
-        this.ageGroup = ageGroup;
+        this.visibility = visibility;
         this.viewCount = viewCount;
         this.createdAt = createdAt;
     }
@@ -47,7 +47,7 @@ public class TherapyPostSummaryResponse {
                 makePreview(post.getContent()),
                 post.getAuthor().getDisplayNickname(),
                 post.getTherapyArea(),
-                post.getAgeGroup(),
+                post.getVisibility(),
                 post.getViewCount(),
                 post.getCreatedAt()
         );

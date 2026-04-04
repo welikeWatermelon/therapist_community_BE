@@ -2,7 +2,7 @@ package com.therapyCommunity_Vol1.backend.reaction.service;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
@@ -54,7 +54,7 @@ class CommentReactionServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user
         );
 
@@ -96,7 +96,7 @@ class CommentReactionServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user
         );
 

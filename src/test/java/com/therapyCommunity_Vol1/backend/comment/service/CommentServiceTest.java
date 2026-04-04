@@ -6,7 +6,7 @@ import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.dto.UpdateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -56,7 +56,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 10L);
@@ -99,7 +99,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 10L);
@@ -142,7 +142,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 10L);
@@ -178,7 +178,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -210,7 +210,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -241,7 +241,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문입니다</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 10L);
@@ -280,7 +280,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문입니다</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 10L);
@@ -324,7 +324,7 @@ class CommentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문입니다</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 10L);

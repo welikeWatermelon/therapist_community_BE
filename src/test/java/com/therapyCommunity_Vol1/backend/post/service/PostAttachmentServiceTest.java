@@ -197,7 +197,7 @@ class PostAttachmentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>자료 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
                 author
         );
         post.updatePostType(PostType.RESOURCE);
@@ -210,7 +210,7 @@ class PostAttachmentServiceTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", id);

@@ -22,14 +22,14 @@ class TherapyPostTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
         // then
         assertThat(post.getContent()).isEqualTo("<p>본문</p>");
         assertThat(post.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
-        assertThat(post.getAgeGroup()).isEqualTo(AgeGroup.AGE_3_5);
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PUBLIC);
         assertThat(post.getAuthor()).isEqualTo(author);
         assertThat(post.getViewCount()).isEqualTo(0L);
         assertThat(post.isDeleted()).isFalse();
@@ -48,7 +48,7 @@ class TherapyPostTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -73,7 +73,7 @@ class TherapyPostTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -81,13 +81,13 @@ class TherapyPostTest {
         post.update(
                 "<p>수정된 본문</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12
+                Visibility.PRIVATE
         );
 
         // then
         assertThat(post.getContent()).isEqualTo("<p>수정된 본문</p>");
         assertThat(post.getTherapyArea()).isEqualTo(TherapyArea.COGNITIVE);
-        assertThat(post.getAgeGroup()).isEqualTo(AgeGroup.AGE_6_12);
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PRIVATE);
     }
 
     @Test
@@ -103,7 +103,7 @@ class TherapyPostTest {
         TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 

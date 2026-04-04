@@ -47,7 +47,7 @@ public class S3FileStorageService implements FileStorageService {
             validateImage(file);
             return store(file, "therapist-verifications");
         } catch (Exception e) {
-            throw new RuntimeException("파일 저장 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 
@@ -57,7 +57,7 @@ public class S3FileStorageService implements FileStorageService {
             validatePdf(file);
             return store(file, "post-attachments");
         } catch (Exception e) {
-            throw new RuntimeException("파일 저장 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 
@@ -67,7 +67,7 @@ public class S3FileStorageService implements FileStorageService {
             validateImage(file);
             return store(file, "profile-images");
         } catch (Exception e) {
-            throw new RuntimeException("파일 저장 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 
@@ -107,7 +107,7 @@ public class S3FileStorageService implements FileStorageService {
                     .key(storedPath)
                     .build());
         } catch (Exception e) {
-            throw new RuntimeException("파일 삭제 실패", e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
 
