@@ -1,12 +1,17 @@
 package com.therapyCommunity_Vol1.backend.auth.service;
 
+import com.therapyCommunity_Vol1.backend.auth.domain.AgreementType;
 import com.therapyCommunity_Vol1.backend.auth.domain.RefreshToken;
+import com.therapyCommunity_Vol1.backend.auth.domain.UserAgreement;
+import com.therapyCommunity_Vol1.backend.auth.dto.AgreementRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.LoginRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.LoginResponse;
 import com.therapyCommunity_Vol1.backend.auth.dto.RefreshResponse;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupResponse;
 import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
+import com.therapyCommunity_Vol1.backend.auth.repository.UserAgreementRepository;
+import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.JwtTokenProvider;
@@ -21,10 +26,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.swing.text.html.Option;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,33 +49,78 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenManager refreshTokenManager;
     private final TherapistVerificationService therapistVerificationService;
+    private final NicknameGenerator nicknameGenerator;
+    private final UserAgreementRepository userAgreementRepository;
 
     @Value("${jwt.refresh-ttl-sec}")
     private long refreshTokenTtlSec;
 
     @Transactional
-    public SignupResponse signup(SignupRequest request) {
-        // 1) 이메일 중복 차단
+    public SignupResult signup(SignupRequest request, String userAgent, String ipAddress) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new CustomException(ErrorCode.CONFLICT);
         }
-        // 2) 비밀번호 해싱 후 USER 권한으로 생성
+
+        validateRequiredAgreements(request.getAgreements());
+
         String encodedPassword = passwordEncoder.encode(request.getPassword());
+        String nickname = nicknameGenerator.generate();
 
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(encodedPassword)
-                .nickname(request.getNickname())
+                .nickname(nickname)
                 .role(UserRole.USER)
                 .build();
 
         User savedUser = userRepository.save(user);
+        saveAgreements(savedUser, request.getAgreements());
 
-        return new SignupResponse(
-                savedUser.getId(),
-                savedUser.getEmail()
+        String accessToken = createAccessToken(savedUser);
+        IssuedRefreshToken issuedRefreshToken =
+                issueRefreshToken(savedUser, UUID.randomUUID(), userAgent, ipAddress);
+
+        return new SignupResult(
+                new SignupResponse(
+                        savedUser.getId(),
+                        savedUser.getEmail(),
+                        savedUser.getNickname(),
+                        accessToken,
+                        savedUser.getRole().getCode()
+                ),
+                issuedRefreshToken.rawToken(),
+                refreshTokenTtlSec
         );
     }
+
+    private void validateRequiredAgreements(java.util.List<AgreementRequest> agreements) {
+        Map<String, Boolean> agreedMap = agreements.stream()
+                .collect(Collectors.toMap(AgreementRequest::getType, AgreementRequest::isAgreed));
+
+        Arrays.stream(AgreementType.values())
+                .filter(AgreementType::isRequired)
+                .forEach(requiredType -> {
+                    Boolean agreed = agreedMap.get(requiredType.name());
+                    if (agreed == null || !agreed) {
+                        throw new CustomException(ErrorCode.INVALID_INPUT);
+                    }
+                });
+    }
+
+    private void saveAgreements(User user, java.util.List<AgreementRequest> agreements) {
+        agreements.stream()
+                .filter(AgreementRequest::isAgreed)
+                .forEach(req -> {
+                    AgreementType type = AgreementType.valueOf(req.getType());
+                    userAgreementRepository.save(UserAgreement.create(user, type, req.getVersion()));
+                });
+    }
+
+    public record SignupResult(
+            SignupResponse response,
+            String refreshToken,
+            long refreshTokenExpiresInSec
+    ) {}
 
     @Transactional
     public LoginResult login(
@@ -91,7 +143,6 @@ public class AuthService {
 
         return new LoginResult(
                 LoginResponse.of(
-                        false,
                         user,
                         verification,
                         accessToken,

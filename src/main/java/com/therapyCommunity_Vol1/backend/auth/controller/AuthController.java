@@ -29,16 +29,24 @@ public class AuthController {
     private final AuthService authService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
 
-    @Operation(summary = "회원가입", description = "이메일, 비밀번호(8자 이상), 닉네임으로 가입", security = {})
+    @Operation(summary = "회원가입", description = "이메일, 비밀번호(8자 이상), 약관 동의로 가입. 닉네임 자동 생성, 자동 로그인", security = {})
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<SignupResponse>> signup (
-            @Valid @RequestBody SignupRequest request
+    public ResponseEntity<ApiResponse<SignupResponse>> signup(
+            @Valid @RequestBody SignupRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
     ) {
-        SignupResponse response = authService.signup(request);
+        String userAgent = httpServletRequest.getHeader("User-Agent");
+        String ipAddress = extractClientIp(httpServletRequest);
+        AuthService.SignupResult result = authService.signup(request, userAgent, ipAddress);
 
-        return ResponseEntity.ok(
-                ApiResponse.success(response)
+        refreshTokenCookieManager.addRefreshTokenCookie(
+                httpServletResponse,
+                result.refreshToken(),
+                result.refreshTokenExpiresInSec()
         );
+
+        return ResponseEntity.ok(ApiResponse.success(result.response()));
     }
 
     @Operation(summary = "로그인", description = "이메일/비밀번호 인증 후 access token + refresh token 쿠키 발급", security = {})
