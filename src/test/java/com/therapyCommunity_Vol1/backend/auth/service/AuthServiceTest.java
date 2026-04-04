@@ -1,10 +1,13 @@
 package com.therapyCommunity_Vol1.backend.auth.service;
 
 import com.therapyCommunity_Vol1.backend.auth.domain.RefreshToken;
+import com.therapyCommunity_Vol1.backend.auth.dto.AgreementRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.LoginRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupResponse;
 import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
+import com.therapyCommunity_Vol1.backend.auth.repository.UserAgreementRepository;
+import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.JwtTokenProvider;
@@ -30,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +47,8 @@ AuthServiceTest {
     RefreshTokenRepository refreshTokenRepository;
     RefreshTokenManager refreshTokenManager;
     TherapistVerificationService therapistVerificationService;
+    NicknameGenerator nicknameGenerator;
+    UserAgreementRepository userAgreementRepository;
 
     AuthService authService;
 
@@ -54,6 +60,8 @@ AuthServiceTest {
         refreshTokenRepository = mock(RefreshTokenRepository.class);
         refreshTokenManager = mock(RefreshTokenManager.class);
         therapistVerificationService = mock(TherapistVerificationService.class);
+        nicknameGenerator = mock(NicknameGenerator.class);
+        userAgreementRepository = mock(UserAgreementRepository.class);
 
         authService = new AuthService(
                 userRepository,
@@ -61,7 +69,9 @@ AuthServiceTest {
                 jwtTokenProvider,
                 refreshTokenRepository,
                 refreshTokenManager,
-                therapistVerificationService
+                therapistVerificationService,
+                nicknameGenerator,
+                userAgreementRepository
         );
         ReflectionTestUtils.setField(authService, "refreshTokenTtlSec", 1209600L);
     }
@@ -94,7 +104,6 @@ AuthServiceTest {
         // then
         assertThat(result.refreshToken()).isEqualTo("raw-refresh-token");
         assertThat(result.refreshTokenExpiresInSec()).isEqualTo(1209600L);
-        assertThat(result.response().isNewUser()).isFalse();
         assertThat(result.response().tokens().accessToken()).isEqualTo("jwt-token");
         assertThat(result.response().tokens().accessTokenExpiresInSec()).isEqualTo(1800L);
         assertThat(result.response().user().email()).isEqualTo("test@test.com");
@@ -323,12 +332,23 @@ AuthServiceTest {
     }
 
     @Test
-    void 회원가입_성공() {
+    void 회원가입_성공_자동닉네임_자동로그인() {
         // given
-        SignupRequest request = new SignupRequest("test@test.com", "1234", "tester");
+        SignupRequest request = new SignupRequest(
+                "test@test.com", "12345678",
+                java.util.List.of(
+                        new AgreementRequest("SERVICE_TERMS", "v1.0", true),
+                        new AgreementRequest("PRIVACY_POLICY", "v1.0", true)
+                )
+        );
 
         when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("1234")).thenReturn("encoded-password");
+        when(passwordEncoder.encode("12345678")).thenReturn("encoded-password");
+        when(nicknameGenerator.generate()).thenReturn("판다#1234");
+        when(jwtTokenProvider.createAccessToken(1L, "USER")).thenReturn("access-token");
+        when(jwtTokenProvider.getAccessTokenValiditySec()).thenReturn(1800L);
+        when(refreshTokenManager.generateRawToken()).thenReturn("raw-refresh");
+        when(refreshTokenManager.hash("raw-refresh")).thenReturn("hashed-refresh");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User unsaved = invocation.getArgument(0);
             return User.builder()
@@ -339,27 +359,32 @@ AuthServiceTest {
                     .role(unsaved.getRole())
                     .build();
         });
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArgument(0));
+        when(userAgreementRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         // when
-        SignupResponse response = authService.signup(request);
+        AuthService.SignupResult result = authService.signup(request, "Mozilla", "127.0.0.1");
 
         // then
-        assertThat(response.getId()).isEqualTo(1L);
-        assertThat(response.getEmail()).isEqualTo("test@test.com");
-        verify(passwordEncoder).encode("1234");
-
-        verify(userRepository).save(argThat(saved ->
-                saved.getEmail().equals("test@test.com")
-                        && saved.getPasswordHash().equals("encoded-password")
-                        && saved.getNickname().equals("tester")
-                        && saved.getRole() == UserRole.USER
-        ));
+        assertThat(result.response().getId()).isEqualTo(1L);
+        assertThat(result.response().getEmail()).isEqualTo("test@test.com");
+        assertThat(result.response().getNickname()).isEqualTo("판다#1234");
+        assertThat(result.response().getAccessToken()).isEqualTo("access-token");
+        assertThat(result.response().getRole()).isEqualTo("USER");
+        verify(nicknameGenerator).generate();
+        verify(userAgreementRepository, times(2)).save(any());
     }
 
     @Test
     void 회원가입_실패_중복이메일() {
         // given
-        SignupRequest request = new SignupRequest("test@test.com", "1234", "tester");
+        SignupRequest request = new SignupRequest(
+                "test@test.com", "12345678",
+                java.util.List.of(
+                        new AgreementRequest("SERVICE_TERMS", "v1.0", true),
+                        new AgreementRequest("PRIVACY_POLICY", "v1.0", true)
+                )
+        );
         User existingUser = User.builder()
                 .id(99L)
                 .email("test@test.com")
@@ -370,7 +395,7 @@ AuthServiceTest {
         when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(existingUser));
 
         // when
-        Throwable thrown = catchThrowable(() -> authService.signup(request));
+        Throwable thrown = catchThrowable(() -> authService.signup(request, "Mozilla", "127.0.0.1"));
 
         // then
         assertThat(thrown).isInstanceOf(CustomException.class);

@@ -61,7 +61,6 @@ class AuthControllerTest {
     @Test
     void 로그인_성공시_user_응답과_refresh_cookie를_반환한다() throws Exception {
         LoginResponse response = new LoginResponse(
-                false,
                 new CurrentUserResponse(
                         1L,
                         "user@example.com",
@@ -86,7 +85,6 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(new LoginRequest("user@example.com", "password"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.isNewUser").value(false))
                 .andExpect(jsonPath("$.data.user.id").value(1))
                 .andExpect(jsonPath("$.data.user.email").value("user@example.com"))
                 .andExpect(jsonPath("$.data.user.therapistVerification.status").value("NOT_REQUESTED"))

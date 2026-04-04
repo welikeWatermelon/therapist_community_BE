@@ -9,4 +9,7 @@ public class SignupResponse {
 
     private Long id;
     private String email;
+    private String nickname;
+    private String accessToken;
+    private String role;
 }
