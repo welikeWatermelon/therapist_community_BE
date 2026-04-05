@@ -3,7 +3,7 @@ package com.therapyCommunity_Vol1.backend.reaction.service;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
@@ -24,18 +24,18 @@ import static org.mockito.Mockito.*;
 class PostReactionServiceTest {
 
     private TherapyPostReactionRepository postReactionRepository;
-    private TherapyPostRepository therapyPostRepository;
+    private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private PostReactionService postReactionService;
 
     @BeforeEach
     void setUp() {
         postReactionRepository = mock(TherapyPostReactionRepository.class);
-        therapyPostRepository = mock(TherapyPostRepository.class);
+        activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         postReactionService = new PostReactionService(
                 postReactionRepository,
-                therapyPostRepository,
+                activePostFinder,
                 userRepository
         );
     }
@@ -60,7 +60,7 @@ class PostReactionServiceTest {
         TogglePostReactionRequest request = new TogglePostReactionRequest(PostReactionType.EMPATHY);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
 
         when(postReactionRepository.countByPostIdAndReactionType(10L, PostReactionType.EMPATHY)).thenReturn(1L);
@@ -101,7 +101,7 @@ class PostReactionServiceTest {
         TogglePostReactionRequest request = new TogglePostReactionRequest(PostReactionType.EMPATHY);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(existing), Optional.empty());
 
         when(postReactionRepository.countByPostIdAndReactionType(10L, PostReactionType.EMPATHY)).thenReturn(0L);
@@ -139,7 +139,7 @@ class PostReactionServiceTest {
         TogglePostReactionRequest request = new TogglePostReactionRequest(PostReactionType.HELPFUL);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.of(existing), Optional.of(existing));
 
 

@@ -3,7 +3,7 @@ package com.therapyCommunity_Vol1.backend.reaction.service;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PostReactionService {
 
     private final TherapyPostReactionRepository postReactionRepository;
-    private final TherapyPostRepository therapyPostRepository;
+    private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
 
     @Transactional
@@ -33,8 +33,7 @@ public class PostReactionService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPost post = therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        TherapyPost post = activePostFinder.findOrThrow(postId);
 
         postReactionRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresentOrElse(existing -> {
@@ -58,8 +57,7 @@ public class PostReactionService {
             Long currentUserId,
             Long postId
     ) {
-        therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        activePostFinder.findOrThrow(postId);
 
         PostReactionType myReactionType = postReactionRepository.findByPostIdAndUserId(postId, currentUserId)
                 .map(TherapyPostReaction::getReactionType)
