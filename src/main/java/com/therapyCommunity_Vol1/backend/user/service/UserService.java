@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.user.service;
 
-import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
+import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
@@ -34,7 +34,7 @@ public class UserService {
     private final TherapistVerificationService therapistVerificationService;
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostCommentRepository therapyPostCommentRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenService tokenService;
     private final FileStorageService fileStorageService;
 
     @Value("${app.base-url}")
@@ -114,8 +114,7 @@ public class UserService {
         User user = findUserOrThrow(currentUserId);
         user.withdraw();
 
-        refreshTokenRepository.findByUserIdAndRevokedAtIsNull(currentUserId)
-                .forEach(token -> token.revoke("WITHDRAW"));
+        tokenService.revokeAllForUser(currentUserId);
     }
 
     private User findUserOrThrow(Long userId) {
