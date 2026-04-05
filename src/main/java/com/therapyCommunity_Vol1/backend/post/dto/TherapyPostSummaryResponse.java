@@ -19,6 +19,7 @@ public class TherapyPostSummaryResponse {
     private Visibility visibility;
     private Long viewCount;
     private LocalDateTime createdAt;
+    private boolean isScrapped;
 
     public TherapyPostSummaryResponse(
             Long id,
@@ -28,7 +29,8 @@ public class TherapyPostSummaryResponse {
             TherapyArea therapyArea,
             Visibility visibility,
             Long viewCount,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            boolean isScrapped
     ) {
         this.id = id;
         this.postType = postType;
@@ -38,9 +40,10 @@ public class TherapyPostSummaryResponse {
         this.visibility = visibility;
         this.viewCount = viewCount;
         this.createdAt = createdAt;
+        this.isScrapped = isScrapped;
     }
 
-    public static TherapyPostSummaryResponse from(TherapyPost post) {
+    public static TherapyPostSummaryResponse from(TherapyPost post, boolean isScrapped) {
         return new TherapyPostSummaryResponse(
                 post.getId(),
                 post.getPostType(),
@@ -49,7 +52,8 @@ public class TherapyPostSummaryResponse {
                 post.getTherapyArea(),
                 post.getVisibility(),
                 post.getViewCount(),
-                post.getCreatedAt()
+                post.getCreatedAt(),
+                isScrapped
         );
     }
 

@@ -45,6 +45,7 @@ public class PostController {
     @Operation(summary = "게시글 목록/검색", description = "keyword(초성/텍스트), therapyArea, postType 필터. sortType: LATEST, MOST_VIEWED")
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<TherapyPostSummaryResponse>>> getPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "LATEST") PostSortType sortType,
@@ -53,7 +54,8 @@ public class PostController {
             @RequestParam(required = false) PostType postType
     ) {
         PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(page, size, sortType, condition);
+        Long userId = userDetails != null ? userDetails.getUser().getId() : null;
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(userId, page, size, sortType, condition);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }

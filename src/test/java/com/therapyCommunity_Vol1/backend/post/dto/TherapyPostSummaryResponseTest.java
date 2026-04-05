@@ -30,7 +30,7 @@ class TherapyPostSummaryResponseTest {
         );
 
         //when
-        TherapyPostSummaryResponse response = TherapyPostSummaryResponse.from(post);
+        TherapyPostSummaryResponse response = TherapyPostSummaryResponse.from(post, false);
 
         // then
         assertThat(response.getContentPreview()).doesNotContain("<p>");

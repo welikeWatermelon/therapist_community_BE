@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -25,6 +26,7 @@ class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private TherapyPostScrapRepository therapyPostScrapRepository;
     private UserRepository userRepository;
     private PostService postService;
 
@@ -32,10 +34,12 @@ class PostServiceTest {
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
+        therapyPostScrapRepository = mock(TherapyPostScrapRepository.class);
         userRepository = mock(UserRepository.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
+                therapyPostScrapRepository,
                 userRepository
         );
     }
@@ -120,7 +124,7 @@ class PostServiceTest {
 
         // when
         PostSearchCondition condition = new PostSearchCondition(null, null, null);
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(null, 0, 10, PostSortType.LATEST, condition);
 
         // then
         assertThat(response.getItems()).hasSize(1);

@@ -9,6 +9,7 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRe
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -20,7 +21,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +32,7 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private final TherapyPostScrapRepository therapyPostScrapRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -50,6 +54,7 @@ public class PostService {
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getPosts(
+            Long currentUserId,
             int page,
             int size,
             PostSortType sortType,
@@ -79,9 +84,17 @@ public class PostService {
             );
         }
 
+        List<Long> postIds = result.getContent().stream()
+                .map(TherapyPost::getId)
+                .toList();
+
+        Set<Long> scrappedPostIds = (currentUserId != null && !postIds.isEmpty())
+                ? therapyPostScrapRepository.findScrappedPostIdsByUserIdAndPostIdIn(currentUserId, postIds)
+                : Collections.emptySet();
+
         List<TherapyPostSummaryResponse> posts = result.getContent()
                 .stream()
-                .map(TherapyPostSummaryResponse::from)
+                .map(post -> TherapyPostSummaryResponse.from(post, scrappedPostIds.contains(post.getId())))
                 .toList();
 
         return PagedResponse.from(result, posts);
@@ -117,7 +130,9 @@ public class PostService {
                 .map(PostAttachmentResponse::from)
                 .toList();
 
-        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole);
+        boolean isScrapped = therapyPostScrapRepository.existsByPostIdAndUserId(postId, currentUserId);
+
+        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
     }
 
     @Transactional

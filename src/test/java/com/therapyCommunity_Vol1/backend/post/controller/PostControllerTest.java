@@ -1,18 +1,28 @@
 package com.therapyCommunity_Vol1.backend.post.controller;
 
-import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
+import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
+import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.List;
 
@@ -33,10 +43,37 @@ class PostControllerTest {
     @InjectMocks
     private PostController postController;
 
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        User user = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        HandlerMethodArgumentResolver authResolver = new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
+                                          NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                return new CustomUserDetails(user);
+            }
+        };
+
+        mockMvc = MockMvcBuilders.standaloneSetup(postController)
+                .setCustomArgumentResolvers(authResolver)
+                .build();
+    }
+
     @Test
     void 게시글_목록_조회_성공() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(postController).build();
-
         // given
         PagedResponse<TherapyPostSummaryResponse> serviceResponse = new PagedResponse<>(
                 List.of(),
@@ -46,7 +83,7 @@ class PostControllerTest {
                 0,
                 false
         );
-        given(postService.getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class)))
+        given(postService.getPosts(any(), eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class)))
                 .willReturn(serviceResponse);
 
         // when
@@ -63,6 +100,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.totalPages").value(0))
                 .andExpect(jsonPath("$.data.items").isArray());
 
-        verify(postService).getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class));
+        verify(postService).getPosts(any(), eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class));
     }
 }

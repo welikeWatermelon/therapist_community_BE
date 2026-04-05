@@ -56,7 +56,7 @@ public class UserService {
 
         var posts = result.getContent()
                 .stream()
-                .map(TherapyPostSummaryResponse::from)
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
                 .toList();
 
         return PagedResponse.from(result, posts);
