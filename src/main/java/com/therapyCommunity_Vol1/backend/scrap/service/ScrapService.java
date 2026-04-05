@@ -3,7 +3,7 @@ package com.therapyCommunity_Vol1.backend.scrap.service;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
@@ -27,7 +27,7 @@ import java.util.List;
 public class ScrapService {
 
     private final TherapyPostScrapRepository scrapRepository;
-    private final TherapyPostRepository postRepository;
+    private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
 
     @Transactional
@@ -35,8 +35,7 @@ public class ScrapService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPost post = postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        TherapyPost post = activePostFinder.findOrThrow(postId);
 
         boolean alreadyExists = scrapRepository.existsByPostIdAndUserId(postId,currentUserId);
 
@@ -50,8 +49,7 @@ public class ScrapService {
 
     @Transactional
     public ScrapStatusResponse removeScrap(Long currentUserId, Long postId) {
-        postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        activePostFinder.findOrThrow(postId);
 
         scrapRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(scrapRepository::delete);
@@ -59,8 +57,7 @@ public class ScrapService {
     }
 
     public ScrapStatusResponse getScrapStatus(Long currentUserId, Long postId) {
-        postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        activePostFinder.findOrThrow(postId);
         boolean scrapped = scrapRepository.existsByPostIdAndUserId(postId, currentUserId);
 
         return new ScrapStatusResponse(postId, scrapped);

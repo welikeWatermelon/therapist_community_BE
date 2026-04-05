@@ -10,7 +10,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 class CommentServiceTest {
 
     private TherapyPostCommentRepository commentRepository;
-    private TherapyPostRepository postRepository;
+    private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private CommentThreadAssembler commentThreadAssembler;
@@ -37,11 +37,11 @@ class CommentServiceTest {
     @BeforeEach
     void setUp() {
         commentRepository = mock(TherapyPostCommentRepository.class);
-        postRepository = mock(TherapyPostRepository.class);
+        activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         commentThreadAssembler = new CommentThreadAssembler();
-        commentService = new CommentService(commentRepository, postRepository, userRepository, resourceAccessValidator, commentThreadAssembler);
+        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler);
     }
 
     @Test
@@ -71,7 +71,7 @@ class CommentServiceTest {
         ReflectionTestUtils.setField(saved, "id", 100L);
 
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(author));
-        when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
 
         // when
@@ -117,7 +117,7 @@ class CommentServiceTest {
         ReflectionTestUtils.setField(saved, "id", 101L);
 
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(author));
-        when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(commentRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(parent));
         when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
 
@@ -160,7 +160,7 @@ class CommentServiceTest {
         CreateCommentRequest request = new CreateCommentRequest("대댓글의 대댓글", 60L);
 
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(author));
-        when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(commentRepository.findByIdAndDeletedAtIsNull(60L)).thenReturn(Optional.of(reply));
 
         // when / then
@@ -255,7 +255,7 @@ class CommentServiceTest {
         TherapyPostComment comment = TherapyPostComment.createRoot(post, author, "댓글");
         ReflectionTestUtils.setField(comment, "id", 100L);
 
-        when(postRepository.findByIdAndDeletedAtIsNull(post.getId())).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(post.getId())).thenReturn(post);
         when(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId())).thenReturn(List.of(comment));
 
         // when
@@ -299,7 +299,7 @@ class CommentServiceTest {
         ReflectionTestUtils.setField(reply, "id", 101L);
         ReflectionTestUtils.setField(reply, "createdAt", java.time.LocalDateTime.of(2026, 3, 16, 10, 5));
 
-        when(postRepository.findByIdAndDeletedAtIsNull(post.getId())).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(post.getId())).thenReturn(post);
         when(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId())).thenReturn(List.of(root, reply));
 
         List<CommentResponse> responses = commentService.getComments(1L, UserRole.THERAPIST, 10L);
@@ -342,7 +342,7 @@ class CommentServiceTest {
         TherapyPostComment reply = TherapyPostComment.createReply(post, replyAuthor, root, "대댓글");
         ReflectionTestUtils.setField(reply, "id", 101L);
 
-        when(postRepository.findByIdAndDeletedAtIsNull(post.getId())).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(post.getId())).thenReturn(post);
         when(commentRepository.findByPostIdOrderByCreatedAtAsc(post.getId())).thenReturn(List.of(root, reply));
 
         List<CommentResponse> responses = commentService.getComments(1L, UserRole.THERAPIST, 10L);

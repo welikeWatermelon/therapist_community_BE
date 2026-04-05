@@ -3,7 +3,7 @@ package com.therapyCommunity_Vol1.backend.scrap.service;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
@@ -26,16 +26,16 @@ import static org.mockito.Mockito.*;
 class ScrapServiceTest {
 
     private TherapyPostScrapRepository scrapRepository;
-    private TherapyPostRepository postRepository;
+    private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ScrapService scrapService;
 
     @BeforeEach
     void setUp() {
         this.scrapRepository = mock(TherapyPostScrapRepository.class);
-        this.postRepository = mock(TherapyPostRepository.class);
+        this.activePostFinder = mock(ActivePostFinder.class);
         this.userRepository = mock(UserRepository.class);
-        this.scrapService = new ScrapService(scrapRepository, postRepository, userRepository);
+        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository);
     }
 
     @Test
@@ -59,7 +59,7 @@ class ScrapServiceTest {
                 user
         );
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
 
         // when
@@ -93,7 +93,7 @@ class ScrapServiceTest {
         );
 
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
 
         // when
@@ -126,7 +126,7 @@ class ScrapServiceTest {
 
         TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
 
-        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.findByPostIdAndUserId(postId, currentUserId)).thenReturn(Optional.of(scrap));
 
         // when

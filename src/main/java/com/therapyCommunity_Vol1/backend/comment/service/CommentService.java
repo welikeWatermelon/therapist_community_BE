@@ -9,7 +9,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -25,7 +25,7 @@ import java.util.List;
 public class CommentService {
 
     private final TherapyPostCommentRepository commentRepository;
-    private final TherapyPostRepository postRepository;
+    private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final CommentThreadAssembler commentThreadAssembler;
@@ -39,8 +39,7 @@ public class CommentService {
         User author = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPost post = postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        TherapyPost post = activePostFinder.findOrThrow(postId);
 
         TherapyPostComment comment;
 
@@ -79,8 +78,7 @@ public class CommentService {
             UserRole currentUserRole,
             Long postId
     ) {
-        postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        activePostFinder.findOrThrow(postId);
 
         List<TherapyPostComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
         return commentThreadAssembler.assemble(comments, currentUserId, currentUserRole);
