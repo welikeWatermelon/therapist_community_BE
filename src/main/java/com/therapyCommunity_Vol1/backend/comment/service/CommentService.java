@@ -7,6 +7,7 @@ import com.therapyCommunity_Vol1.backend.comment.dto.UpdateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -26,6 +27,7 @@ public class CommentService {
     private final TherapyPostCommentRepository commentRepository;
     private final TherapyPostRepository postRepository;
     private final UserRepository userRepository;
+    private final ResourceAccessValidator resourceAccessValidator;
     private final CommentThreadAssembler commentThreadAssembler;
 
     @Transactional
@@ -94,7 +96,7 @@ public class CommentService {
         TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
 
-        validateAuthorOrAdmin(comment, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(comment.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.COMMENT_ACCESS_DENIED);
 
         comment.update(request.getContent());
 
@@ -109,21 +111,9 @@ public class CommentService {
     ) {
         TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
-        validateAuthorOrAdmin(comment, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(comment.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.COMMENT_ACCESS_DENIED);
 
         comment.softDelete();
     }
 
-    private void validateAuthorOrAdmin(
-            TherapyPostComment comment,
-            Long currentUserId,
-            UserRole currentUserRole
-    ) {
-        boolean isAdmin = currentUserRole == UserRole.ADMIN;
-        boolean isAuthor = comment.getAuthor().getId().equals(currentUserId);
-
-        if (!isAdmin && !isAuthor) {
-            throw new CustomException(ErrorCode.COMMENT_ACCESS_DENIED);
-        }
-    }
 }

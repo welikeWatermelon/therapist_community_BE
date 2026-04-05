@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.dto.UpdateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.Mockito.*;
 
 class CommentServiceTest {
@@ -28,6 +30,7 @@ class CommentServiceTest {
     private TherapyPostCommentRepository commentRepository;
     private TherapyPostRepository postRepository;
     private UserRepository userRepository;
+    private ResourceAccessValidator resourceAccessValidator;
     private CommentThreadAssembler commentThreadAssembler;
     private CommentService commentService;
 
@@ -36,8 +39,9 @@ class CommentServiceTest {
         commentRepository = mock(TherapyPostCommentRepository.class);
         postRepository = mock(TherapyPostRepository.class);
         userRepository = mock(UserRepository.class);
+        resourceAccessValidator = mock(ResourceAccessValidator.class);
         commentThreadAssembler = new CommentThreadAssembler();
-        commentService = new CommentService(commentRepository, postRepository, userRepository, commentThreadAssembler);
+        commentService = new CommentService(commentRepository, postRepository, userRepository, resourceAccessValidator, commentThreadAssembler);
     }
 
     @Test
@@ -189,6 +193,8 @@ class CommentServiceTest {
 
         when(commentRepository.findByIdAndDeletedAtIsNull(100L))
                 .thenReturn(Optional.of(comment));
+        doThrow(new CustomException(ErrorCode.COMMENT_ACCESS_DENIED))
+                .when(resourceAccessValidator).validateAuthorOrAdmin(1L, 2L, UserRole.THERAPIST, ErrorCode.COMMENT_ACCESS_DENIED);
 
         // when / then
         assertThatThrownBy(() ->

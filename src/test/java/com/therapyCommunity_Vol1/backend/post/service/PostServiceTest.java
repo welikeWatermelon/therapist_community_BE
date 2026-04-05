@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.Mockito.*;
 
 class PostServiceTest {
@@ -30,6 +31,7 @@ class PostServiceTest {
     private ActivePostFinder activePostFinder;
     private TherapyPostScrapRepository therapyPostScrapRepository;
     private UserRepository userRepository;
+    private ResourceAccessValidator resourceAccessValidator;
     private PostService postService;
 
     @BeforeEach
@@ -39,12 +41,14 @@ class PostServiceTest {
         activePostFinder = mock(ActivePostFinder.class);
         therapyPostScrapRepository = mock(TherapyPostScrapRepository.class);
         userRepository = mock(UserRepository.class);
+        resourceAccessValidator = mock(ResourceAccessValidator.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
                 therapyPostScrapRepository,
-                userRepository
+                userRepository,
+                resourceAccessValidator
         );
     }
 
@@ -347,6 +351,8 @@ class PostServiceTest {
         );
 
         when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        doThrow(new CustomException(ErrorCode.POST_ACCESS_DENIED))
+                .when(resourceAccessValidator).validateAuthorOrAdmin(1L, 2L, UserRole.THERAPIST, ErrorCode.POST_ACCESS_DENIED);
 
         // when / then
         assertThatThrownBy(() ->

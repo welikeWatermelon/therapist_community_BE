@@ -5,6 +5,7 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostImage;
 import com.therapyCommunity_Vol1.backend.post.dto.PostImageResponse;
@@ -27,6 +28,7 @@ public class PostImageService {
     private final ActivePostFinder activePostFinder;
     private final TherapyPostImageRepository therapyPostImageRepository;
     private final FileStorageService fileStorageService;
+    private final ResourceAccessValidator resourceAccessValidator;
 
     @Transactional
     public PostImageResponse uploadImage(
@@ -36,7 +38,7 @@ public class PostImageService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storeProfileImage(file);
         int nextOrder = therapyPostImageRepository.countByPostId(postId);
@@ -73,11 +75,4 @@ public class PostImageService {
         );
     }
 
-    private void validateAuthorOrAdmin(TherapyPost post, Long currentUserId, UserRole currentUserRole) {
-        boolean isAdmin = currentUserRole == UserRole.ADMIN;
-        boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-        if (!isAdmin && !isAuthor) {
-            throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
-        }
-    }
 }

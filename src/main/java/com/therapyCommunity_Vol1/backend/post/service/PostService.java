@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -37,6 +38,7 @@ public class PostService {
     // ScrapService.getScrappedPostIds()로 위임 예정
     private final TherapyPostScrapRepository therapyPostScrapRepository;
     private final UserRepository userRepository;
+    private final ResourceAccessValidator resourceAccessValidator;
 
     @Transactional
     public TherapyPostDetailResponse createPost(
@@ -146,7 +148,7 @@ public class PostService {
             UpdateTherapyPostRequest request
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.update(
                 request.getContent(),
@@ -163,7 +165,7 @@ public class PostService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
     }
@@ -179,16 +181,4 @@ public class PostService {
         }
     }
 
-    private void validateAuthorOrAdmin(
-            TherapyPost post,
-            Long currentUserId,
-            UserRole currentUserRole
-    ) {
-        boolean isAdmin = currentUserRole == UserRole.ADMIN;
-        boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-
-        if(!isAdmin && !isAuthor) {
-            throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
-        }
-    }
 }
