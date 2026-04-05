@@ -1,17 +1,18 @@
 package com.therapyCommunity_Vol1.backend.user.controller;
 
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
-import com.therapyCommunity_Vol1.backend.user.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
+import com.therapyCommunity_Vol1.backend.user.mypage.MyPageFacade;
+import com.therapyCommunity_Vol1.backend.user.mypage.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
-import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
 
+    private final MyPageFacade myPageFacade;
     private final UserService userService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
 
@@ -41,7 +43,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<CurrentUserResponse>> getCurrentUser(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        CurrentUserResponse response = userService.getCurrentUser(userDetails.getUser().getId());
+        CurrentUserResponse response = myPageFacade.getCurrentUser(userDetails.getUser().getId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -52,7 +54,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PagedResponse<TherapyPostSummaryResponse> response = userService.getMyPosts(userDetails.getUser().getId(), page, size);
+        PagedResponse<TherapyPostSummaryResponse> response = myPageFacade.getMyPosts(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -63,7 +65,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PagedResponse<MyCommentResponse> response = userService.getMyComments(userDetails.getUser().getId(), page, size);
+        PagedResponse<MyCommentResponse> response = myPageFacade.getMyComments(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -73,7 +75,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("file") MultipartFile file
     ) {
-        String imageUrl = userService.uploadProfileImage(userDetails.getUser().getId(), file);
+        String imageUrl = myPageFacade.uploadProfileImage(userDetails.getUser().getId(), file);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(Map.of("profileImageUrl", imageUrl)));
     }
@@ -95,7 +97,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
-        CurrentUserResponse response = userService.updateProfile(userDetails.getUser().getId(), request);
+        CurrentUserResponse response = myPageFacade.updateProfile(userDetails.getUser().getId(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -105,7 +107,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletResponse httpServletResponse
     ) {
-        userService.withdraw(userDetails.getUser().getId());
+        myPageFacade.withdraw(userDetails.getUser().getId());
         refreshTokenCookieManager.expireRefreshTokenCookie(httpServletResponse);
         return ResponseEntity.noContent().build();
     }

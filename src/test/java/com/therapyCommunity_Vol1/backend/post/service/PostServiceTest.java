@@ -7,7 +7,7 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
-import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
+import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -29,7 +29,7 @@ class PostServiceTest {
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private ActivePostFinder activePostFinder;
-    private TherapyPostScrapRepository therapyPostScrapRepository;
+    private ScrapService scrapService;
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private PostService postService;
@@ -39,14 +39,14 @@ class PostServiceTest {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
         activePostFinder = mock(ActivePostFinder.class);
-        therapyPostScrapRepository = mock(TherapyPostScrapRepository.class);
+        scrapService = mock(ScrapService.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
-                therapyPostScrapRepository,
+                scrapService,
                 userRepository,
                 resourceAccessValidator
         );

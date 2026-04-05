@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
+import com.therapyCommunity_Vol1.backend.user.mypage.MyPageFacade;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +20,10 @@ class UserControllerTest {
 
     @Test
     void 내정보를_조회하면_현재_유저_요약을_반환한다() {
+        MyPageFacade myPageFacade = mock(MyPageFacade.class);
         UserService userService = mock(UserService.class);
         RefreshTokenCookieManager cookieManager = mock(RefreshTokenCookieManager.class);
-        UserController userController = new UserController(userService, cookieManager);
+        UserController userController = new UserController(myPageFacade, userService, cookieManager);
         User user = User.builder()
                 .id(1L)
                 .email("user@example.com")
@@ -38,7 +40,7 @@ class UserControllerTest {
                 new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
         );
 
-        when(userService.getCurrentUser(1L)).thenReturn(currentUserResponse);
+        when(myPageFacade.getCurrentUser(1L)).thenReturn(currentUserResponse);
 
         ResponseEntity<ApiResponse<CurrentUserResponse>> response =
                 userController.getCurrentUser(new CustomUserDetails(user));
@@ -47,6 +49,6 @@ class UserControllerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isSuccess()).isTrue();
         assertThat(response.getBody().getData().email()).isEqualTo("user@example.com");
-        verify(userService).getCurrentUser(1L);
+        verify(myPageFacade).getCurrentUser(1L);
     }
 }

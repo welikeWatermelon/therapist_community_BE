@@ -19,7 +19,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +31,13 @@ public class ScrapService {
     private final TherapyPostScrapRepository scrapRepository;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
+
+    public Set<Long> getScrappedPostIds(Long userId, List<Long> postIds) {
+        if (userId == null || postIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return scrapRepository.findScrappedPostIdsByUserIdAndPostIdIn(userId, postIds);
+    }
 
     @Transactional
     public ScrapStatusResponse addScrap(Long currentUserId, Long postId) {

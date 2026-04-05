@@ -1,4 +1,4 @@
-package com.therapyCommunity_Vol1.backend.user.dto;
+package com.therapyCommunity_Vol1.backend.user.mypage.dto;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 
