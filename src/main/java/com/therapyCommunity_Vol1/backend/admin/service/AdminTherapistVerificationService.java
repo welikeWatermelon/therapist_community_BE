@@ -70,7 +70,7 @@ public class AdminTherapistVerificationService {
         validatePending(verification);
 
         verification.approve(admin);
-        userCacheService.evict(verification.getUser().getId());
+        userCacheService.evict(verification.getUser().getId());  // 인증 승인 → 캐시 무효화
 
         return TherapistVerificationResponse.from(
                 verification,
@@ -94,7 +94,7 @@ public class AdminTherapistVerificationService {
 
         verification.reject(admin, request.getRejectReason());
         verification.getUser().demoteToUser();
-        userCacheService.evict(verification.getUser().getId());
+        userCacheService.evict(verification.getUser().getId());  // 인증 거절 + role 강등 → 캐시 무효화
 
         return TherapistVerificationResponse.from(
                 verification,

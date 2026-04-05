@@ -68,7 +68,7 @@ public class UserService {
         }
 
         user.updateProfile(request.getNickname(), request.getProfileImageUrl());
-        userCacheService.evict(currentUserId);
+        userCacheService.evict(currentUserId);  // 프로필 변경 → 캐시 무효화
 
         return CurrentUserResponse.from(
                 user,
@@ -80,7 +80,7 @@ public class UserService {
     public void withdraw(Long currentUserId) {
         User user = findUserOrThrow(currentUserId);
         user.withdraw();
-        userCacheService.evict(currentUserId);
+        userCacheService.evict(currentUserId);  // 탈퇴 → 캐시 무효화 (isEnabled 체크 즉시 반영)
 
         tokenService.revokeAllForUser(currentUserId);
     }

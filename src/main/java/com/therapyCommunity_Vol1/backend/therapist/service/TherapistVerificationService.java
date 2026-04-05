@@ -64,7 +64,7 @@ public class TherapistVerificationService {
                     .orElseGet(() -> createNew(user, request, storedFileInfo));
 
             user.promoteToTherapist();
-            userCacheService.evict(currentUserId);
+            userCacheService.evict(currentUserId);  // role 변경(USER→THERAPIST) → 캐시 무효화
 
             if (oldStoredPath != null
                     && !oldStoredPath.isBlank()

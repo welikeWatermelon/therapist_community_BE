@@ -5,6 +5,7 @@ import com.therapyCommunity_Vol1.backend.auth.dto.LoginRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupResponse;
 import com.therapyCommunity_Vol1.backend.auth.repository.UserAgreementRepository;
+import com.therapyCommunity_Vol1.backend.global.cache.LoginAttemptService;
 import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -41,6 +42,7 @@ class AuthServiceTest {
     TherapistVerificationService therapistVerificationService;
     NicknameGenerator nicknameGenerator;
     UserAgreementRepository userAgreementRepository;
+    LoginAttemptService loginAttemptService;
 
     AuthService authService;
 
@@ -52,6 +54,7 @@ class AuthServiceTest {
         therapistVerificationService = mock(TherapistVerificationService.class);
         nicknameGenerator = mock(NicknameGenerator.class);
         userAgreementRepository = mock(UserAgreementRepository.class);
+        loginAttemptService = mock(LoginAttemptService.class);
 
         authService = new AuthService(
                 userRepository,
@@ -59,7 +62,8 @@ class AuthServiceTest {
                 tokenService,
                 therapistVerificationService,
                 nicknameGenerator,
-                userAgreementRepository
+                userAgreementRepository,
+                loginAttemptService
         );
     }
 
