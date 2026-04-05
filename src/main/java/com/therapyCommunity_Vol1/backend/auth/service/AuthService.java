@@ -130,6 +130,9 @@ public class AuthService {
     ) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
+        if (user.isWithdrawn()) {
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        }
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -172,6 +175,10 @@ public class AuthService {
         }
 
         User user = currentRefreshToken.getUser();
+        if (user.isWithdrawn()) {
+            currentRefreshToken.revoke("WITHDRAW");
+            throw new CustomException(ErrorCode.REFRESH_TOKEN_INVALID);
+        }
         currentRefreshToken.revoke(REVOKE_REASON_ROTATED);
         String accessToken = createAccessToken(user);
         long accessTokenExpiresInSec = jwtTokenProvider.getAccessTokenValiditySec();
