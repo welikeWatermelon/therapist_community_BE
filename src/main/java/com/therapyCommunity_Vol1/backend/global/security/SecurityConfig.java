@@ -56,7 +56,8 @@ public class SecurityConfig {
                             "/api/v1/health",
                             "/actuator/health",
                             "/swagger-ui/**",
-                            "/v3/api-docs/**"
+                            "/v3/api-docs/**",
+                            "/api/v1/me/profile-image/profile-images/**"
                     ).permitAll()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

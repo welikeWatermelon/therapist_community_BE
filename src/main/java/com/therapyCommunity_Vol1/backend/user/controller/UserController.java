@@ -11,9 +11,13 @@ import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -72,6 +76,17 @@ public class UserController {
         String imageUrl = userService.uploadProfileImage(userDetails.getUser().getId(), file);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(Map.of("profileImageUrl", imageUrl)));
+    }
+
+    @Operation(summary = "프로필 이미지 조회", description = "인증 불필요. 프로필 이미지 파일 반환", security = {})
+    @GetMapping("/profile-image/profile-images/{filename}")
+    public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
+        StoredFileResource storedFile = userService.loadProfileImage(filename);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(storedFile.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename(storedFile.getOriginalFilename()).build().toString())
+                .body(storedFile.getResource());
     }
 
     @Operation(summary = "프로필 수정", description = "닉네임(2~20자), 프로필 이미지 URL 변경. null이면 기존 값 유지")
