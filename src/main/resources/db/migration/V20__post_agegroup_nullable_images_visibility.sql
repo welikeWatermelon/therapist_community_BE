@@ -2,7 +2,7 @@
 ALTER TABLE therapy_posts ALTER COLUMN age_group DROP NOT NULL;
 
 -- 게시글 이미지 테이블
-CREATE TABLE therapy_post_images (
+CREATE TABLE IF NOT EXISTS therapy_post_images (
     id BIGSERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL,
     stored_path TEXT NOT NULL,
@@ -16,9 +16,9 @@ CREATE TABLE therapy_post_images (
         FOREIGN KEY (post_id) REFERENCES therapy_posts(id)
 );
 
-CREATE INDEX idx_therapy_post_images_post_order
+CREATE INDEX IF NOT EXISTS idx_therapy_post_images_post_order
     ON therapy_post_images (post_id, display_order ASC);
 
 -- 공개/비공개
-ALTER TABLE therapy_posts ADD COLUMN visibility VARCHAR(20) NOT NULL DEFAULT 'PUBLIC';
-CREATE INDEX idx_therapy_posts_visibility ON therapy_posts (visibility);
+ALTER TABLE therapy_posts ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) NOT NULL DEFAULT 'PUBLIC';
+CREATE INDEX IF NOT EXISTS idx_therapy_posts_visibility ON therapy_posts (visibility);
