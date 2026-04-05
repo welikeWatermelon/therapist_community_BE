@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -39,6 +40,7 @@ class PostAttachmentServiceTest {
     private TherapyPostDownloadRepository therapyPostDownloadRepository;
     private UserRepository userRepository;
     private FileStorageService fileStorageService;
+    private ResourceAccessValidator resourceAccessValidator;
     private PostAttachmentService postAttachmentService;
 
     @BeforeEach
@@ -48,13 +50,15 @@ class PostAttachmentServiceTest {
         therapyPostDownloadRepository = mock(TherapyPostDownloadRepository.class);
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
+        resourceAccessValidator = mock(ResourceAccessValidator.class);
 
         postAttachmentService = new PostAttachmentService(
                 activePostFinder,
                 therapyPostAttachmentRepository,
                 therapyPostDownloadRepository,
                 userRepository,
-                fileStorageService
+                fileStorageService,
+                resourceAccessValidator
         );
     }
 

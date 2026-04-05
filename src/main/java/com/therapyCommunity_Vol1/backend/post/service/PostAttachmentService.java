@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
@@ -40,6 +41,7 @@ public class PostAttachmentService {
     private final TherapyPostDownloadRepository therapyPostDownloadRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final ResourceAccessValidator resourceAccessValidator;
 
     @Transactional
     public PostAttachmentResponse uploadAttachment(
@@ -49,7 +51,7 @@ public class PostAttachmentService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostAttachment(file);
 
@@ -103,7 +105,7 @@ public class PostAttachmentService {
             Long attachmentId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
@@ -143,19 +145,6 @@ public class PostAttachmentService {
                         TherapyPostDownload::recordDownload,
                         () -> therapyPostDownloadRepository.save(TherapyPostDownload.create(post, user))
                 );
-    }
-
-    private void validateAuthorOrAdmin(
-            TherapyPost post,
-            Long currentUserId,
-            UserRole currentUserRole
-    ) {
-        boolean isAdmin = currentUserRole == UserRole.ADMIN;
-        boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-
-        if (!isAdmin && !isAuthor) {
-            throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
-        }
     }
 
     private void safeDelete(String storedPath, Long userId) {
