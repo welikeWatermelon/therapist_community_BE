@@ -32,6 +32,8 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    // TODO: ScrapRepository 직접 참조 — Step 4 MyPageFacade 도입 시
+    // ScrapService.getScrappedPostIds()로 위임 예정
     private final TherapyPostScrapRepository therapyPostScrapRepository;
     private final UserRepository userRepository;
 
