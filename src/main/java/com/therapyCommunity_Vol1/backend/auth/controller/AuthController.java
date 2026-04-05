@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.auth.dto.RefreshResponse;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupResponse;
 import com.therapyCommunity_Vol1.backend.auth.service.AuthService;
+import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final TokenService tokenService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
 
     @Operation(summary = "회원가입", description = "이메일, 비밀번호(8자 이상), 약관 동의로 가입. 닉네임 자동 생성, 자동 로그인", security = {})
@@ -78,7 +80,7 @@ public class AuthController {
         String userAgent = httpServletRequest.getHeader("User-Agent");
         String ipAddress = extractClientIp(httpServletRequest);
         String refreshToken = refreshTokenCookieManager.extractRefreshToken(httpServletRequest);
-        AuthService.RefreshResult result = authService.refresh(refreshToken, userAgent, ipAddress);
+        TokenService.RefreshResult result = tokenService.refresh(refreshToken, userAgent, ipAddress);
 
         refreshTokenCookieManager.addRefreshTokenCookie(
                 httpServletResponse,
@@ -96,7 +98,7 @@ public class AuthController {
             HttpServletResponse httpServletResponse
     ) {
         String refreshToken = refreshTokenCookieManager.extractRefreshToken(httpServletRequest);
-        authService.logout(refreshToken);
+        tokenService.logout(refreshToken);
         refreshTokenCookieManager.expireRefreshTokenCookie(httpServletResponse);
         return ResponseEntity.noContent().build();
     }
