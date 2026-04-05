@@ -14,7 +14,6 @@ import com.therapyCommunity_Vol1.backend.post.dto.DownloadedPostResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepository;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -36,7 +35,7 @@ public class PostAttachmentService {
 
     private static final String EVT_ATTACHMENT_DELETE_FAILED = "POST_ATTACHMENT_DELETE_FAILED";
 
-    private final TherapyPostRepository therapyPostRepository;
+    private final ActivePostFinder activePostFinder;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private final TherapyPostDownloadRepository therapyPostDownloadRepository;
     private final UserRepository userRepository;
@@ -49,7 +48,7 @@ public class PostAttachmentService {
             Long postId,
             MultipartFile file
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostAttachment(file);
@@ -82,7 +81,7 @@ public class PostAttachmentService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
 
@@ -103,7 +102,7 @@ public class PostAttachmentService {
             Long postId,
             Long attachmentId
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
 
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
@@ -136,11 +135,6 @@ public class PostAttachmentService {
         return PagedResponse.from(result, result.getContent().stream()
                         .map(DownloadedPostResponse::from)
                         .toList());
-    }
-
-    private TherapyPost getActivePost(Long postId) {
-        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
     }
 
     private void recordDownload(TherapyPost post, User user) {

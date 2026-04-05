@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
@@ -26,6 +27,7 @@ class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private ActivePostFinder activePostFinder;
     private TherapyPostScrapRepository therapyPostScrapRepository;
     private UserRepository userRepository;
     private PostService postService;
@@ -34,11 +36,13 @@ class PostServiceTest {
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
+        activePostFinder = mock(ActivePostFinder.class);
         therapyPostScrapRepository = mock(TherapyPostScrapRepository.class);
         userRepository = mock(UserRepository.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
+                activePostFinder,
                 therapyPostScrapRepository,
                 userRepository
         );
@@ -156,8 +160,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
 
@@ -181,8 +184,8 @@ class PostServiceTest {
     void 게시글_상세조회_실패_게시글없음() {
 
         // given
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(999L))
-                .thenReturn(Optional.empty());
+        when(activePostFinder.findOrThrow(999L))
+                .thenThrow(new CustomException(ErrorCode.POST_NOT_FOUND));
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(999L))
                 .thenReturn(List.of());
 
@@ -217,8 +220,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
 
@@ -256,8 +258,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
 
@@ -302,8 +303,7 @@ class PostServiceTest {
                 Visibility.PRIVATE
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
 
         // when
         TherapyPostDetailResponse response =
@@ -346,8 +346,7 @@ class PostServiceTest {
                 Visibility.PRIVATE
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
 
         // when / then
         assertThatThrownBy(() ->
@@ -380,8 +379,7 @@ class PostServiceTest {
                 author
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
 
         // when
         postService.deletePost(currentUserId, UserRole.THERAPIST, 1L);
