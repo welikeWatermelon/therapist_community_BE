@@ -6,13 +6,12 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.post.dto.PostListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
-import com.therapyCommunity_Vol1.backend.user.dto.MyCommentListResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -45,7 +44,7 @@ public class UserService {
         );
     }
 
-    public PostListResponse getMyPosts(Long currentUserId, int page, int size) {
+    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
         var result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(currentUserId, pageable);
@@ -55,17 +54,10 @@ public class UserService {
                 .map(TherapyPostSummaryResponse::from)
                 .toList();
 
-        return new PostListResponse(
-                posts,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+        return PagedResponse.from(result, posts);
     }
 
-    public MyCommentListResponse getMyComments(Long currentUserId, int page, int size) {
+    public PagedResponse<MyCommentResponse> getMyComments(Long currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
         var result = therapyPostCommentRepository.findByAuthorId(currentUserId, pageable);
@@ -75,14 +67,7 @@ public class UserService {
                 .map(MyCommentResponse::from)
                 .toList();
 
-        return new MyCommentListResponse(
-                comments,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+        return PagedResponse.from(result, comments);
     }
 
     @Transactional

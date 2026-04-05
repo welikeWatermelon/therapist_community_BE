@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.admin.service;
 
-import com.therapyCommunity_Vol1.backend.admin.dto.TherapistVerificationPageResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
@@ -31,7 +31,7 @@ public class AdminTherapistVerificationService {
     private final UserRepository userRepository;
     private  final FileStorageService fileStorageService;
 
-    public TherapistVerificationPageResponse getVerifications(
+    public PagedResponse<TherapistVerificationResponse> getVerifications(
             TherapistVerificationStatus status,
             int page,
             int size
@@ -52,14 +52,7 @@ public class AdminTherapistVerificationService {
                         "/api/v1/admin/therapist-verifications/" + v.getId() + "/image"
                 ))
                 .toList();
-        return new TherapistVerificationPageResponse(
-                responses,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+        return PagedResponse.from(result, responses);
     }
 
     @Transactional

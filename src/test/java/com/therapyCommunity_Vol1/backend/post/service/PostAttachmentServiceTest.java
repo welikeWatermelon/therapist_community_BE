@@ -6,7 +6,8 @@ import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
-import com.therapyCommunity_Vol1.backend.post.dto.DownloadListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.post.dto.DownloadedPostResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepository;
@@ -175,12 +176,12 @@ class PostAttachmentServiceTest {
                         1
                 ));
 
-        DownloadListResponse response = postAttachmentService.getMyDownloads(userId, 0, 10);
+        PagedResponse<DownloadedPostResponse> response = postAttachmentService.getMyDownloads(userId, 0, 10);
 
-        assertThat(response.getDownloads()).hasSize(1);
-        assertThat(response.getDownloads().get(0).getPostId()).isEqualTo(10L);
-        assertThat(response.getDownloads().get(0).getPostType()).isEqualTo(PostType.RESOURCE);
-        assertThat(response.getDownloads().get(0).getDownloadCount()).isEqualTo(3L);
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getPostId()).isEqualTo(10L);
+        assertThat(response.getItems().get(0).getPostType()).isEqualTo(PostType.RESOURCE);
+        assertThat(response.getItems().get(0).getDownloadCount()).isEqualTo(3L);
         assertThat(response.isHasNext()).isFalse();
     }
 

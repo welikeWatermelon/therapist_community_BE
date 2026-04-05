@@ -1,8 +1,9 @@
 package com.therapyCommunity_Vol1.backend.post.controller;
 
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
-import com.therapyCommunity_Vol1.backend.post.dto.PostListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
+import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +38,7 @@ class PostControllerTest {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(postController).build();
 
         // given
-        PostListResponse serviceResponse = new PostListResponse(
+        PagedResponse<TherapyPostSummaryResponse> serviceResponse = new PagedResponse<>(
                 List.of(),
                 0,
                 10,
@@ -60,7 +61,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.size").value(10))
                 .andExpect(jsonPath("$.data.totalElements").value(0))
                 .andExpect(jsonPath("$.data.totalPages").value(0))
-                .andExpect(jsonPath("$.data.posts").isArray());
+                .andExpect(jsonPath("$.data.items").isArray());
 
         verify(postService).getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class));
     }

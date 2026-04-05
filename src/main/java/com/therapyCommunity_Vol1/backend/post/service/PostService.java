@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -48,7 +49,7 @@ public class PostService {
         return TherapyPostDetailResponse.from(saved, userId, author.getRole());
     }
 
-    public PostListResponse getPosts(
+    public PagedResponse<TherapyPostSummaryResponse> getPosts(
             int page,
             int size,
             PostSortType sortType,
@@ -83,14 +84,7 @@ public class PostService {
                 .map(TherapyPostSummaryResponse::from)
                 .toList();
 
-        return new PostListResponse(
-                posts,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+        return PagedResponse.from(result, posts);
     }
 
     private Sort toSort(PostSortType sortType) {

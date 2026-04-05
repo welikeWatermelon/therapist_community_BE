@@ -6,7 +6,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
-import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -66,7 +66,7 @@ public class ScrapService {
         return new ScrapStatusResponse(postId, scrapped);
     }
 
-    public ScrapListResponse getMyScraps(Long currentUserId, int page, int size) {
+    public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -82,13 +82,6 @@ public class ScrapService {
                 .map(ScrappedPostResponse::from)
                 .toList();
 
-        return new ScrapListResponse(
-                scraps,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+        return PagedResponse.from(result, scraps);
     }
 }

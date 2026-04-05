@@ -3,8 +3,9 @@ package com.therapyCommunity_Vol1.backend.scrap.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
-import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapListResponse;
+import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import lombok.RequiredArgsConstructor;
@@ -61,12 +62,12 @@ public class ScrapController {
 
     @Operation(summary = "내 스크랩 목록", description = "스크랩한 게시글 목록 (페이징)")
     @GetMapping("/me/scraps")
-    public ResponseEntity<ApiResponse<ScrapListResponse>> getMyScraps(
+    public ResponseEntity<ApiResponse<PagedResponse<ScrappedPostResponse>>> getMyScraps(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        ScrapListResponse response = scrapService.getMyScraps(
+        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(
                 userDetails.getUser().getId(),
                 page,
                 size
