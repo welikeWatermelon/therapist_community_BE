@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.user.service;
 import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -16,6 +17,7 @@ import com.therapyCommunity_Vol1.backend.user.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -34,6 +36,9 @@ public class UserService {
     private final TherapyPostCommentRepository therapyPostCommentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final FileStorageService fileStorageService;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     public CurrentUserResponse getCurrentUser(Long currentUserId) {
         User user = findUserOrThrow(currentUserId);
@@ -74,9 +79,17 @@ public class UserService {
     public String uploadProfileImage(Long currentUserId, MultipartFile file) {
         User user = findUserOrThrow(currentUserId);
         StoredFileInfo storedFileInfo = fileStorageService.storeProfileImage(file);
-        String imageUrl = "/api/v1/me/profile-image/" + storedFileInfo.getStoredPath();
+        String imageUrl = baseUrl + "/api/v1/me/profile-image/" + storedFileInfo.getStoredPath();
         user.updateProfile(null, imageUrl);
         return imageUrl;
+    }
+
+    public StoredFileResource loadProfileImage(String filename) {
+        return fileStorageService.loadAsResource(
+                "profile-images/" + filename,
+                "image/jpeg",
+                filename
+        );
     }
 
     @Transactional
