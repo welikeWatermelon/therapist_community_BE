@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.global.security;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -15,12 +16,14 @@ import static org.assertj.core.api.Assertions.*;
 class CustomUserDetailsServiceTest {
 
     UserRepository userRepository;
+    UserCacheService userCacheService;
     CustomUserDetailsService service;
 
     @BeforeEach
     void setUp() {
         userRepository = Mockito.mock(UserRepository.class);
-        service = new CustomUserDetailsService(userRepository);
+        userCacheService = Mockito.mock(UserCacheService.class);
+        service = new CustomUserDetailsService(userRepository, userCacheService);
     }
 
     @Test

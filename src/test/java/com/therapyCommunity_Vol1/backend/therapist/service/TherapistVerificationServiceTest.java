@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.therapist.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.dto.ApplyTherapistVerificationRequest;
@@ -24,6 +25,7 @@ class TherapistVerificationServiceTest {
     private TherapistVerificationRepository therapistVerificationRepository;
     private UserRepository userRepository;
     private FileStorageService fileStorageService;
+    private UserCacheService userCacheService;
     private TherapistVerificationService therapistVerificationService;
 
     @BeforeEach
@@ -31,10 +33,12 @@ class TherapistVerificationServiceTest {
         therapistVerificationRepository = mock(TherapistVerificationRepository.class);
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
+        userCacheService = mock(UserCacheService.class);
         therapistVerificationService = new TherapistVerificationService(
                 therapistVerificationRepository,
                 userRepository,
-                fileStorageService
+                fileStorageService,
+                userCacheService
         );
     }
 

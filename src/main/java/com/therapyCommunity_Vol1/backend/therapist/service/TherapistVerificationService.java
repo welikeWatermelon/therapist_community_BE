@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.therapist.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
@@ -33,6 +34,7 @@ public class TherapistVerificationService {
     private final TherapistVerificationRepository therapistVerificationRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final UserCacheService userCacheService;
 
     @Transactional
     public TherapistVerificationResponse apply(
@@ -62,6 +64,7 @@ public class TherapistVerificationService {
                     .orElseGet(() -> createNew(user, request, storedFileInfo));
 
             user.promoteToTherapist();
+            userCacheService.evict(currentUserId);
 
             if (oldStoredPath != null
                     && !oldStoredPath.isBlank()
