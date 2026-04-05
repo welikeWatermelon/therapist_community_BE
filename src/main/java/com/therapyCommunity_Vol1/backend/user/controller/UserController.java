@@ -1,5 +1,7 @@
 package com.therapyCommunity_Vol1.backend.user.controller;
 
+import com.therapyCommunity_Vol1.backend.application.mypage.MyPageFacade;
+import com.therapyCommunity_Vol1.backend.application.mypage.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
@@ -8,9 +10,6 @@ import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
-import com.therapyCommunity_Vol1.backend.user.mypage.MyPageFacade;
-import com.therapyCommunity_Vol1.backend.user.mypage.dto.MyCommentResponse;
-import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,7 +34,6 @@ import java.util.Map;
 public class UserController {
 
     private final MyPageFacade myPageFacade;
-    private final UserService userService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
 
     @Operation(summary = "내 정보 조회", description = "현재 로그인한 유저 정보 + 치료사 인증 상태")
@@ -83,7 +81,7 @@ public class UserController {
     @Operation(summary = "프로필 이미지 조회", description = "인증 불필요. 프로필 이미지 파일 반환", security = {})
     @GetMapping("/profile-image/profile-images/{filename}")
     public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
-        StoredFileResource storedFile = userService.loadProfileImage(filename);
+        StoredFileResource storedFile = myPageFacade.loadProfileImage(filename);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(storedFile.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,

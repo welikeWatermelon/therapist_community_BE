@@ -5,17 +5,16 @@ import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.dto.UpdateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
-import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
-import com.therapyCommunity_Vol1.backend.user.mypage.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -119,15 +118,8 @@ public class CommentService {
         comment.softDelete();
     }
 
-    public PagedResponse<MyCommentResponse> getMyComments(Long userId, int page, int size) {
+    public Page<TherapyPostComment> getMyComments(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
-
-        var result = commentRepository.findByAuthorId(userId, pageable);
-
-        var comments = result.getContent().stream()
-                .map(MyCommentResponse::from)
-                .toList();
-
-        return PagedResponse.from(result, comments);
+        return commentRepository.findByAuthorId(userId, pageable);
     }
 }

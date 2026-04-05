@@ -6,8 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
-import com.therapyCommunity_Vol1.backend.user.mypage.MyPageFacade;
-import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.application.mypage.MyPageFacade;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
@@ -21,9 +20,8 @@ class UserControllerTest {
     @Test
     void 내정보를_조회하면_현재_유저_요약을_반환한다() {
         MyPageFacade myPageFacade = mock(MyPageFacade.class);
-        UserService userService = mock(UserService.class);
         RefreshTokenCookieManager cookieManager = mock(RefreshTokenCookieManager.class);
-        UserController userController = new UserController(myPageFacade, userService, cookieManager);
+        UserController userController = new UserController(myPageFacade, cookieManager);
         User user = User.builder()
                 .id(1L)
                 .email("user@example.com")
