@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.user.service;
 
 import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
@@ -28,6 +29,7 @@ class UserServiceTest {
     private TherapistVerificationService therapistVerificationService;
     private TokenService tokenService;
     private FileStorageService fileStorageService;
+    private UserCacheService userCacheService;
     private UserService userService;
 
     @BeforeEach
@@ -36,11 +38,13 @@ class UserServiceTest {
         therapistVerificationService = mock(TherapistVerificationService.class);
         tokenService = mock(TokenService.class);
         fileStorageService = mock(FileStorageService.class);
+        userCacheService = mock(UserCacheService.class);
         userService = new UserService(
                 userRepository,
                 therapistVerificationService,
                 tokenService,
-                fileStorageService
+                fileStorageService,
+                userCacheService
         );
     }
 

@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.user.service;
 
 import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
@@ -26,6 +27,7 @@ public class UserService {
     private final TherapistVerificationService therapistVerificationService;
     private final TokenService tokenService;
     private final FileStorageService fileStorageService;
+    private final UserCacheService userCacheService;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -66,6 +68,7 @@ public class UserService {
         }
 
         user.updateProfile(request.getNickname(), request.getProfileImageUrl());
+        userCacheService.evict(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
@@ -77,6 +80,7 @@ public class UserService {
     public void withdraw(Long currentUserId) {
         User user = findUserOrThrow(currentUserId);
         user.withdraw();
+        userCacheService.evict(currentUserId);
 
         tokenService.revokeAllForUser(currentUserId);
     }

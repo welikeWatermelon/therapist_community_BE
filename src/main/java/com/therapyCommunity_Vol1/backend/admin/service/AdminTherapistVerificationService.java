@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.admin.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -30,6 +31,7 @@ public class AdminTherapistVerificationService {
     private final TherapistVerificationRepository therapistVerificationRepository;
     private final UserRepository userRepository;
     private  final FileStorageService fileStorageService;
+    private final UserCacheService userCacheService;
 
     public PagedResponse<TherapistVerificationResponse> getVerifications(
             TherapistVerificationStatus status,
@@ -68,6 +70,7 @@ public class AdminTherapistVerificationService {
         validatePending(verification);
 
         verification.approve(admin);
+        userCacheService.evict(verification.getUser().getId());
 
         return TherapistVerificationResponse.from(
                 verification,
@@ -91,6 +94,7 @@ public class AdminTherapistVerificationService {
 
         verification.reject(admin, request.getRejectReason());
         verification.getUser().demoteToUser();
+        userCacheService.evict(verification.getUser().getId());
 
         return TherapistVerificationResponse.from(
                 verification,
