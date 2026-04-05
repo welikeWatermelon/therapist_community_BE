@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.auth.dto.LoginResponse;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.SignupResponse;
 import com.therapyCommunity_Vol1.backend.auth.repository.UserAgreementRepository;
+import com.therapyCommunity_Vol1.backend.global.cache.LoginAttemptService;
 import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -38,6 +39,7 @@ public class AuthService {
     private final TherapistVerificationService therapistVerificationService;
     private final NicknameGenerator nicknameGenerator;
     private final UserAgreementRepository userAgreementRepository;
+    private final LoginAttemptService loginAttemptService;
 
     @Transactional
     public SignupResult signup(SignupRequest request, String userAgent, String ipAddress) {
@@ -83,14 +85,21 @@ public class AuthService {
             String userAgent,
             String ipAddress
     ) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
-        if (user.isWithdrawn()) {
+        String email = request.getEmail();
+
+        if (loginAttemptService.isLocked(email)) {
+            throw new CustomException(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED);
+        }
+
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null || user.isWithdrawn()
+                || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            loginAttemptService.recordFailure(email);
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
-        }
+
+        loginAttemptService.resetFailCount(email);
 
         String accessToken = tokenService.createAccessToken(user);
         long accessTokenExpiresInSec = tokenService.getAccessTokenValiditySec();

@@ -38,7 +38,9 @@ public enum ErrorCode {
     INVALID_LICENSE_IMAGE(HttpStatus.BAD_REQUEST, "THERAPIST_400_IMAGE", "유효하지 않은 치료사 증빙 이미지입니다."),
     THERAPIST_VERIFICATION_NOT_PENDING(HttpStatus.CONFLICT, "THERAPIST_409_NOT_PENDING", "대기 중(PENDING) 상태의 신청만 처리할 수 있습니다."),
 
-    FILE_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_500", "파일 저장/삭제 중 오류가 발생했습니다.");
+    FILE_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_500", "파일 저장/삭제 중 오류가 발생했습니다."),
+
+    ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429", "로그인 시도가 너무 많습니다. 30분 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String code;
