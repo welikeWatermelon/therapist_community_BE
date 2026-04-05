@@ -15,7 +15,7 @@ public class LoginAttemptService {
     private final StringRedisTemplate stringRedisTemplate;
 
     private static final String KEY_PREFIX = "login_failed:";
-    private static final int MAX_ATTEMPTS = 5;
+    private static final int MAX_ATTEMPTS = 10;
     private static final int TTL_SECONDS = 1800;
 
     public int getFailCount(String email) {
