@@ -115,7 +115,8 @@ public class AuthService {
 
     private void validateRequiredAgreements(java.util.List<AgreementRequest> agreements) {
         Map<String, Boolean> agreedMap = agreements.stream()
-                .collect(Collectors.toMap(AgreementRequest::getType, AgreementRequest::isAgreed, (a, b) -> b));
+                .collect(Collectors.toMap(AgreementRequest::getType, AgreementRequest::isAgreed,
+                        (a, b) -> { throw new CustomException(ErrorCode.INVALID_INPUT); }));
 
         Arrays.stream(AgreementType.values())
                 .filter(AgreementType::isRequired)
