@@ -1,17 +1,17 @@
 package com.therapyCommunity_Vol1.backend.user.controller;
 
+import com.therapyCommunity_Vol1.backend.application.mypage.MyPageFacade;
+import com.therapyCommunity_Vol1.backend.application.mypage.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
-import com.therapyCommunity_Vol1.backend.user.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
-import com.therapyCommunity_Vol1.backend.user.service.UserService;
-import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+    private final MyPageFacade myPageFacade;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
 
     @Operation(summary = "내 정보 조회", description = "현재 로그인한 유저 정보 + 치료사 인증 상태")
@@ -41,7 +41,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<CurrentUserResponse>> getCurrentUser(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        CurrentUserResponse response = userService.getCurrentUser(userDetails.getUser().getId());
+        CurrentUserResponse response = myPageFacade.getCurrentUser(userDetails.getUser().getId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -52,7 +52,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PagedResponse<TherapyPostSummaryResponse> response = userService.getMyPosts(userDetails.getUser().getId(), page, size);
+        PagedResponse<TherapyPostSummaryResponse> response = myPageFacade.getMyPosts(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -63,7 +63,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PagedResponse<MyCommentResponse> response = userService.getMyComments(userDetails.getUser().getId(), page, size);
+        PagedResponse<MyCommentResponse> response = myPageFacade.getMyComments(userDetails.getUser().getId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -73,7 +73,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("file") MultipartFile file
     ) {
-        String imageUrl = userService.uploadProfileImage(userDetails.getUser().getId(), file);
+        String imageUrl = myPageFacade.uploadProfileImage(userDetails.getUser().getId(), file);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(Map.of("profileImageUrl", imageUrl)));
     }
@@ -81,7 +81,7 @@ public class UserController {
     @Operation(summary = "프로필 이미지 조회", description = "인증 불필요. 프로필 이미지 파일 반환", security = {})
     @GetMapping("/profile-image/profile-images/{filename}")
     public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
-        StoredFileResource storedFile = userService.loadProfileImage(filename);
+        StoredFileResource storedFile = myPageFacade.loadProfileImage(filename);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(storedFile.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -95,7 +95,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
-        CurrentUserResponse response = userService.updateProfile(userDetails.getUser().getId(), request);
+        CurrentUserResponse response = myPageFacade.updateProfile(userDetails.getUser().getId(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -105,7 +105,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletResponse httpServletResponse
     ) {
-        userService.withdraw(userDetails.getUser().getId());
+        myPageFacade.withdraw(userDetails.getUser().getId());
         refreshTokenCookieManager.expireRefreshTokenCookie(httpServletResponse);
         return ResponseEntity.noContent().build();
     }
