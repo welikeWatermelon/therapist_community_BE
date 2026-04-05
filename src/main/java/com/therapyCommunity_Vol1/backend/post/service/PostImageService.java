@@ -9,7 +9,6 @@ import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostImage;
 import com.therapyCommunity_Vol1.backend.post.dto.PostImageResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostImageRepository;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +24,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PostImageService {
 
-    private final TherapyPostRepository therapyPostRepository;
+    private final ActivePostFinder activePostFinder;
     private final TherapyPostImageRepository therapyPostImageRepository;
     private final FileStorageService fileStorageService;
 
@@ -36,7 +35,7 @@ public class PostImageService {
             Long postId,
             MultipartFile file
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
 
         StoredFileInfo storedFileInfo = fileStorageService.storeProfileImage(file);
@@ -72,11 +71,6 @@ public class PostImageService {
                 image.getContentType(),
                 image.getOriginalFilename()
         );
-    }
-
-    private TherapyPost getActivePost(Long postId) {
-        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
     }
 
     private void validateAuthorOrAdmin(TherapyPost post, Long currentUserId, UserRole currentUserRole) {

@@ -32,6 +32,7 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private final ActivePostFinder activePostFinder;
     // TODO: ScrapRepository 직접 참조 — Step 4 MyPageFacade 도입 시
     // ScrapService.getScrappedPostIds()로 위임 예정
     private final TherapyPostScrapRepository therapyPostScrapRepository;
@@ -121,7 +122,7 @@ public class PostService {
             UserRole currentUserRole,
             Long postId
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         validateVisibility(post, currentUserId, currentUserRole);
 
         post.increaseViewCount();
@@ -144,7 +145,7 @@ public class PostService {
             Long postId,
             UpdateTherapyPostRequest request
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
 
         post.update(
@@ -161,17 +162,12 @@ public class PostService {
             UserRole currentUserRole,
             Long postId
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         validateAuthorOrAdmin(post, currentUserId, currentUserRole);
 
         post.softDelete();
     }
 
-
-    private TherapyPost getActivePost(Long postId) {
-        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
-    }
 
     private void validateVisibility(TherapyPost post, Long currentUserId, UserRole currentUserRole) {
         if (post.getVisibility() == Visibility.PRIVATE) {

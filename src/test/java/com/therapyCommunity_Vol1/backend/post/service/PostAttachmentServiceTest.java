@@ -11,7 +11,7 @@ import com.therapyCommunity_Vol1.backend.post.dto.DownloadedPostResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepository;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.*;
 
 class PostAttachmentServiceTest {
 
-    private TherapyPostRepository therapyPostRepository;
+    private ActivePostFinder activePostFinder;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private TherapyPostDownloadRepository therapyPostDownloadRepository;
     private UserRepository userRepository;
@@ -43,14 +43,14 @@ class PostAttachmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        therapyPostRepository = mock(TherapyPostRepository.class);
+        activePostFinder = mock(ActivePostFinder.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
         therapyPostDownloadRepository = mock(TherapyPostDownloadRepository.class);
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
 
         postAttachmentService = new PostAttachmentService(
-                therapyPostRepository,
+                activePostFinder,
                 therapyPostAttachmentRepository,
                 therapyPostDownloadRepository,
                 userRepository,
@@ -71,7 +71,7 @@ class PostAttachmentServiceTest {
                 "%PDF-sample".getBytes()
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(fileStorageService.storePostAttachment(file)).thenReturn(
                 new StoredFileInfo("post-attachments/guide.pdf", "guide.pdf", "application/pdf")
         );
@@ -113,7 +113,7 @@ class PostAttachmentServiceTest {
                 "%PDF-sample".getBytes()
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(fileStorageService.storePostAttachment(file)).thenReturn(
                 new StoredFileInfo("post-attachments/guide.pdf", "guide.pdf", "application/pdf")
         );
@@ -143,7 +143,7 @@ class PostAttachmentServiceTest {
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
         when(fileStorageService.loadAsResource("post-attachments/guide.pdf", "application/pdf", "guide.pdf"))
                 .thenReturn(storedFile);
