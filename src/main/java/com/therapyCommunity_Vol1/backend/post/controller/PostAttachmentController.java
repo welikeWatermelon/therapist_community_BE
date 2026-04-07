@@ -36,8 +36,8 @@ public class PostAttachmentController {
             @RequestPart("file") MultipartFile file
     ) {
         PostAttachmentResponse response = postAttachmentService.uploadAttachment(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 file
         );
@@ -54,8 +54,8 @@ public class PostAttachmentController {
             @PathVariable Long attachmentId
     ) {
         postAttachmentService.deleteAttachment(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 attachmentId
         );
@@ -70,7 +70,7 @@ public class PostAttachmentController {
             @PathVariable Long attachmentId
     ) {
         StoredFileResource storedFile = postAttachmentService.downloadAttachment(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId,
                 attachmentId
         );

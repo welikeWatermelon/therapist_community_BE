@@ -53,7 +53,7 @@ public class AdminTherapistVerificationController {
     ) {
         TherapistVerificationResponse response =
                 adminTherapistVerificationService.approve(
-                        userDetails.getUser().getId(), verificationId
+                        userDetails.getUserId(), verificationId
                 );
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -66,7 +66,7 @@ public class AdminTherapistVerificationController {
             @Valid @RequestBody RejectTherapistVerificationRequest request
     ) {
         TherapistVerificationResponse response = adminTherapistVerificationService.reject(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 verificationId,
                 request
         );

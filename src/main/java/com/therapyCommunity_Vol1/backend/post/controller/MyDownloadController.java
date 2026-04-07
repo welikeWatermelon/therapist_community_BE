@@ -33,7 +33,7 @@ public class MyDownloadController {
             @RequestParam(defaultValue = "10") int size
     ) {
         PagedResponse<DownloadedPostResponse> response = postAttachmentService.getMyDownloads(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 page,
                 size
         );

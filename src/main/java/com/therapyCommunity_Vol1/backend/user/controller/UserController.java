@@ -41,7 +41,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<CurrentUserResponse>> getCurrentUser(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        CurrentUserResponse response = myPageFacade.getCurrentUser(userDetails.getUser().getId());
+        CurrentUserResponse response = myPageFacade.getCurrentUser(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -52,7 +52,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PagedResponse<TherapyPostSummaryResponse> response = myPageFacade.getMyPosts(userDetails.getUser().getId(), page, size);
+        PagedResponse<TherapyPostSummaryResponse> response = myPageFacade.getMyPosts(userDetails.getUserId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -63,7 +63,7 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        PagedResponse<MyCommentResponse> response = myPageFacade.getMyComments(userDetails.getUser().getId(), page, size);
+        PagedResponse<MyCommentResponse> response = myPageFacade.getMyComments(userDetails.getUserId(), page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -73,7 +73,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("file") MultipartFile file
     ) {
-        String imageUrl = myPageFacade.uploadProfileImage(userDetails.getUser().getId(), file);
+        String imageUrl = myPageFacade.uploadProfileImage(userDetails.getUserId(), file);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(Map.of("profileImageUrl", imageUrl)));
     }
@@ -95,7 +95,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
-        CurrentUserResponse response = myPageFacade.updateProfile(userDetails.getUser().getId(), request);
+        CurrentUserResponse response = myPageFacade.updateProfile(userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -105,7 +105,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletResponse httpServletResponse
     ) {
-        myPageFacade.withdraw(userDetails.getUser().getId());
+        myPageFacade.withdraw(userDetails.getUserId());
         refreshTokenCookieManager.expireRefreshTokenCookie(httpServletResponse);
         return ResponseEntity.noContent().build();
     }

@@ -30,7 +30,7 @@ public class TherapistVerificationController {
             @Valid @ModelAttribute ApplyTherapistVerificationRequest request
     ) {
         TherapistVerificationResponse response =
-                therapistVerificationService.apply(userDetails.getUser().getId(), request);
+                therapistVerificationService.apply(userDetails.getUserId(), request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
@@ -42,7 +42,7 @@ public class TherapistVerificationController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         TherapistVerificationResponse response =
-                therapistVerificationService.getMyVerification(userDetails.getUser().getId());
+                therapistVerificationService.getMyVerification(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -52,7 +52,7 @@ public class TherapistVerificationController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         StoredFileResource storedFile =
-                therapistVerificationService.loadMyVerificationImage(userDetails.getUser().getId());
+                therapistVerificationService.loadMyVerificationImage(userDetails.getUserId());
 
         MediaType mediaType = MediaType.parseMediaType(storedFile.getContentType());
 

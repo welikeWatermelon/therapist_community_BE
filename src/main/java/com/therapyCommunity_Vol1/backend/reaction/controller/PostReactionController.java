@@ -28,7 +28,7 @@ public class PostReactionController {
             @PathVariable Long postId
     ) {
         PostReactionStatusResponse response = postReactionService.getReactionStatus(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -42,7 +42,7 @@ public class PostReactionController {
             @Valid @RequestBody TogglePostReactionRequest request
     ) {
         PostReactionStatusResponse response = postReactionService.toggleReaction(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId,
                 request
         );

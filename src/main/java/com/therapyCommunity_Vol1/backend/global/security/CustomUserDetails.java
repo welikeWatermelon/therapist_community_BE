@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.global.security;
 
 import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -17,6 +18,14 @@ public class CustomUserDetails implements UserDetails {
 
     public User getUser() {
         return user;
+    }
+
+    public Long getUserId() {
+        return user.getId();
+    }
+
+    public UserRole getUserRole() {
+        return user.getRole();
     }
 
     @Override
