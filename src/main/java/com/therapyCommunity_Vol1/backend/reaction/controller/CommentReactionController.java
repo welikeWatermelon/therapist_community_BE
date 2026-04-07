@@ -28,7 +28,7 @@ public class CommentReactionController {
             @PathVariable Long commentId
     ) {
         CommentReactionStatusResponse response = commentReactionService.getReactionStatus(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 commentId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -42,7 +42,7 @@ public class CommentReactionController {
             @Valid @RequestBody ToggleCommentReactionRequest request
     ) {
         CommentReactionStatusResponse response = commentReactionService.toggleReaction(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 commentId,
                 request
         );

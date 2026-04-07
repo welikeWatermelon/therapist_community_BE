@@ -38,8 +38,8 @@ public class PostImageController {
             @RequestPart("file") MultipartFile file
     ) {
         PostImageResponse response = postImageService.uploadImage(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 file
         );

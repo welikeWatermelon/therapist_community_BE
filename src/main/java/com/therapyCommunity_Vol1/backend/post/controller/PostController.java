@@ -37,7 +37,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateTherapyPostRequest request
     ) {
-        TherapyPostDetailResponse response = postService.createPost(userDetails.getUser().getId(), request);
+        TherapyPostDetailResponse response = postService.createPost(userDetails.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
     }
@@ -54,7 +54,7 @@ public class PostController {
             @RequestParam(required = false) PostType postType
     ) {
         PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
-        Long userId = userDetails != null ? userDetails.getUser().getId() : null;
+        Long userId = userDetails != null ? userDetails.getUserId() : null;
         PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(userId, page, size, sortType, condition);
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -67,8 +67,8 @@ public class PostController {
             @PathVariable Long postId
     ) {
         TherapyPostDetailResponse response = postService.getPostDetail(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
 
@@ -84,8 +84,8 @@ public class PostController {
             @Valid @RequestBody UpdateTherapyPostRequest request
             ) {
         postService.updatePost(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 request
         );
@@ -99,8 +99,8 @@ public class PostController {
             @PathVariable Long postId
     ){
         postService.deletePost(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
         return ResponseEntity.noContent().build();

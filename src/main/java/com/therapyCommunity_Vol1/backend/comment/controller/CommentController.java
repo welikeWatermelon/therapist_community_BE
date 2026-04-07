@@ -32,8 +32,8 @@ public class CommentController {
             @PathVariable Long postId
     ) {
         List<CommentResponse> response = commentService.getComments(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
 
@@ -48,7 +48,7 @@ public class CommentController {
             @Valid @RequestBody CreateCommentRequest request
     ) {
         CommentResponse response = commentService.createComment(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId,
                 request
         );
@@ -65,8 +65,8 @@ public class CommentController {
             @Valid @RequestBody UpdateCommentRequest request
     ) {
         CommentResponse response = commentService.updateComment(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 commentId,
                 request
         );
@@ -81,8 +81,8 @@ public class CommentController {
             @PathVariable Long commentId
     ) {
         commentService.deleteComment(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 commentId
         );
         return ResponseEntity.noContent().build();

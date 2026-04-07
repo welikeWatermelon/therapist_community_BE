@@ -28,7 +28,7 @@ public class ScrapController {
             @PathVariable Long postId
     ) {
         ScrapStatusResponse response = scrapService.getScrapStatus(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -41,7 +41,7 @@ public class ScrapController {
             @PathVariable Long postId
     ) {
         ScrapStatusResponse response = scrapService.addScrap(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -54,7 +54,7 @@ public class ScrapController {
             @PathVariable Long postId
     ) {
         ScrapStatusResponse response = scrapService.removeScrap(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -68,7 +68,7 @@ public class ScrapController {
             @RequestParam(defaultValue = "10") int size
     ) {
         PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 page,
                 size
         );
