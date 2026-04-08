@@ -8,12 +8,15 @@ import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRe
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +36,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final CommentThreadAssembler commentThreadAssembler;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public CommentResponse createComment(
@@ -73,6 +77,24 @@ public class CommentService {
         }
 
         TherapyPostComment saved = commentRepository.save(comment);
+
+        if (request.getParentCommentId() == null) {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .senderId(currentUserId)
+                    .receiverIds(List.of(post.getAuthor().getId()))
+                    .type(NotificationType.NEW_COMMENT)
+                    .referenceId(postId)
+                    .content(author.getNickname() + "님이 회원님의 게시글에 댓글을 남겼습니다.")
+                    .build());
+        } else {
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .senderId(currentUserId)
+                    .receiverIds(List.of(comment.getParentComment().getAuthor().getId()))
+                    .type(NotificationType.NEW_REPLY)
+                    .referenceId(postId)
+                    .content(author.getNickname() + "님이 회원님의 댓글에 답글을 남겼습니다.")
+                    .build());
+        }
 
         return CommentResponse.from(saved, currentUserId, author.getRole());
     }

@@ -3,6 +3,8 @@ package com.therapyCommunity_Vol1.backend.therapist.service;
 import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
@@ -15,12 +17,14 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -35,6 +39,7 @@ public class TherapistVerificationService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final UserCacheService userCacheService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public TherapistVerificationResponse apply(
@@ -71,6 +76,16 @@ public class TherapistVerificationService {
                     && !oldStoredPath.equals(storedFileInfo.getStoredPath())) {
                 scheduleDeleteAfterCommit(oldStoredPath, currentUserId);
             }
+
+            // TODO: MVP 이후 활성화 — 치료사 인증 신청 시 모든 ADMIN에게 알림 발송
+            // List<Long> adminIds = userRepository.findIdsByRole(UserRole.ADMIN);
+            // eventPublisher.publishEvent(NotificationEvent.builder()
+            //         .senderId(currentUserId)
+            //         .receiverIds(adminIds)
+            //         .type(NotificationType.VERIFICATION_SUBMITTED)
+            //         .referenceId(verification.getId())
+            //         .content(user.getNickname() + "님이 치료사 인증을 신청했습니다.")
+            //         .build());
 
             return TherapistVerificationResponse.from(
                     verification,

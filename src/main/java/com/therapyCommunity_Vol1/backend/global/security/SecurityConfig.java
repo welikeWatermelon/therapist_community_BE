@@ -59,6 +59,8 @@ public class SecurityConfig {
                             "/v3/api-docs/**",
                             "/api/v1/me/profile-image/profile-images/**"
                     ).permitAll()
+                    // 알림 API — 로그인한 사용자 모두
+                    .requestMatchers("/api/v1/notifications/**").authenticated()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     // 치료사 전용

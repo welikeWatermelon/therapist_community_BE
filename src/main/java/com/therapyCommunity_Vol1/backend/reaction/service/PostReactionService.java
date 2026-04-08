@@ -2,6 +2,8 @@ package com.therapyCommunity_Vol1.backend.reaction.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
@@ -12,10 +14,12 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.Map;
@@ -28,6 +32,7 @@ public class PostReactionService {
     private final TherapyPostReactionRepository postReactionRepository;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 반응 토글 (생성/삭제/변경).
@@ -62,6 +67,14 @@ public class PostReactionService {
                             post, user, request.getReactionType()
                     );
                     postReactionRepository.save(reaction);
+
+                    eventPublisher.publishEvent(NotificationEvent.builder()
+                            .senderId(currentUserId)
+                            .receiverIds(List.of(post.getAuthor().getId()))
+                            .type(NotificationType.NEW_POST_REACTION)
+                            .referenceId(postId)
+                            .content(user.getNickname() + "님이 회원님의 게시글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
+                            .build());
                 });
 
         return getReactionStatus(currentUserId, postId);
