@@ -43,11 +43,16 @@ public class TherapyPostSummaryResponse {
         this.isScrapped = isScrapped;
     }
 
+    private static final String PRIVATE_CONTENT_MESSAGE = "비공개 글입니다";
+
     public static TherapyPostSummaryResponse from(TherapyPost post, boolean isScrapped) {
+        String preview = post.getVisibility() == Visibility.PRIVATE
+                ? PRIVATE_CONTENT_MESSAGE
+                : makePreview(post.getContent());
         return new TherapyPostSummaryResponse(
                 post.getId(),
                 post.getPostType(),
-                makePreview(post.getContent()),
+                preview,
                 post.getAuthor().getDisplayNickname(),
                 post.getTherapyArea(),
                 post.getVisibility(),
@@ -55,6 +60,10 @@ public class TherapyPostSummaryResponse {
                 post.getCreatedAt(),
                 isScrapped
         );
+    }
+
+    public void markScrapped(boolean scrapped) {
+        this.isScrapped = scrapped;
     }
 
     private static String makePreview(String htmlContent) {

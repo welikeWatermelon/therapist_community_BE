@@ -140,6 +140,11 @@ public class CommentService {
         comment.softDelete();
     }
 
+    public TherapyPostComment findActiveComment(Long commentId) {
+        return commentRepository.findByIdAndDeletedAtIsNull(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+    }
+
     public Page<TherapyPostComment> getMyComments(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         return commentRepository.findByAuthorId(userId, pageable);
