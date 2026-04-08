@@ -13,6 +13,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.Optional;
@@ -26,6 +27,7 @@ class TherapistVerificationServiceTest {
     private UserRepository userRepository;
     private FileStorageService fileStorageService;
     private UserCacheService userCacheService;
+    private ApplicationEventPublisher eventPublisher;
     private TherapistVerificationService therapistVerificationService;
 
     @BeforeEach
@@ -34,11 +36,13 @@ class TherapistVerificationServiceTest {
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
         userCacheService = mock(UserCacheService.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         therapistVerificationService = new TherapistVerificationService(
                 therapistVerificationRepository,
                 userRepository,
                 fileStorageService,
-                userCacheService
+                userCacheService,
+                eventPublisher
         );
     }
 

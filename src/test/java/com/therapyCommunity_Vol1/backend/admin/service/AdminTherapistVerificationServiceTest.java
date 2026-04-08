@@ -11,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -23,6 +24,7 @@ class AdminTherapistVerificationServiceTest {
     private UserRepository userRepository;
     private FileStorageService fileStorageService;
     private UserCacheService userCacheService;
+    private ApplicationEventPublisher eventPublisher;
     private AdminTherapistVerificationService adminTherapistVerificationService;
 
     @BeforeEach
@@ -31,11 +33,13 @@ class AdminTherapistVerificationServiceTest {
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
         userCacheService = mock(UserCacheService.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         adminTherapistVerificationService = new AdminTherapistVerificationService(
                 therapistVerificationRepository,
                 userRepository,
                 fileStorageService,
-                userCacheService
+                userCacheService,
+                eventPublisher
         );
     }
 

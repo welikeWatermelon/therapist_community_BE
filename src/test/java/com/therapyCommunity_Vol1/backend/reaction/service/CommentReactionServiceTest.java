@@ -15,6 +15,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -26,6 +27,7 @@ class CommentReactionServiceTest {
     private TherapyPostCommentReactionRepository commentReactionRepository;
     private TherapyPostCommentRepository commentRepository;
     private UserRepository userRepository;
+    private ApplicationEventPublisher eventPublisher;
     private CommentReactionService commentReactionService;
 
     @BeforeEach
@@ -33,10 +35,12 @@ class CommentReactionServiceTest {
         commentReactionRepository = mock(TherapyPostCommentReactionRepository.class);
         commentRepository = mock(TherapyPostCommentRepository.class);
         userRepository = mock(UserRepository.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         commentReactionService = new CommentReactionService(
                 commentRepository,
                 userRepository,
-                commentReactionRepository
+                commentReactionRepository,
+                eventPublisher
         );
     }
 

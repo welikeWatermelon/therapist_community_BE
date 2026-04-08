@@ -14,6 +14,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ class PostReactionServiceTest {
     private TherapyPostReactionRepository postReactionRepository;
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
+    private ApplicationEventPublisher eventPublisher;
     private PostReactionService postReactionService;
 
     private User user;
@@ -37,8 +39,9 @@ class PostReactionServiceTest {
         postReactionRepository = mock(TherapyPostReactionRepository.class);
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         postReactionService = new PostReactionService(
-                postReactionRepository, activePostFinder, userRepository
+                postReactionRepository, activePostFinder, userRepository, eventPublisher
         );
 
         user = User.builder()

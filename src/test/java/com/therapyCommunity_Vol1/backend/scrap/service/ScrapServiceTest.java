@@ -14,6 +14,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 
 import java.util.List;
@@ -28,6 +29,7 @@ class ScrapServiceTest {
     private TherapyPostScrapRepository scrapRepository;
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
+    private ApplicationEventPublisher eventPublisher;
     private ScrapService scrapService;
 
     @BeforeEach
@@ -35,7 +37,8 @@ class ScrapServiceTest {
         this.scrapRepository = mock(TherapyPostScrapRepository.class);
         this.activePostFinder = mock(ActivePostFinder.class);
         this.userRepository = mock(UserRepository.class);
-        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository);
+        this.eventPublisher = mock(ApplicationEventPublisher.class);
+        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository, eventPublisher);
     }
 
     @Test

@@ -16,6 +16,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -32,6 +33,7 @@ class CommentServiceTest {
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private CommentThreadAssembler commentThreadAssembler;
+    private ApplicationEventPublisher eventPublisher;
     private CommentService commentService;
 
     @BeforeEach
@@ -41,7 +43,8 @@ class CommentServiceTest {
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         commentThreadAssembler = new CommentThreadAssembler();
-        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler);
+        eventPublisher = mock(ApplicationEventPublisher.class);
+        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, eventPublisher);
     }
 
     @Test
