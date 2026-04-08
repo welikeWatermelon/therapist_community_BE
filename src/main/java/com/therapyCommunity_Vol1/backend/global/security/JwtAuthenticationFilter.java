@@ -12,6 +12,8 @@ import java.io.IOException;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String SSE_SUBSCRIBE_PATH = "/api/v1/notifications/subscribe";
+
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
 
@@ -32,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authorization != null && authorization.startsWith("Bearer ")) {
             token = authorization.substring(7);
-        } else if (request.getParameter("token") != null) {
+        } else if (isSubscribeEndpoint(request) && request.getParameter("token") != null) {
             token = request.getParameter("token");
         }
 
@@ -61,5 +63,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isSubscribeEndpoint(HttpServletRequest request) {
+        return SSE_SUBSCRIBE_PATH.equals(request.getRequestURI());
     }
 }

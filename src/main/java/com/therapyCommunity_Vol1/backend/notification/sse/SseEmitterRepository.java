@@ -3,6 +3,8 @@ package com.therapyCommunity_Vol1.backend.notification.sse;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import org.springframework.scheduling.annotation.Scheduled;
+
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
@@ -17,6 +19,7 @@ public class SseEmitterRepository {
     private final ConcurrentHashMap<Long, ConcurrentLinkedQueue<CachedEvent>> eventCache = new ConcurrentHashMap<>();
 
     private static final int MAX_CACHE_SIZE = 50;
+    private static final int CACHE_TTL_MINUTES = 30;
 
     public String save(Long userId, SseEmitter emitter) {
         String emitterId = userId + "_" + System.currentTimeMillis();
@@ -28,11 +31,7 @@ public class SseEmitterRepository {
     public void remove(Long userId, String emitterId) {
         emitters.computeIfPresent(userId, (key, userEmitters) -> {
             userEmitters.remove(emitterId);
-            if (userEmitters.isEmpty()) {
-                eventCache.remove(userId);
-                return null;
-            }
-            return userEmitters;
+            return userEmitters.isEmpty() ? null : userEmitters;
         });
     }
 
@@ -74,6 +73,17 @@ public class SseEmitterRepository {
                     }
                 })
                 .toList();
+    }
+
+    @Scheduled(fixedRate = 5 * 60 * 1000)
+    public void cleanExpiredCache() {
+        LocalDateTime expiry = LocalDateTime.now().minusMinutes(CACHE_TTL_MINUTES);
+        eventCache.forEach((userId, queue) -> {
+            queue.removeIf(event -> event.createdAt().isBefore(expiry));
+            if (queue.isEmpty()) {
+                eventCache.remove(userId, queue);
+            }
+        });
     }
 
     public record CachedEvent(String eventId, Object data, LocalDateTime createdAt) {}
