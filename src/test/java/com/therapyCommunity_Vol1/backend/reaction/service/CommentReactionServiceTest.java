@@ -1,7 +1,7 @@
 package com.therapyCommunity_Vol1.backend.reaction.service;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
@@ -24,17 +24,17 @@ import static org.mockito.Mockito.*;
 class CommentReactionServiceTest {
 
     private TherapyPostCommentReactionRepository commentReactionRepository;
-    private TherapyPostCommentRepository commentRepository;
+    private CommentService commentService;
     private UserRepository userRepository;
     private CommentReactionService commentReactionService;
 
     @BeforeEach
     void setUp() {
         commentReactionRepository = mock(TherapyPostCommentReactionRepository.class);
-        commentRepository = mock(TherapyPostCommentRepository.class);
+        commentService = mock(CommentService.class);
         userRepository = mock(UserRepository.class);
         commentReactionService = new CommentReactionService(
-                commentRepository,
+                commentService,
                 userRepository,
                 commentReactionRepository
         );
@@ -64,7 +64,7 @@ class CommentReactionServiceTest {
                 new ToggleCommentReactionRequest(CommentReactionType.LIKE);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(commentRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(comment));
+        when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.empty());
 
         when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.LIKE)).thenReturn(1L);
@@ -107,7 +107,7 @@ class CommentReactionServiceTest {
                 new ToggleCommentReactionRequest(CommentReactionType.DISLIKE);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(commentRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(comment));
+        when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.of(existing), Optional.of(existing));
 
         when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.LIKE)).thenReturn(0L);

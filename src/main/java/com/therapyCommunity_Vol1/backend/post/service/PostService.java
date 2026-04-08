@@ -10,7 +10,6 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRe
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
-import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -33,7 +32,6 @@ public class PostService {
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private final ActivePostFinder activePostFinder;
-    private final ScrapService scrapService;
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
 
@@ -56,59 +54,48 @@ public class PostService {
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getPosts(
-            Long currentUserId,
             int page,
             int size,
             PostSortType sortType,
             PostSearchCondition condition
     ) {
-        Page<TherapyPost> result;
+        Page<TherapyPost> result = findPosts(page, size, sortType, condition);
 
-        Sort sort = toSort(sortType);
+        List<TherapyPostSummaryResponse> posts = result.getContent()
+                .stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        return PagedResponse.from(result, posts);
+    }
+
+    private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType, PostSearchCondition condition) {
+        Pageable pageable = PageRequest.of(page, size, toSort(sortType));
 
         if (condition.isEmpty()) {
-            result = therapyPostRepository.findByDeletedAtIsNull(pageable);
+            return therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
-            String keyword = condition.getEscapedKeyword().trim();
-            result = therapyPostRepository.searchByKeyword(
-                    keyword,
+            return therapyPostRepository.searchByKeyword(
+                    condition.getEscapedKeyword().trim(),
                     condition.getTherapyArea(),
                     condition.getPostType(),
                     pageable
             );
         } else {
-            result = therapyPostRepository.searchByFilter(
+            return therapyPostRepository.searchByFilter(
                     condition.getTherapyArea(),
                     condition.getPostType(),
                     pageable
             );
         }
-
-        List<Long> postIds = result.getContent().stream()
-                .map(TherapyPost::getId)
-                .toList();
-
-        Set<Long> scrappedPostIds = scrapService.getScrappedPostIds(currentUserId, postIds);
-
-        List<TherapyPostSummaryResponse> posts = result.getContent()
-                .stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, scrappedPostIds.contains(post.getId())))
-                .toList();
-
-        return PagedResponse.from(result, posts);
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
 
-        List<Long> postIds = result.getContent().stream().map(TherapyPost::getId).toList();
-        Set<Long> scrappedPostIds = scrapService.getScrappedPostIds(userId, postIds);
-
         List<TherapyPostSummaryResponse> posts = result.getContent().stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, scrappedPostIds.contains(post.getId())))
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
                 .toList();
 
         return PagedResponse.from(result, posts);
@@ -131,7 +118,8 @@ public class PostService {
     public TherapyPostDetailResponse getPostDetail(
             Long currentUserId,
             UserRole currentUserRole,
-            Long postId
+            Long postId,
+            boolean isScrapped
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         validateVisibility(post, currentUserId, currentUserRole);
@@ -143,8 +131,6 @@ public class PostService {
                 .stream()
                 .map(PostAttachmentResponse::from)
                 .toList();
-
-        boolean isScrapped = scrapService.getScrappedPostIds(currentUserId, List.of(postId)).contains(postId);
 
         return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
     }

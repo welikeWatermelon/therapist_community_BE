@@ -57,6 +57,10 @@ public class TherapyPostSummaryResponse {
         );
     }
 
+    public void markScrapped(boolean scrapped) {
+        this.isScrapped = scrapped;
+    }
+
     private static String makePreview(String htmlContent) {
         if(htmlContent == null || htmlContent.isBlank()) {
             return "";

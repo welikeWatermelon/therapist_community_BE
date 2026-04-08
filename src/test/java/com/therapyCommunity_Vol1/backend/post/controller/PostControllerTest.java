@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
+import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,9 @@ class PostControllerTest {
 
     @Mock
     private PostService postService;
+
+    @Mock
+    private ScrapService scrapService;
 
     @InjectMocks
     private PostController postController;
@@ -83,7 +87,7 @@ class PostControllerTest {
                 0,
                 false
         );
-        given(postService.getPosts(any(), eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class)))
+        given(postService.getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class)))
                 .willReturn(serviceResponse);
 
         // when
@@ -100,6 +104,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.totalPages").value(0))
                 .andExpect(jsonPath("$.data.items").isArray());
 
-        verify(postService).getPosts(any(), eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class));
+        verify(postService).getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class));
     }
 }
