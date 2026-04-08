@@ -12,11 +12,15 @@ import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostDetailResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UpdateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
+import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 public class PostController {
 
     private final PostService postService;
+    private final ScrapService scrapService;
 
     @Operation(summary = "게시글 작성", description = "제목, 본문, 치료영역, 연령대 입력. postType은 첨부파일 유무로 자동 결정")
     @PostMapping
@@ -55,7 +60,12 @@ public class PostController {
     ) {
         PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
         Long userId = userDetails != null ? userDetails.getUserId() : null;
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(userId, page, size, sortType, condition);
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(page, size, sortType, condition);
+
+        List<Long> postIds = response.getItems().stream()
+                .map(TherapyPostSummaryResponse::getId).toList();
+        Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
+        response.getItems().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -66,10 +76,13 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId
     ) {
+        boolean isScrapped = scrapService.getScrappedPostIds(
+                userDetails.getUserId(), List.of(postId)).contains(postId);
         TherapyPostDetailResponse response = postService.getPostDetail(
                 userDetails.getUserId(),
                 userDetails.getUserRole(),
-                postId
+                postId,
+                isScrapped
         );
 
         return ResponseEntity.ok(ApiResponse.success(response));

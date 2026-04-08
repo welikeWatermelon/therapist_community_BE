@@ -7,7 +7,6 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
-import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -29,7 +28,6 @@ class PostServiceTest {
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private ActivePostFinder activePostFinder;
-    private ScrapService scrapService;
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private PostService postService;
@@ -39,14 +37,12 @@ class PostServiceTest {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
         activePostFinder = mock(ActivePostFinder.class);
-        scrapService = mock(ScrapService.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
-                scrapService,
                 userRepository,
                 resourceAccessValidator
         );
@@ -132,7 +128,7 @@ class PostServiceTest {
 
         // when
         PostSearchCondition condition = new PostSearchCondition(null, null, null);
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(null, 0, 10, PostSortType.LATEST, condition);
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
 
         // then
         assertThat(response.getItems()).hasSize(1);
@@ -172,7 +168,8 @@ class PostServiceTest {
         TherapyPostDetailResponse response = postService.getPostDetail(
                 1L,
                 UserRole.THERAPIST,
-                1L
+                1L,
+                false
         );
 
         // then
@@ -197,7 +194,8 @@ class PostServiceTest {
         assertThatThrownBy(() -> postService.getPostDetail(
                 1L,
                 UserRole.THERAPIST,
-                999L
+                999L,
+                false
         ))
                 .isInstanceOf(CustomException.class);
     }
@@ -232,7 +230,8 @@ class PostServiceTest {
         TherapyPostDetailResponse response = postService.getPostDetail(
                 2L,
                 UserRole.THERAPIST,
-                1L
+                1L,
+                false
         );
 
         // then
@@ -270,7 +269,8 @@ class PostServiceTest {
         TherapyPostDetailResponse response = postService.getPostDetail(
                 99L,
                 UserRole.ADMIN,
-                1L
+                1L,
+                false
         );
 
         // then

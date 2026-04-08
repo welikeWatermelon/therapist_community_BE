@@ -1,7 +1,7 @@
 package com.therapyCommunity_Vol1.backend.reaction.service;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CommentReactionService {
 
-    private final TherapyPostCommentRepository commentRepository;
+    private final CommentService commentService;
     private final UserRepository userRepository;
     private final TherapyPostCommentReactionRepository commentReactionRepository;
 
@@ -33,8 +33,7 @@ public class CommentReactionService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        TherapyPostComment comment = commentService.findActiveComment(commentId);
 
         commentReactionRepository.findByCommentIdAndUserId(commentId, currentUserId)
                 .ifPresentOrElse(exsisting -> {
@@ -58,8 +57,7 @@ public class CommentReactionService {
             Long currentUserId,
             Long commentId
     ) {
-        commentRepository.findByIdAndDeletedAtIsNull(commentId)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        commentService.findActiveComment(commentId);
 
         CommentReactionType myReactionType = commentReactionRepository.findByCommentIdAndUserId(
                         commentId, currentUserId)
