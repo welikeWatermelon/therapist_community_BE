@@ -26,13 +26,14 @@ public class SseEmitterRepository {
     }
 
     public void remove(Long userId, String emitterId) {
-        ConcurrentHashMap<String, SseEmitter> userEmitters = emitters.get(userId);
-        if (userEmitters != null) {
+        emitters.computeIfPresent(userId, (key, userEmitters) -> {
             userEmitters.remove(emitterId);
             if (userEmitters.isEmpty()) {
-                emitters.remove(userId);
+                eventCache.remove(userId);
+                return null;
             }
-        }
+            return userEmitters;
+        });
     }
 
     public Map<String, SseEmitter> getEmitters(Long userId) {
