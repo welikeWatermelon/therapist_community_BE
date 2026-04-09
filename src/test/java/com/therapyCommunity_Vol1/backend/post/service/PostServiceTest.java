@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
+import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -399,5 +401,83 @@ class PostServiceTest {
         // then
         assertThat(post.isDeleted()).isTrue();
         assertThat(post.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void 피드_첫페이지_조회_성공() {
+        // given
+        User author = User.builder()
+                .id(1L).email("test@test.com").nickname("tester").role(UserRole.THERAPIST).build();
+
+        List<TherapyPost> posts = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            TherapyPost post = TherapyPost.create("<p>본문" + i + "</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+            ReflectionTestUtils.setField(post, "id", (long) i);
+            ReflectionTestUtils.setField(post, "viewCount", 0L);
+            ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now().minusMinutes(i));
+            posts.add(post);
+        }
+
+        when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(posts);
+
+        // when
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+
+        // then
+        assertThat(response.getItems()).hasSize(3);
+        assertThat(response.isHasNext()).isFalse();
+        assertThat(response.getNextCursor()).isNull();
+    }
+
+    @Test
+    void 피드_hasNext_true_다음페이지_존재() {
+        // given
+        User author = User.builder()
+                .id(1L).email("test@test.com").nickname("tester").role(UserRole.THERAPIST).build();
+
+        int size = 2;
+        List<TherapyPost> posts = new ArrayList<>();
+        for (int i = 1; i <= size + 1; i++) {
+            TherapyPost post = TherapyPost.create("<p>본문" + i + "</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+            ReflectionTestUtils.setField(post, "id", (long) i);
+            ReflectionTestUtils.setField(post, "viewCount", 0L);
+            ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now().minusMinutes(i));
+            posts.add(post);
+        }
+
+        when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(posts);
+
+        // when
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST);
+
+        // then
+        assertThat(response.getItems()).hasSize(size);
+        assertThat(response.isHasNext()).isTrue();
+        assertThat(response.getNextCursor()).isNotNull();
+    }
+
+    @Test
+    void 피드_빈결과() {
+        when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+
+        assertThat(response.getItems()).isEmpty();
+        assertThat(response.isHasNext()).isFalse();
+        assertThat(response.getNextCursor()).isNull();
+    }
+
+    @Test
+    void 피드_USER는_PUBLIC_ONLY_쿼리_사용() {
+        when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        postService.getPostsFeed(10, null, UserRole.USER);
+
+        verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedLatest(any(), any(), any(Pageable.class));
     }
 }

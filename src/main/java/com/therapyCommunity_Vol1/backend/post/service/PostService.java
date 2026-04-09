@@ -123,7 +123,8 @@ public class PostService {
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
 
         List<TherapyPost> posts = publicOnly
-                ? therapyPostRepository.findFeedLatestPublicOnly(
+                ? therapyPostRepository.findFeedLatestByVisibility(
+                        Visibility.PUBLIC,
                         postCursor != null ? postCursor.createdAt() : null,
                         postCursor != null ? postCursor.id() : null,
                         PageRequest.of(0, size + 1))

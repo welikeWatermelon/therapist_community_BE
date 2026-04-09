@@ -109,18 +109,19 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // 커서 피드 — PUBLIC만 (USER)
+    // 커서 피드 — visibility 필터 (USER → PUBLIC)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND p.visibility = 'PUBLIC'
+              AND p.visibility = :visibility
               AND (:cursorCreatedAt IS NULL OR
                    p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
-    List<TherapyPost> findFeedLatestPublicOnly(
+    List<TherapyPost> findFeedLatestByVisibility(
+            @Param("visibility") Visibility visibility,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
