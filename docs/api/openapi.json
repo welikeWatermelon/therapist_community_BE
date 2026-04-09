@@ -1,0 +1,2296 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Builders MVP API",
+        "version": "v1"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Generated server url"
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "paths": {
+        "/api/v1/posts/{postId}/reaction": {
+            "get": {
+                "tags": [
+                    "post-reaction-controller"
+                ],
+                "operationId": "getReactionStatus",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePostReactionStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "게시글 리액션 현황 조회 (공감/잘봤어요/유익 수 + 내 리액션)",
+                "summary": "게시글 리액션 현황 조회 (공감/잘봤어요/유익 수 + 내 리액션)"
+            },
+            "put": {
+                "tags": [
+                    "post-reaction-controller"
+                ],
+                "operationId": "toggleReaction",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TogglePostReactionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePostReactionStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "게시글 리액션 토글 (추가/변경/취소)",
+                "summary": "게시글 리액션 토글 (추가/변경/취소)"
+            }
+        },
+        "/api/v1/comments/{commentId}/reaction": {
+            "get": {
+                "tags": [
+                    "comment-reaction-controller"
+                ],
+                "operationId": "getReactionStatus_1",
+                "parameters": [
+                    {
+                        "name": "commentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseCommentReactionStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "댓글 리액션 현황 조회 (좋아요/싫어요 수 + 내 리액션)",
+                "summary": "댓글 리액션 현황 조회 (좋아요/싫어요 수 + 내 리액션)"
+            },
+            "put": {
+                "tags": [
+                    "comment-reaction-controller"
+                ],
+                "operationId": "toggleReaction_1",
+                "parameters": [
+                    {
+                        "name": "commentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ToggleCommentReactionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseCommentReactionStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "댓글 리액션 토글 (추가/변경/취소)",
+                "summary": "댓글 리액션 토글 (추가/변경/취소)"
+            }
+        },
+        "/api/v1/therapist-verifications": {
+            "post": {
+                "tags": [
+                    "therapist-verification-controller"
+                ],
+                "operationId": "apply",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApplyTherapistVerificationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapistVerificationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "치료사 인증 신청 (자격증 코드 + 이미지 업로드)",
+                "summary": "치료사 인증 신청 (자격증 코드 + 이미지 업로드)"
+            }
+        },
+        "/api/v1/posts": {
+            "get": {
+                "tags": [
+                    "post-controller"
+                ],
+                "operationId": "getPosts",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 10
+                        }
+                    },
+                    {
+                        "name": "sortType",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "LATEST",
+                            "enum": [
+                                "LATEST",
+                                "MOST_VIEWED"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePostListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "게시글 목록 조회 (페이지네이션, 정렬: 최신순/조회순)",
+                "summary": "게시글 목록 조회 (페이지네이션, 정렬: 최신순/조회순)"
+            },
+            "post": {
+                "tags": [
+                    "post-controller"
+                ],
+                "operationId": "createPost",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTherapyPostRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapyPostDetailResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "게시글 작성 (COMMUNITY 또는 RESOURCE 타입)",
+                "summary": "게시글 작성 (COMMUNITY 또는 RESOURCE 타입)"
+            }
+        },
+        "/api/v1/posts/{postId}/scrap": {
+            "get": {
+                "tags": [
+                    "scrap-controller"
+                ],
+                "operationId": "getScrapStatus",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseScrapStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "게시글 스크랩 여부 확인",
+                "summary": "게시글 스크랩 여부 확인"
+            },
+            "post": {
+                "tags": [
+                    "scrap-controller"
+                ],
+                "operationId": "addScrap",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseScrapStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "게시글 스크랩 추가",
+                "summary": "게시글 스크랩 추가"
+            },
+            "delete": {
+                "tags": [
+                    "scrap-controller"
+                ],
+                "operationId": "removeScrap",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseScrapStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "게시글 스크랩 삭제",
+                "summary": "게시글 스크랩 삭제"
+            }
+        },
+        "/api/v1/posts/{postId}/comments": {
+            "get": {
+                "tags": [
+                    "comment-controller"
+                ],
+                "operationId": "getComments",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseListCommentResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "게시글의 댓글 목록 조회 (대댓글 포함 스레드 구조)",
+                "summary": "게시글의 댓글 목록 조회 (대댓글 포함 스레드 구조)"
+            },
+            "post": {
+                "tags": [
+                    "comment-controller"
+                ],
+                "operationId": "createComment",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseCommentResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "댓글 작성 (루트 댓글 또는 대댓글)",
+                "summary": "댓글 작성 (루트 댓글 또는 대댓글)"
+            }
+        },
+        "/api/v1/posts/{postId}/attachments": {
+            "post": {
+                "tags": [
+                    "post-attachment-controller"
+                ],
+                "operationId": "uploadAttachment",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponsePostAttachmentResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "게시글 첨부파일 업로드 (RESOURCE 타입 전용, PDF만 허용)",
+                "summary": "게시글 첨부파일 업로드 (RESOURCE 타입 전용, PDF만 허용)"
+            }
+        },
+        "/api/v1/auth/signup": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "signup",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SignupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseSignupResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "회원가입 (USER 역할로 생성)",
+                "summary": "회원가입 (USER 역할로 생성)"
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "refresh",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseRefreshResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "액세스 토큰 갱신 (쿠키의 리프레시 토큰 사용, 토큰 로테이션)",
+                "summary": "액세스 토큰 갱신 (쿠키의 리프레시 토큰 사용, 토큰 로테이션)"
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "description": "로그아웃 (리프레시 토큰 폐기)",
+                "summary": "로그아웃 (리프레시 토큰 폐기)"
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "tags": [
+                    "auth-controller"
+                ],
+                "operationId": "login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseLoginResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "로그인 (액세스 토큰 + 리프레시 토큰 쿠키 발급)",
+                "summary": "로그인 (액세스 토큰 + 리프레시 토큰 쿠키 발급)"
+            }
+        },
+        "/api/v1/admin/therapist-verifications/{verificationId}/reject": {
+            "post": {
+                "tags": [
+                    "admin-therapist-verification-controller"
+                ],
+                "operationId": "reject",
+                "parameters": [
+                    {
+                        "name": "verificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RejectTherapistVerificationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapistVerificationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "[관리자] 치료사 인증 반려 (사유 포함)",
+                "summary": "[관리자] 치료사 인증 반려 (사유 포함)"
+            }
+        },
+        "/api/v1/admin/therapist-verifications/{verificationId}/approve": {
+            "post": {
+                "tags": [
+                    "admin-therapist-verification-controller"
+                ],
+                "operationId": "approve",
+                "parameters": [
+                    {
+                        "name": "verificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapistVerificationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "[관리자] 치료사 인증 승인 (USER → THERAPIST 역할 승격)",
+                "summary": "[관리자] 치료사 인증 승인 (USER → THERAPIST 역할 승격)"
+            }
+        },
+        "/api/v1/posts/{postId}": {
+            "get": {
+                "tags": [
+                    "post-controller"
+                ],
+                "operationId": "getPostDetail",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapyPostDetailResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "게시글 상세 조회 (조회수 증가, 리액션/스크랩 상태 포함)",
+                "summary": "게시글 상세 조회 (조회수 증가, 리액션/스크랩 상태 포함)"
+            },
+            "delete": {
+                "tags": [
+                    "post-controller"
+                ],
+                "operationId": "deletePost",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "게시글 삭제 (소프트 삭제, 작성자 본인만 가능)",
+                "summary": "게시글 삭제 (소프트 삭제, 작성자 본인만 가능)"
+            },
+            "patch": {
+                "tags": [
+                    "post-controller"
+                ],
+                "operationId": "updatePost",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTherapyPostRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapyPostDetailResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "게시글 수정 (제목/내용/치료영역/연령대, 작성자 본인만 가능)",
+                "summary": "게시글 수정 (제목/내용/치료영역/연령대, 작성자 본인만 가능)"
+            }
+        },
+        "/api/v1/comments/{commentId}": {
+            "delete": {
+                "tags": [
+                    "comment-controller"
+                ],
+                "operationId": "deleteComment",
+                "parameters": [
+                    {
+                        "name": "commentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "description": "댓글 삭제 (소프트 삭제, 작성자 본인만 가능)",
+                "summary": "댓글 삭제 (소프트 삭제, 작성자 본인만 가능)"
+            },
+            "patch": {
+                "tags": [
+                    "comment-controller"
+                ],
+                "operationId": "updateComment",
+                "parameters": [
+                    {
+                        "name": "commentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCommentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseCommentResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "댓글 수정 (작성자 본인만 가능)",
+                "summary": "댓글 수정 (작성자 본인만 가능)"
+            }
+        },
+        "/api/v1/therapist-verifications/me": {
+            "get": {
+                "tags": [
+                    "therapist-verification-controller"
+                ],
+                "operationId": "getMyVerification",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapistVerificationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "내 치료사 인증 상태 조회",
+                "summary": "내 치료사 인증 상태 조회"
+            }
+        },
+        "/api/v1/therapist-verifications/me/image": {
+            "get": {
+                "tags": [
+                    "therapist-verification-controller"
+                ],
+                "operationId": "downloadMyVerificationImage",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "내 치료사 인증 이미지 다운로드",
+                "summary": "내 치료사 인증 이미지 다운로드"
+            }
+        },
+        "/api/v1/posts/{postId}/attachments/{attachmentId}/download": {
+            "get": {
+                "tags": [
+                    "post-attachment-controller"
+                ],
+                "operationId": "downloadAttachment",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    {
+                        "name": "attachmentId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "첨부파일 다운로드 (다운로드 이력 기록)",
+                "summary": "첨부파일 다운로드 (다운로드 이력 기록)"
+            }
+        },
+        "/api/v1/me": {
+            "get": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "getCurrentUser",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseCurrentUserResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "현재 로그인 사용자 정보 조회 (프로필 + 인증 상태)",
+                "summary": "현재 로그인 사용자 정보 조회 (프로필 + 인증 상태)"
+            }
+        },
+        "/api/v1/me/scraps": {
+            "get": {
+                "tags": [
+                    "scrap-controller"
+                ],
+                "operationId": "getMyScraps",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseScrapListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "내 스크랩 목록 조회 (페이지네이션)",
+                "summary": "내 스크랩 목록 조회 (페이지네이션)"
+            }
+        },
+        "/api/v1/me/downloads": {
+            "get": {
+                "tags": [
+                    "my-download-controller"
+                ],
+                "operationId": "getMyDownloads",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseDownloadListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "description": "내 다운로드 이력 조회 (페이지네이션)",
+                "summary": "내 다운로드 이력 조회 (페이지네이션)"
+            }
+        },
+        "/api/v1/home": {
+            "get": {
+                "tags": [
+                    "home-controller"
+                ],
+                "operationId": "home",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "홈 화면 데이터 조회",
+                "summary": "홈 화면 데이터 조회"
+            }
+        },
+        "/api/v1/admin/therapist-verifications": {
+            "get": {
+                "tags": [
+                    "admin-therapist-verification-controller"
+                ],
+                "operationId": "getVerifications",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponseTherapistVerificationPageResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "[관리자] 치료사 인증 목록 조회 (상태별 필터, 페이지네이션)",
+                "summary": "[관리자] 치료사 인증 목록 조회 (상태별 필터, 페이지네이션)"
+            }
+        },
+        "/api/v1/admin/therapist-verifications/{verificationId}/image": {
+            "get": {
+                "tags": [
+                    "admin-therapist-verification-controller"
+                ],
+                "operationId": "downloadVerificationImage",
+                "parameters": [
+                    {
+                        "name": "verificationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "[관리자] 치료사 인증 이미지 다운로드",
+                "summary": "[관리자] 치료사 인증 이미지 다운로드"
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "TogglePostReactionRequest": {
+                "type": "object",
+                "properties": {
+                    "reactionType": {
+                        "type": "string",
+                        "enum": [
+                            "EMPATHY",
+                            "APPRECIATE",
+                            "HELPFUL"
+                        ]
+                    }
+                },
+                "required": [
+                    "reactionType"
+                ]
+            },
+            "ApiResponsePostReactionStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/PostReactionStatusResponse"
+                    }
+                }
+            },
+            "PostReactionStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "postId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "empathyCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "appreciateCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "helpfulCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "myReactionType": {
+                        "type": "string",
+                        "enum": [
+                            "EMPATHY",
+                            "APPRECIATE",
+                            "HELPFUL"
+                        ]
+                    }
+                }
+            },
+            "ToggleCommentReactionRequest": {
+                "type": "object",
+                "properties": {
+                    "reactionType": {
+                        "type": "string",
+                        "enum": [
+                            "LIKE",
+                            "DISLIKE"
+                        ]
+                    }
+                },
+                "required": [
+                    "reactionType"
+                ]
+            },
+            "ApiResponseCommentReactionStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/CommentReactionStatusResponse"
+                    }
+                }
+            },
+            "CommentReactionStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "commentId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "likeCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "dislikeCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "myReactionType": {
+                        "type": "string",
+                        "enum": [
+                            "LIKE",
+                            "DISLIKE"
+                        ]
+                    }
+                }
+            },
+            "ApplyTherapistVerificationRequest": {
+                "type": "object",
+                "properties": {
+                    "licenseCode": {
+                        "type": "string"
+                    },
+                    "licenseImage": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "required": [
+                    "licenseCode",
+                    "licenseImage"
+                ]
+            },
+            "ApiResponseTherapistVerificationResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/TherapistVerificationResponse"
+                    }
+                }
+            },
+            "TherapistVerificationResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "userId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "userEmail": {
+                        "type": "string"
+                    },
+                    "userNickname": {
+                        "type": "string"
+                    },
+                    "licenseCode": {
+                        "type": "string"
+                    },
+                    "licenseImageOriginName": {
+                        "type": "string"
+                    },
+                    "licenseImageDownloadUrl": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED"
+                        ]
+                    },
+                    "reviewedById": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "reviewedByNickname": {
+                        "type": "string"
+                    },
+                    "reviewedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "rejectReason": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CreateTherapyPostRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "postType": {
+                        "type": "string",
+                        "enum": [
+                            "COMMUNITY",
+                            "RESOURCE"
+                        ]
+                    },
+                    "therapyArea": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "OCCUPATIONAL",
+                            "SPEECH",
+                            "COGNITIVE",
+                            "PLAY"
+                        ]
+                    },
+                    "ageGroup": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "AGE_0_2",
+                            "AGE_3_5",
+                            "AGE_6_12",
+                            "AGE_13_18",
+                            "AGE_19_64",
+                            "AGE_65_PLUS"
+                        ]
+                    }
+                },
+                "required": [
+                    "ageGroup",
+                    "content",
+                    "postType",
+                    "therapyArea",
+                    "title"
+                ]
+            },
+            "ApiResponseTherapyPostDetailResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/TherapyPostDetailResponse"
+                    }
+                }
+            },
+            "PostAttachmentResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "originalFilename": {
+                        "type": "string"
+                    },
+                    "contentType": {
+                        "type": "string"
+                    },
+                    "sizeBytes": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "extension": {
+                        "type": "string"
+                    },
+                    "downloadUrl": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "TherapyPostDetailResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "postType": {
+                        "type": "string",
+                        "enum": [
+                            "COMMUNITY",
+                            "RESOURCE"
+                        ]
+                    },
+                    "authorId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "authorNickname": {
+                        "type": "string"
+                    },
+                    "therapyArea": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "OCCUPATIONAL",
+                            "SPEECH",
+                            "COGNITIVE",
+                            "PLAY"
+                        ]
+                    },
+                    "ageGroup": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "AGE_0_2",
+                            "AGE_3_5",
+                            "AGE_6_12",
+                            "AGE_13_18",
+                            "AGE_19_64",
+                            "AGE_65_PLUS"
+                        ]
+                    },
+                    "viewCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "canEdit": {
+                        "type": "boolean"
+                    },
+                    "canDelete": {
+                        "type": "boolean"
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PostAttachmentResponse"
+                        }
+                    }
+                }
+            },
+            "ApiResponseScrapStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/ScrapStatusResponse"
+                    }
+                }
+            },
+            "ScrapStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "postId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "scrapped": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "CreateCommentRequest": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    },
+                    "parentCommentId": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "content"
+                ]
+            },
+            "ApiResponseCommentResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/CommentResponse"
+                    }
+                }
+            },
+            "CommentResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "postId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "parentCommentId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "authorId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "authorNickname": {
+                        "type": "string"
+                    },
+                    "authorRole": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "canEdit": {
+                        "type": "boolean"
+                    },
+                    "canDelete": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "replies": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReplyCommentResponse"
+                        }
+                    }
+                }
+            },
+            "ReplyCommentResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "postId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "parentCommentId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "authorId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "authorNickname": {
+                        "type": "string"
+                    },
+                    "authorRole": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "canEdit": {
+                        "type": "boolean"
+                    },
+                    "canDelete": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ApiResponsePostAttachmentResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/PostAttachmentResponse"
+                    }
+                }
+            },
+            "SignupRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "nickname": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ApiResponseSignupResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/SignupResponse"
+                    }
+                }
+            },
+            "SignupResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ApiResponseRefreshResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/RefreshResponse"
+                    }
+                }
+            },
+            "RefreshResponse": {
+                "type": "object",
+                "properties": {
+                    "accessToken": {
+                        "type": "string"
+                    },
+                    "accessTokenExpiresInSec": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "LoginRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "ApiResponseLoginResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/LoginResponse"
+                    }
+                }
+            },
+            "CurrentUserResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "nickname": {
+                        "type": "string"
+                    },
+                    "profileImageUrl": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "canAccessCommunity": {
+                        "type": "boolean"
+                    },
+                    "therapistVerification": {
+                        "$ref": "#/components/schemas/TherapistVerificationSummary"
+                    }
+                }
+            },
+            "LoginResponse": {
+                "type": "object",
+                "properties": {
+                    "isNewUser": {
+                        "type": "boolean"
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/CurrentUserResponse"
+                    },
+                    "tokens": {
+                        "$ref": "#/components/schemas/Tokens"
+                    }
+                }
+            },
+            "TherapistVerificationSummary": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    },
+                    "requestedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "reviewedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "rejectionReason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Tokens": {
+                "type": "object",
+                "properties": {
+                    "accessToken": {
+                        "type": "string"
+                    },
+                    "accessTokenExpiresInSec": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "RejectTherapistVerificationRequest": {
+                "type": "object",
+                "properties": {
+                    "rejectReason": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "rejectReason"
+                ]
+            },
+            "UpdateTherapyPostRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "therapyArea": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "OCCUPATIONAL",
+                            "SPEECH",
+                            "COGNITIVE",
+                            "PLAY"
+                        ]
+                    },
+                    "ageGroup": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "AGE_0_2",
+                            "AGE_3_5",
+                            "AGE_6_12",
+                            "AGE_13_18",
+                            "AGE_19_64",
+                            "AGE_65_PLUS"
+                        ]
+                    }
+                },
+                "required": [
+                    "ageGroup",
+                    "content",
+                    "therapyArea",
+                    "title"
+                ]
+            },
+            "UpdateCommentRequest": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "content"
+                ]
+            },
+            "ApiResponsePostListResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/PostListResponse"
+                    }
+                }
+            },
+            "PostListResponse": {
+                "type": "object",
+                "properties": {
+                    "posts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TherapyPostSummaryResponse"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalElements": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "hasNext": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "TherapyPostSummaryResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "postType": {
+                        "type": "string",
+                        "enum": [
+                            "COMMUNITY",
+                            "RESOURCE"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "contentPreview": {
+                        "type": "string"
+                    },
+                    "authorNickname": {
+                        "type": "string"
+                    },
+                    "therapyArea": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "OCCUPATIONAL",
+                            "SPEECH",
+                            "COGNITIVE",
+                            "PLAY"
+                        ]
+                    },
+                    "ageGroup": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "AGE_0_2",
+                            "AGE_3_5",
+                            "AGE_6_12",
+                            "AGE_13_18",
+                            "AGE_19_64",
+                            "AGE_65_PLUS"
+                        ]
+                    },
+                    "viewCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ApiResponseListCommentResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommentResponse"
+                        }
+                    }
+                }
+            },
+            "ApiResponseCurrentUserResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/CurrentUserResponse"
+                    }
+                }
+            },
+            "ApiResponseScrapListResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/ScrapListResponse"
+                    }
+                }
+            },
+            "ScrapListResponse": {
+                "type": "object",
+                "properties": {
+                    "scraps": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ScrappedPostResponse"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalElements": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "hasNext": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "ScrappedPostResponse": {
+                "type": "object",
+                "properties": {
+                    "postId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "contentPreview": {
+                        "type": "string"
+                    },
+                    "authorNickname": {
+                        "type": "string"
+                    },
+                    "therapyArea": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "OCCUPATIONAL",
+                            "SPEECH",
+                            "COGNITIVE",
+                            "PLAY"
+                        ]
+                    },
+                    "ageGroup": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "AGE_0_2",
+                            "AGE_3_5",
+                            "AGE_6_12",
+                            "AGE_13_18",
+                            "AGE_19_64",
+                            "AGE_65_PLUS"
+                        ]
+                    },
+                    "viewCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "postCreatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "scrappedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ApiResponseDownloadListResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/DownloadListResponse"
+                    }
+                }
+            },
+            "DownloadListResponse": {
+                "type": "object",
+                "properties": {
+                    "downloads": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DownloadedPostResponse"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalElements": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "hasNext": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "DownloadedPostResponse": {
+                "type": "object",
+                "properties": {
+                    "postId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "postType": {
+                        "type": "string",
+                        "enum": [
+                            "COMMUNITY",
+                            "RESOURCE"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "contentPreview": {
+                        "type": "string"
+                    },
+                    "authorNickname": {
+                        "type": "string"
+                    },
+                    "therapyArea": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "OCCUPATIONAL",
+                            "SPEECH",
+                            "COGNITIVE",
+                            "PLAY"
+                        ]
+                    },
+                    "ageGroup": {
+                        "type": "string",
+                        "enum": [
+                            "UNSPECIFIED",
+                            "AGE_0_2",
+                            "AGE_3_5",
+                            "AGE_6_12",
+                            "AGE_13_18",
+                            "AGE_19_64",
+                            "AGE_65_PLUS"
+                        ]
+                    },
+                    "firstDownloadedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "lastDownloadedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "downloadCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "ApiResponseTherapistVerificationPageResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/TherapistVerificationPageResponse"
+                    }
+                }
+            },
+            "TherapistVerificationPageResponse": {
+                "type": "object",
+                "properties": {
+                    "verifications": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TherapistVerificationResponse"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "totalElements": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "hasNext": {
+                        "type": "boolean"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "in": "header",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    }
+}

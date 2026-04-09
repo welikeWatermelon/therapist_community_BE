@@ -12,6 +12,8 @@ import java.io.IOException;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String SSE_SUBSCRIBE_PATH = "/api/v1/notifications/subscribe";
+
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
 
@@ -28,17 +30,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String authorization = request.getHeader("Authorization");
+        String token = null;
 
         if (authorization != null && authorization.startsWith("Bearer ")) {
+            token = authorization.substring(7);
+        } else if (isSubscribeEndpoint(request) && request.getParameter("token") != null) {
+            token = request.getParameter("token");
+        }
 
-            String token = authorization.substring(7);
+        if (token != null) {
 
             if (jwtTokenProvider.validateToken(token)) {
                 Long userId = jwtTokenProvider.getUserId(token);
-                String role = jwtTokenProvider.getRole(token);
 
                 CustomUserDetails userDetails =
                         (CustomUserDetails) userDetailsService.loadUserByUsername(String.valueOf(userId));
+
+                if (!userDetails.isEnabled()) {
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
@@ -49,6 +61,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
+
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isSubscribeEndpoint(HttpServletRequest request) {
+        return SSE_SUBSCRIBE_PATH.equals(request.getRequestURI());
     }
 }

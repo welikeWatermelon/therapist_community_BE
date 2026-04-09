@@ -1,18 +1,20 @@
 package com.therapyCommunity_Vol1.backend.scrap.service;
 
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
-import com.therapyCommunity_Vol1.backend.scrap.TherapyPostScrapRepository;
+import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
-import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 
 import java.util.List;
@@ -25,16 +27,18 @@ import static org.mockito.Mockito.*;
 class ScrapServiceTest {
 
     private TherapyPostScrapRepository scrapRepository;
-    private TherapyPostRepository postRepository;
+    private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
+    private ApplicationEventPublisher eventPublisher;
     private ScrapService scrapService;
 
     @BeforeEach
     void setUp() {
         this.scrapRepository = mock(TherapyPostScrapRepository.class);
-        this.postRepository = mock(TherapyPostRepository.class);
+        this.activePostFinder = mock(ActivePostFinder.class);
         this.userRepository = mock(UserRepository.class);
-        this.scrapService = new ScrapService(scrapRepository, postRepository, userRepository);
+        this.eventPublisher = mock(ApplicationEventPublisher.class);
+        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository, eventPublisher);
     }
 
     @Test
@@ -52,14 +56,13 @@ class ScrapServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user
         );
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
 
         // when
@@ -86,15 +89,14 @@ class ScrapServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user
         );
 
         when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
 
         // when
@@ -119,15 +121,15 @@ class ScrapServiceTest {
                 .role(UserRole.THERAPIST)
                 .build();
 
-        TherapyPost post = TherapyPost.create("제목",
+        TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user);
 
         TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
 
-        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.findByPostIdAndUserId(postId, currentUserId)).thenReturn(Optional.of(scrap));
 
         // when
@@ -152,10 +154,10 @@ class ScrapServiceTest {
                 .role(UserRole.THERAPIST)
                 .build();
 
-        TherapyPost post = TherapyPost.create("제목",
+        TherapyPost post = TherapyPost.create(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user);
 
         TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
@@ -169,11 +171,10 @@ class ScrapServiceTest {
                 .thenReturn(page);
 
         // when
-        ScrapListResponse response = scrapService.getMyScraps(currentUserId, 0, 10);
+        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(currentUserId, 0, 10);
 
         // then
-        assertThat(response.getScraps()).hasSize(1);
-        assertThat(response.getScraps().get(0).getTitle()).isEqualTo("제목");
+        assertThat(response.getItems()).hasSize(1);
         assertThat(response.getTotalElements()).isEqualTo(1L);
     }
 }

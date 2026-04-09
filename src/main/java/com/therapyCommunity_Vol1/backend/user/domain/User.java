@@ -39,4 +39,29 @@ public class User extends BaseEntity {
     public void promoteToTherapist() {
         this.role = UserRole.THERAPIST;
     }
+
+    public void demoteToUser() {
+        this.role = UserRole.USER;
+    }
+
+    public void updateProfile(String nickname, String profileImageUrl) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
+    }
+
+    public void withdraw() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isWithdrawn() {
+        return this.deletedAt != null;
+    }
+
+    public String getDisplayNickname() {
+        return isWithdrawn() ? "탈퇴한 회원" : this.nickname;
+    }
 }

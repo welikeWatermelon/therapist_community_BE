@@ -2,9 +2,12 @@ package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +31,9 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
+    private final ResourceAccessValidator resourceAccessValidator;
 
     @Transactional
     public TherapyPostDetailResponse createPost(
@@ -37,11 +43,9 @@ public class PostService {
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         TherapyPost post = TherapyPost.create(
-                request.getTitle(),
                 request.getContent(),
                 request.getTherapyArea(),
-                request.getAgeGroup(),
-                request.getPostType(),
+                request.getVisibility(),
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);
@@ -49,12 +53,56 @@ public class PostService {
         return TherapyPostDetailResponse.from(saved, userId, author.getRole());
     }
 
-    public PostListResponse getPosts(
+    public PagedResponse<TherapyPostSummaryResponse> getPosts(
             int page,
             int size,
-            PostSortType sortType
+            PostSortType sortType,
+            PostSearchCondition condition
     ) {
-        Sort sort = switch (sortType) {
+        Page<TherapyPost> result = findPosts(page, size, sortType, condition);
+
+        List<TherapyPostSummaryResponse> posts = result.getContent()
+                .stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        return PagedResponse.from(result, posts);
+    }
+
+    private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType, PostSearchCondition condition) {
+        Pageable pageable = PageRequest.of(page, size, toSort(sortType));
+
+        if (condition.isEmpty()) {
+            return therapyPostRepository.findByDeletedAtIsNull(pageable);
+        } else if (condition.hasKeyword()) {
+            return therapyPostRepository.searchByKeyword(
+                    condition.getEscapedKeyword().trim(),
+                    condition.getTherapyArea(),
+                    condition.getPostType(),
+                    pageable
+            );
+        } else {
+            return therapyPostRepository.searchByFilter(
+                    condition.getTherapyArea(),
+                    condition.getPostType(),
+                    pageable
+            );
+        }
+    }
+
+    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
+
+        List<TherapyPostSummaryResponse> posts = result.getContent().stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        return PagedResponse.from(result, posts);
+    }
+
+    private Sort toSort(PostSortType sortType) {
+        return switch (sortType) {
             case MOST_VIEWED -> Sort.by(
                     Sort.Order.desc("viewCount"),
                     Sort.Order.desc("id")
@@ -64,34 +112,17 @@ public class PostService {
                     Sort.Order.desc("id")
             );
         };
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<TherapyPost> result =
-                therapyPostRepository.findByDeletedAtIsNull(pageable);
-
-        List<TherapyPostSummaryResponse> posts = result.getContent()
-                .stream()
-                .map(TherapyPostSummaryResponse::from)
-                .toList();
-
-        return new PostListResponse(
-                posts,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
     }
 
     @Transactional
     public TherapyPostDetailResponse getPostDetail(
             Long currentUserId,
             UserRole currentUserRole,
-            Long postId
+            Long postId,
+            boolean isScrapped
     ) {
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        validateVisibility(post, currentUserId, currentUserRole);
 
         post.increaseViewCount();
 
@@ -101,7 +132,7 @@ public class PostService {
                 .map(PostAttachmentResponse::from)
                 .toList();
 
-        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole);
+        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
     }
 
     @Transactional
@@ -111,14 +142,13 @@ public class PostService {
             Long postId,
             UpdateTherapyPostRequest request
     ) {
-        TherapyPost post = getActivePost(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.update(
-                request.getTitle(),
                 request.getContent(),
                 request.getTherapyArea(),
-                request.getAgeGroup()
+                request.getVisibility()
         );
         return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
     }
@@ -129,28 +159,21 @@ public class PostService {
             UserRole currentUserRole,
             Long postId
     ) {
-        TherapyPost post = getActivePost(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
     }
 
 
-    private TherapyPost getActivePost(Long postId) {
-        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
-    }
-
-    private void validateAuthorOrAdmin(
-            TherapyPost post,
-            Long currentUserId,
-            UserRole currentUserRole
-    ) {
-        boolean isAdmin = currentUserRole == UserRole.ADMIN;
-        boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-
-        if(!isAdmin && !isAuthor) {
-            throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
+    private void validateVisibility(TherapyPost post, Long currentUserId, UserRole currentUserRole) {
+        if (post.getVisibility() == Visibility.PRIVATE) {
+            boolean isAdmin = currentUserRole == UserRole.ADMIN;
+            boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
+            if (!isAdmin && !isAuthor) {
+                throw new CustomException(ErrorCode.POST_NOT_FOUND);
+            }
         }
     }
+
 }

@@ -1,7 +1,9 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -18,24 +20,31 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.Mockito.*;
 
 class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
+    private ResourceAccessValidator resourceAccessValidator;
     private PostService postService;
 
     @BeforeEach
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
+        activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
+        resourceAccessValidator = mock(ResourceAccessValidator.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
-                userRepository
+                activePostFinder,
+                userRepository,
+                resourceAccessValidator
         );
     }
 
@@ -46,11 +55,9 @@ class PostServiceTest {
         Long userId = 1L;
 
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
-                "제목",
                 "<p>본문</p>",
-                PostType.RESOURCE,
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5
+                Visibility.PUBLIC
         );
 
         User author = User.builder()
@@ -61,11 +68,9 @@ class PostServiceTest {
                 .build();
 
         TherapyPost savedPost = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
-                PostType.RESOURCE,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(savedPost, "id", 100L);
@@ -81,10 +86,9 @@ class PostServiceTest {
 
         // then
         assertThat(response.getId()).isEqualTo(100L);
-        assertThat(response.getTitle()).isEqualTo("제목");
         assertThat(response.getAuthorId()).isEqualTo(userId);
         assertThat(response.getAuthorNickname()).isEqualTo("tester");
-        assertThat(response.getPostType()).isEqualTo(PostType.RESOURCE);
+        assertThat(response.getPostType()).isEqualTo(PostType.COMMUNITY);
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
         assertThat(response.isCanEdit()).isTrue();
         assertThat(response.isCanDelete()).isTrue();
@@ -103,10 +107,9 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문입니다</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 1L);
@@ -124,14 +127,14 @@ class PostServiceTest {
                 .thenReturn(page);
 
         // when
-        PostListResponse response = postService.getPosts(0, 10, PostSortType.LATEST);
+        PostSearchCondition condition = new PostSearchCondition(null, null, null);
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
 
         // then
-        assertThat(response.getPosts()).hasSize(1);
-        assertThat(response.getPosts().get(0).getTitle()).isEqualTo("제목");
-        assertThat(response.getPosts().get(0).getAuthorNickname()).isEqualTo("tester");
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getAuthorNickname()).isEqualTo("tester");
         assertThat(response.getTotalElements()).isEqualTo(1);
-        assertThat(response.getHasNext()).isFalse();
+        assertThat(response.isHasNext()).isFalse();
     }
 
     @Test
@@ -146,10 +149,9 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -158,8 +160,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
 
@@ -167,7 +168,8 @@ class PostServiceTest {
         TherapyPostDetailResponse response = postService.getPostDetail(
                 1L,
                 UserRole.THERAPIST,
-                1L
+                1L,
+                false
         );
 
         // then
@@ -183,8 +185,8 @@ class PostServiceTest {
     void 게시글_상세조회_실패_게시글없음() {
 
         // given
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(999L))
-                .thenReturn(Optional.empty());
+        when(activePostFinder.findOrThrow(999L))
+                .thenThrow(new CustomException(ErrorCode.POST_NOT_FOUND));
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(999L))
                 .thenReturn(List.of());
 
@@ -192,7 +194,8 @@ class PostServiceTest {
         assertThatThrownBy(() -> postService.getPostDetail(
                 1L,
                 UserRole.THERAPIST,
-                999L
+                999L,
+                false
         ))
                 .isInstanceOf(CustomException.class);
     }
@@ -209,10 +212,9 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -220,8 +222,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
 
@@ -229,7 +230,8 @@ class PostServiceTest {
         TherapyPostDetailResponse response = postService.getPostDetail(
                 2L,
                 UserRole.THERAPIST,
-                1L
+                1L,
+                false
         );
 
         // then
@@ -249,10 +251,9 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -260,8 +261,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
 
@@ -269,7 +269,8 @@ class PostServiceTest {
         TherapyPostDetailResponse response = postService.getPostDetail(
                 99L,
                 UserRole.ADMIN,
-                1L
+                1L,
+                false
         );
 
         // then
@@ -291,10 +292,9 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "기존 제목",
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
         ReflectionTestUtils.setField(post, "id", 1L);
@@ -302,14 +302,12 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
 
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
-                "수정 제목",
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12
+                Visibility.PRIVATE
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
 
         // when
         TherapyPostDetailResponse response =
@@ -321,7 +319,6 @@ class PostServiceTest {
                 );
 
         // then
-        assertThat(response.getTitle()).isEqualTo("수정 제목");
         assertThat(response.getContent()).isEqualTo("<p>수정 본문</p>");
         assertThat(response.getTherapyArea()).isEqualTo(TherapyArea.COGNITIVE);
         assertThat(response.getAuthorId()).isEqualTo(currentUserId);
@@ -341,22 +338,21 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "기존 제목",
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
-                "수정 제목",
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12
+                Visibility.PRIVATE
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        doThrow(new CustomException(ErrorCode.POST_ACCESS_DENIED))
+                .when(resourceAccessValidator).validateAuthorOrAdmin(1L, 2L, UserRole.THERAPIST, ErrorCode.POST_ACCESS_DENIED);
 
         // when / then
         assertThatThrownBy(() ->
@@ -383,15 +379,13 @@ class PostServiceTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "기존 제목",
                 "<p>기존 본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
-        when(therapyPostRepository.findByIdAndDeletedAtIsNull(1L))
-                .thenReturn(Optional.of(post));
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
 
         // when
         postService.deletePost(currentUserId, UserRole.THERAPIST, 1L);

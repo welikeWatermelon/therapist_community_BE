@@ -15,7 +15,6 @@ public class DownloadedPostResponse {
 
     private Long postId;
     private PostType postType;
-    private String title;
     private String contentPreview;
     private String authorNickname;
     private TherapyArea therapyArea;
@@ -39,9 +38,8 @@ public class DownloadedPostResponse {
         return new DownloadedPostResponse(
                 download.getPost().getId(),
                 download.getPost().getPostType(),
-                download.getPost().getTitle(),
                 preview,
-                download.getPost().getAuthor().getNickname(),
+                download.getPost().getAuthor().getDisplayNickname(),
                 download.getPost().getTherapyArea(),
                 download.getPost().getAgeGroup(),
                 download.getFirstDownloadedAt(),

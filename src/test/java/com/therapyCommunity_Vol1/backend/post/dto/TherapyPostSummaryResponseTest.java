@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -22,16 +22,15 @@ class TherapyPostSummaryResponseTest {
                 .build();
         String content = "<p>" + "a".repeat(250) + "</p>";
 
-        TherapyPost post = new TherapyPost(
-                "제목",
+        TherapyPost post = TherapyPost.create(
                 content,
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
         //when
-        TherapyPostSummaryResponse response = TherapyPostSummaryResponse.from(post);
+        TherapyPostSummaryResponse response = TherapyPostSummaryResponse.from(post, false);
 
         // then
         assertThat(response.getContentPreview()).doesNotContain("<p>");

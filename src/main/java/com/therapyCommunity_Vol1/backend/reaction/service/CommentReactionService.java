@@ -1,9 +1,11 @@
 package com.therapyCommunity_Vol1.backend.reaction.service;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostCommentReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.CommentReactionStatusResponse;
@@ -12,17 +14,21 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentR
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class CommentReactionService {
 
-    private final TherapyPostCommentRepository commentRepository;
+    private final CommentService commentService;
     private final UserRepository userRepository;
     private final TherapyPostCommentReactionRepository commentReactionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public CommentReactionStatusResponse toggleReaction(
@@ -33,8 +39,7 @@ public class CommentReactionService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        TherapyPostComment comment = commentService.findActiveComment(commentId);
 
         commentReactionRepository.findByCommentIdAndUserId(commentId, currentUserId)
                 .ifPresentOrElse(exsisting -> {
@@ -50,6 +55,14 @@ public class CommentReactionService {
                             request.getReactionType()
                     );
                     commentReactionRepository.save(reaction);
+
+                    eventPublisher.publishEvent(NotificationEvent.builder()
+                            .senderId(currentUserId)
+                            .receiverIds(List.of(comment.getAuthor().getId()))
+                            .type(NotificationType.NEW_COMMENT_REACTION)
+                            .referenceId(commentId)
+                            .content(user.getNickname() + "님이 회원님의 댓글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
+                            .build());
                 });
         return getReactionStatus(currentUserId, commentId);
     }
@@ -58,8 +71,7 @@ public class CommentReactionService {
             Long currentUserId,
             Long commentId
     ) {
-        commentRepository.findByIdAndDeletedAtIsNull(commentId)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        commentService.findActiveComment(commentId);
 
         CommentReactionType myReactionType = commentReactionRepository.findByCommentIdAndUserId(
                         commentId, currentUserId)

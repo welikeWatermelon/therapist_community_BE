@@ -25,10 +25,19 @@ public class TherapistVerificationResponse {
     private String rejectReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean demoted;
 
     public static TherapistVerificationResponse from(
             TherapistVerification verification,
             String licenseImageDownloadUrl
+    ) {
+        return from(verification, licenseImageDownloadUrl, false);
+    }
+
+    public static TherapistVerificationResponse from(
+            TherapistVerification verification,
+            String licenseImageDownloadUrl,
+            boolean demoted
     ) {
         return new TherapistVerificationResponse(
                 verification.getId(),
@@ -44,7 +53,8 @@ public class TherapistVerificationResponse {
                 verification.getReviewedAt(),
                 verification.getRejectReason(),
                 verification.getCreatedAt(),
-                verification.getUpdatedAt()
+                verification.getUpdatedAt(),
+                demoted
         );
     }
 

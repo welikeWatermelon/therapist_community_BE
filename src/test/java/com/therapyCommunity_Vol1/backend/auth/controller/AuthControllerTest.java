@@ -5,8 +5,8 @@ import com.therapyCommunity_Vol1.backend.auth.dto.LoginRequest;
 import com.therapyCommunity_Vol1.backend.auth.dto.LoginResponse;
 import com.therapyCommunity_Vol1.backend.auth.dto.RefreshResponse;
 import com.therapyCommunity_Vol1.backend.auth.service.AuthService;
+import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
-import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.GlobalExceptionHandler;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +41,9 @@ class AuthControllerTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private TokenService tokenService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
@@ -48,6 +51,7 @@ class AuthControllerTest {
     void setUp() {
         AuthController authController = new AuthController(
                 authService,
+                tokenService,
                 new RefreshTokenCookieManager("refreshToken", "/api/v1/auth", "Lax", false)
         );
 
@@ -61,7 +65,6 @@ class AuthControllerTest {
     @Test
     void 로그인_성공시_user_응답과_refresh_cookie를_반환한다() throws Exception {
         LoginResponse response = new LoginResponse(
-                false,
                 new CurrentUserResponse(
                         1L,
                         "user@example.com",
@@ -86,7 +89,6 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(new LoginRequest("user@example.com", "password"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.isNewUser").value(false))
                 .andExpect(jsonPath("$.data.user.id").value(1))
                 .andExpect(jsonPath("$.data.user.email").value("user@example.com"))
                 .andExpect(jsonPath("$.data.user.therapistVerification.status").value("NOT_REQUESTED"))
@@ -106,8 +108,8 @@ class AuthControllerTest {
 
     @Test
     void 리프레시_성공시_cookie로_refresh를_읽고_새_cookie를_반환한다() throws Exception {
-        given(authService.refresh("refresh-cookie", "JUnit", "127.0.0.1"))
-                .willReturn(new AuthService.RefreshResult(
+        given(tokenService.refresh("refresh-cookie", "JUnit", "127.0.0.1"))
+                .willReturn(new TokenService.RefreshResult(
                         new RefreshResponse("new-access-token", 1800L),
                         "rotated-refresh-token",
                         1209600L
@@ -136,8 +138,8 @@ class AuthControllerTest {
 
     @Test
     void 리프레시_cookie가_없으면_인증예외를_반환한다() throws Exception {
-        assertThatThrownBy(() -> mockMvc.perform(post("/api/v1/auth/refresh")).andReturn())
-                .hasCauseInstanceOf(CustomException.class);
+        mockMvc.perform(post("/api/v1/auth/refresh"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -148,7 +150,7 @@ class AuthControllerTest {
                 .andReturn()
                 .getResponse();
 
-        verify(authService).logout("refresh-cookie");
+        verify(tokenService).logout("refresh-cookie");
         org.assertj.core.api.Assertions.assertThat(response.getHeader(HttpHeaders.SET_COOKIE))
                 .contains("refreshToken=")
                 .contains("Max-Age=0")

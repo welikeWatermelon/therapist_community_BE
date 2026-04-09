@@ -1,0 +1,6 @@
+# docker compose up                            → DB + Redis만 (IDE에서 bootRun)
+# docker compose --profile full up --build     → 전체 실행
+services:
+  backend:
+    profiles:
+      - full

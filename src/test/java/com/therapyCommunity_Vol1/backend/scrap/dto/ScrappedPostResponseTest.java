@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.scrap.dto;
 
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
@@ -24,10 +24,9 @@ class ScrappedPostResponseTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>" + "a".repeat(250) + "</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 user
         );
 

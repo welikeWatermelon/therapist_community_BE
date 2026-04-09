@@ -1,10 +1,13 @@
 package com.therapyCommunity_Vol1.backend.admin.service;
 
-import com.therapyCommunity_Vol1.backend.admin.dto.TherapistVerificationPageResponse;
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerificationStatus;
 import com.therapyCommunity_Vol1.backend.admin.dto.RejectTherapistVerificationRequest;
@@ -13,6 +16,7 @@ import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificat
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,8 +34,10 @@ public class AdminTherapistVerificationService {
     private final TherapistVerificationRepository therapistVerificationRepository;
     private final UserRepository userRepository;
     private  final FileStorageService fileStorageService;
+    private final UserCacheService userCacheService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public TherapistVerificationPageResponse getVerifications(
+    public PagedResponse<TherapistVerificationResponse> getVerifications(
             TherapistVerificationStatus status,
             int page,
             int size
@@ -52,14 +58,7 @@ public class AdminTherapistVerificationService {
                         "/api/v1/admin/therapist-verifications/" + v.getId() + "/image"
                 ))
                 .toList();
-        return new TherapistVerificationPageResponse(
-                responses,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
+        return PagedResponse.from(result, responses);
     }
 
     @Transactional
@@ -75,7 +74,16 @@ public class AdminTherapistVerificationService {
         validatePending(verification);
 
         verification.approve(admin);
-        verification.getUser().promoteToTherapist();
+        userCacheService.evict(verification.getUser().getId());  // 인증 승인 → 캐시 무효화
+
+        // TODO: MVP 이후 활성화 — 치료사 인증 승인 시 신청자에게 알림 발송
+        // eventPublisher.publishEvent(NotificationEvent.builder()
+        //         .senderId(adminUserId)
+        //         .receiverIds(List.of(verification.getUser().getId()))
+        //         .type(NotificationType.VERIFICATION_APPROVED)
+        //         .referenceId(verificationId)
+        //         .content("치료사 인증이 승인되었습니다.")
+        //         .build());
 
         return TherapistVerificationResponse.from(
                 verification,
@@ -98,10 +106,22 @@ public class AdminTherapistVerificationService {
         validatePending(verification);
 
         verification.reject(admin, request.getRejectReason());
+        verification.getUser().demoteToUser();
+        userCacheService.evict(verification.getUser().getId());  // 인증 거절 + role 강등 → 캐시 무효화
+
+        // TODO: MVP 이후 활성화 — 치료사 인증 거절 시 신청자에게 알림 발송 (거절 사유 포함)
+        // eventPublisher.publishEvent(NotificationEvent.builder()
+        //         .senderId(adminUserId)
+        //         .receiverIds(List.of(verification.getUser().getId()))
+        //         .type(NotificationType.VERIFICATION_REJECTED)
+        //         .referenceId(verificationId)
+        //         .content("치료사 인증이 거절되었습니다. 사유: " + request.getRejectReason())
+        //         .build());
 
         return TherapistVerificationResponse.from(
                 verification,
-                "/api/v1/admin/therapist-verifications/" + verification.getId() + "/image"
+                "/api/v1/admin/therapist-verifications/" + verification.getId() + "/image",
+                true
         );
     }
 

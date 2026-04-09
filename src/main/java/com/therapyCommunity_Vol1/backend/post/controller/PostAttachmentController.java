@@ -2,10 +2,12 @@ package com.therapyCommunity_Vol1.backend.post.controller;
 
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostAttachmentService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
@@ -17,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Tag(name = "첨부파일", description = "게시글 첨부파일 업로드, 다운로드, 삭제")
 @RestController
 @RequestMapping("/api/v1/posts/{postId}/attachments")
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class PostAttachmentController {
 
     private final PostAttachmentService postAttachmentService;
 
+    @Operation(summary = "첨부파일 업로드", description = "파일 업로드 시 게시글 postType이 RESOURCE로 자동 변경")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostAttachmentResponse>> uploadAttachment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -32,8 +36,8 @@ public class PostAttachmentController {
             @RequestPart("file") MultipartFile file
     ) {
         PostAttachmentResponse response = postAttachmentService.uploadAttachment(
-                userDetails.getUser().getId(),
-                userDetails.getUser().getRole(),
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 file
         );
@@ -42,6 +46,23 @@ public class PostAttachmentController {
                 .body(ApiResponse.success(response));
     }
 
+    @Operation(summary = "첨부파일 삭제", description = "마지막 첨부파일 삭제 시 postType이 COMMUNITY로 롤백")
+    @DeleteMapping("/{attachmentId}")
+    public ResponseEntity<Void> deleteAttachment(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @PathVariable Long attachmentId
+    ) {
+        postAttachmentService.deleteAttachment(
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
+                postId,
+                attachmentId
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "첨부파일 다운로드", description = "다운로드 이력 자동 기록")
     @GetMapping("/{attachmentId}/download")
     public ResponseEntity<Resource> downloadAttachment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -49,7 +70,7 @@ public class PostAttachmentController {
             @PathVariable Long attachmentId
     ) {
         StoredFileResource storedFile = postAttachmentService.downloadAttachment(
-                userDetails.getUser().getId(),
+                userDetails.getUserId(),
                 postId,
                 attachmentId
         );

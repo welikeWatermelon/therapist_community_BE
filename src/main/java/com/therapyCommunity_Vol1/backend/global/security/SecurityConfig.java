@@ -51,12 +51,16 @@ public class SecurityConfig {
                             "/api/v1/auth/logout",
                             "/api/v1/auth/login",
                             "/api/v1/meta/**",
+                            "/api/v1/terms/**",
                             "/api/v1/home",
                             "/api/v1/health",
                             "/actuator/health",
                             "/swagger-ui/**",
-                            "/v3/api-docs/**"
+                            "/v3/api-docs/**",
+                            "/api/v1/me/profile-image/profile-images/**"
                     ).permitAll()
+                    // 알림 API — 로그인한 사용자 모두
+                    .requestMatchers("/api/v1/notifications/**").authenticated()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     // 치료사 전용

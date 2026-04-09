@@ -20,18 +20,16 @@ class TherapyPostTest {
 
         //when
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
         // then
-        assertThat(post.getTitle()).isEqualTo("제목");
         assertThat(post.getContent()).isEqualTo("<p>본문</p>");
         assertThat(post.getTherapyArea()).isEqualTo(TherapyArea.SPEECH);
-        assertThat(post.getAgeGroup()).isEqualTo(AgeGroup.AGE_3_5);
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PUBLIC);
         assertThat(post.getAuthor()).isEqualTo(author);
         assertThat(post.getViewCount()).isEqualTo(0L);
         assertThat(post.isDeleted()).isFalse();
@@ -48,10 +46,9 @@ class TherapyPostTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
@@ -74,26 +71,23 @@ class TherapyPostTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 
         //when
         post.update(
-                "수정된 제목",
                 "<p>수정된 본문</p>",
                 TherapyArea.COGNITIVE,
-                AgeGroup.AGE_6_12
+                Visibility.PRIVATE
         );
 
         // then
-        assertThat(post.getTitle()).isEqualTo("수정된 제목");
         assertThat(post.getContent()).isEqualTo("<p>수정된 본문</p>");
         assertThat(post.getTherapyArea()).isEqualTo(TherapyArea.COGNITIVE);
-        assertThat(post.getAgeGroup()).isEqualTo(AgeGroup.AGE_6_12);
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PRIVATE);
     }
 
     @Test
@@ -107,10 +101,9 @@ class TherapyPostTest {
                 .build();
 
         TherapyPost post = TherapyPost.create(
-                "제목",
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                AgeGroup.AGE_3_5,
+                Visibility.PUBLIC,
                 author
         );
 

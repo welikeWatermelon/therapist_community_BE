@@ -29,7 +29,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
             AccessDeniedException accessDeniedException
     ) throws IOException, ServletException {
         ErrorCode errorCode = ErrorCode.FORBIDDEN;
-        ErrorResponse body = new ErrorResponse(request.getRequestURI(),errorCode);
+        ErrorResponse body = new ErrorResponse(errorCode);
 
         response.setStatus(errorCode.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

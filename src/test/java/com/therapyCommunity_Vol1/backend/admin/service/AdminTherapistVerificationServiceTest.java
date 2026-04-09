@@ -1,7 +1,8 @@
 package com.therapyCommunity_Vol1.backend.admin.service;
 
 import com.therapyCommunity_Vol1.backend.admin.dto.RejectTherapistVerificationRequest;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
+import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
 import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
@@ -10,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -21,6 +23,8 @@ class AdminTherapistVerificationServiceTest {
     private TherapistVerificationRepository therapistVerificationRepository;
     private UserRepository userRepository;
     private FileStorageService fileStorageService;
+    private UserCacheService userCacheService;
+    private ApplicationEventPublisher eventPublisher;
     private AdminTherapistVerificationService adminTherapistVerificationService;
 
     @BeforeEach
@@ -28,22 +32,26 @@ class AdminTherapistVerificationServiceTest {
         therapistVerificationRepository = mock(TherapistVerificationRepository.class);
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
+        userCacheService = mock(UserCacheService.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         adminTherapistVerificationService = new AdminTherapistVerificationService(
                 therapistVerificationRepository,
                 userRepository,
-                fileStorageService
+                fileStorageService,
+                userCacheService,
+                eventPublisher
         );
     }
 
     @Test
-    void 관리자_승인시_사용자_role이_치료사로_변경된다() {
+    void 관리자_승인시_상태가_APPROVED로_변경된다() {
 
         // given
         User applicant = User.builder()
                 .id(1L)
                 .email("user@test.com")
                 .nickname("user")
-                .role(UserRole.USER)
+                .role(UserRole.THERAPIST)
                 .build();
 
         User admin = User.builder()
@@ -74,14 +82,14 @@ class AdminTherapistVerificationServiceTest {
     }
 
     @Test
-    void 관리자_거절시_rejectReason이_저장된다() {
+    void 관리자_거절시_rejectReason_저장되고_사용자가_USER로_강등된다() {
 
         // given
         User applicant = User.builder()
                 .id(1L)
                 .email("user@test.com")
                 .nickname("user")
-                .role(UserRole.USER)
+                .role(UserRole.THERAPIST)
                 .build();
 
         User admin = User.builder()
@@ -113,5 +121,7 @@ class AdminTherapistVerificationServiceTest {
         // then
         assertThat(response.getStatus().getCode()).isEqualTo("REJECTED");
         assertThat(response.getRejectReason()).isEqualTo("번호가 불명확합니다.");
+        assertThat(response.isDemoted()).isTrue();
+        assertThat(applicant.getRole()).isEqualTo(UserRole.USER);
     }
 }

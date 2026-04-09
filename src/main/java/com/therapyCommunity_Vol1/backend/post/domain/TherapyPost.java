@@ -20,18 +20,18 @@ public class TherapyPost extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 200, nullable = false)
+    @Column(length = 200)
     private String title;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "therapy_area", nullable = false, length = 50)
+    @Column(name = "therapy_area", length = 50)
     private TherapyArea therapyArea;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "age_group", nullable = false, length = 50)
+    @Column(name = "age_group", length = 50)
     private AgeGroup ageGroup;
 
     @Enumerated(EnumType.STRING)
@@ -48,59 +48,34 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public TherapyPost(
-            String title,
-            String content,
-            TherapyArea therapyArea,
-            AgeGroup ageGroup,
-            User author
-    ) {
-        this(title, content, therapyArea, ageGroup, PostType.COMMUNITY, author);
-    }
+    @Column(name = "title_choseong", length = 200)
+    private String titleChoseong;
 
-    public TherapyPost(
-            String title,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private Visibility visibility;
+
+    private TherapyPost(
             String content,
             TherapyArea therapyArea,
-            AgeGroup ageGroup,
-            PostType postType,
+            Visibility visibility,
             User author
     ) {
-        this.title = title;
         this.content = content;
-        this.therapyArea = therapyArea;
-        this.ageGroup = ageGroup;
-        this.postType = postType;
+        this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
+        this.postType = PostType.COMMUNITY;
+        this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.author = author;
         this.viewCount = 0L;
     }
 
     public static TherapyPost create(
-            String title,
             String content,
             TherapyArea therapyArea,
-            AgeGroup ageGroup,
+            Visibility visibility,
             User author
     ) {
-        return create(title, content, therapyArea, ageGroup, PostType.COMMUNITY, author);
-    }
-
-    public static TherapyPost create(
-            String title,
-            String content,
-            TherapyArea therapyArea,
-            AgeGroup ageGroup,
-            PostType postType,
-            User author
-    ) {
-        return new TherapyPost(
-                title,
-                content,
-                therapyArea,
-                ageGroup,
-                postType,
-                author
-        );
+        return new TherapyPost(content, therapyArea, visibility, author);
     }
 
     public void increaseViewCount() {
@@ -108,15 +83,17 @@ public class TherapyPost extends BaseEntity {
     }
 
     public void update(
-            String title,
             String content,
             TherapyArea therapyArea,
-            AgeGroup ageGroup
+            Visibility visibility
     ) {
-        this.title = title;
         this.content = content;
-        this.therapyArea = therapyArea;
-        this.ageGroup = ageGroup;
+        this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
+        this.visibility = visibility != null ? visibility : this.visibility;
+    }
+
+    public void updatePostType(PostType postType) {
+        this.postType = postType;
     }
 
     public void softDelete() {

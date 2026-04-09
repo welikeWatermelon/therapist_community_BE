@@ -10,9 +10,11 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_403", "접근이 권한 없습니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_404", "요청한 리소스를 찾을 수 없습니다."),
-    CONFLICT(HttpStatus.CONFLICT, "COMMON_409","이미 존재하 데이터입니다"),
+    CONFLICT(HttpStatus.CONFLICT, "COMMON_409","이미 존재하는 데이터입니다"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404","사용자를 찾을 수 없습니다."),
+    NICKNAME_ALREADY_USED(HttpStatus.CONFLICT, "USER_409_NICKNAME", "이미 사용 중인 닉네임입니다."),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_401_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다."),
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_401", "비밀번호가 올바르지 않습니다."),
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_401_REFRESH_INVALID", "유효하지 않은 리프레시 토큰입니다"),
     REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_401_REFRESH_EXPIRED", "만료된 리프레시 토큰입니다."),
@@ -34,7 +36,14 @@ public enum ErrorCode {
     THERAPIST_ALREADY_VERIFIED(HttpStatus.CONFLICT, "THERAPIST_409_VERIFIED", "이미 치료사 인증이 완료된 사용자입니다."),
     LICENSE_CODE_ALREADY_USED(HttpStatus.CONFLICT, "THERAPIST_409_LICENSE_CODE", "이미 사용 중인 치료사 번호입니다."),
     INVALID_LICENSE_IMAGE(HttpStatus.BAD_REQUEST, "THERAPIST_400_IMAGE", "유효하지 않은 치료사 증빙 이미지입니다."),
-    THERAPIST_VERIFICATION_NOT_PENDING(HttpStatus.CONFLICT, "THERAPIST_409_NOT_PENDING", "대기 중(PENDING) 상태의 신청만 처리할 수 있습니다.");
+    THERAPIST_VERIFICATION_NOT_PENDING(HttpStatus.CONFLICT, "THERAPIST_409_NOT_PENDING", "대기 중(PENDING) 상태의 신청만 처리할 수 있습니다."),
+
+    FILE_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_500", "파일 저장/삭제 중 오류가 발생했습니다."),
+
+    ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429", "로그인 시도가 너무 많습니다. 30분 후 다시 시도해주세요."),
+
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_404", "알림을 찾을 수 없습니다."),
+    SSE_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE_500", "SSE 연결 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;

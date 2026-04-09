@@ -2,19 +2,19 @@ package com.therapyCommunity_Vol1.backend.post.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.global.storage.FileStorageService;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileInfo;
-import com.therapyCommunity_Vol1.backend.global.storage.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostAttachment;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostDownload;
-import com.therapyCommunity_Vol1.backend.post.dto.DownloadListResponse;
+import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.DownloadedPostResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.PostAttachmentResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepository;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -36,11 +36,12 @@ public class PostAttachmentService {
 
     private static final String EVT_ATTACHMENT_DELETE_FAILED = "POST_ATTACHMENT_DELETE_FAILED";
 
-    private final TherapyPostRepository therapyPostRepository;
+    private final ActivePostFinder activePostFinder;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private final TherapyPostDownloadRepository therapyPostDownloadRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final ResourceAccessValidator resourceAccessValidator;
 
     @Transactional
     public PostAttachmentResponse uploadAttachment(
@@ -49,9 +50,8 @@ public class PostAttachmentService {
             Long postId,
             MultipartFile file
     ) {
-        TherapyPost post = getActivePost(postId);
-        validateAuthorOrAdmin(post, currentUserId, currentUserRole);
-        validateResourcePost(post);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostAttachment(file);
 
@@ -65,7 +65,9 @@ public class PostAttachmentService {
                     extractExtension(storedFileInfo.getOriginalFilename())
             );
 
-            return PostAttachmentResponse.from(therapyPostAttachmentRepository.save(attachment));
+            TherapyPostAttachment saved = therapyPostAttachmentRepository.save(attachment);
+            post.updatePostType(PostType.RESOURCE);
+            return PostAttachmentResponse.from(saved);
         } catch (RuntimeException e) {
             safeDelete(storedFileInfo.getStoredPath(), currentUserId);
             throw e;
@@ -81,7 +83,7 @@ public class PostAttachmentService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        TherapyPost post = getActivePost(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
 
@@ -95,7 +97,31 @@ public class PostAttachmentService {
         return storedFile;
     }
 
-    public DownloadListResponse getMyDownloads(Long currentUserId, int page, int size) {
+    @Transactional
+    public void deleteAttachment(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId,
+            Long attachmentId
+    ) {
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
+
+        TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
+                .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
+
+        String storedPath = attachment.getStoredPath();
+        therapyPostAttachmentRepository.delete(attachment);
+
+        boolean hasRemainingAttachments = !therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(postId).isEmpty();
+        if (!hasRemainingAttachments) {
+            post.updatePostType(PostType.COMMUNITY);
+        }
+
+        safeDelete(storedPath, currentUserId);
+    }
+
+    public PagedResponse<DownloadedPostResponse> getMyDownloads(Long currentUserId, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -108,21 +134,9 @@ public class PostAttachmentService {
         Page<TherapyPostDownload> result =
                 therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable);
 
-        return new DownloadListResponse(
-                result.getContent().stream()
+        return PagedResponse.from(result, result.getContent().stream()
                         .map(DownloadedPostResponse::from)
-                        .toList(),
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
-        );
-    }
-
-    private TherapyPost getActivePost(Long postId) {
-        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+                        .toList());
     }
 
     private void recordDownload(TherapyPost post, User user) {
@@ -131,25 +145,6 @@ public class PostAttachmentService {
                         TherapyPostDownload::recordDownload,
                         () -> therapyPostDownloadRepository.save(TherapyPostDownload.create(post, user))
                 );
-    }
-
-    private void validateResourcePost(TherapyPost post) {
-        if (post.getPostType() != PostType.RESOURCE) {
-            throw new CustomException(ErrorCode.POST_ATTACHMENT_RESOURCE_ONLY);
-        }
-    }
-
-    private void validateAuthorOrAdmin(
-            TherapyPost post,
-            Long currentUserId,
-            UserRole currentUserRole
-    ) {
-        boolean isAdmin = currentUserRole == UserRole.ADMIN;
-        boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-
-        if (!isAdmin && !isAuthor) {
-            throw new CustomException(ErrorCode.POST_ACCESS_DENIED);
-        }
     }
 
     private void safeDelete(String storedPath, Long userId) {

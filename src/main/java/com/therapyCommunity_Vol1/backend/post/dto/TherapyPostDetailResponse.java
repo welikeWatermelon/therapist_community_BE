@@ -1,9 +1,9 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
-import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,52 +16,52 @@ import java.util.List;
 public class TherapyPostDetailResponse {
 
     private Long id;
-    private String title;
     private String content;
     private PostType postType;
     private Long authorId;
     private String authorNickname;
     private TherapyArea therapyArea;
-    private AgeGroup ageGroup;
+    private Visibility visibility;
     private Long viewCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private boolean canEdit;
     private boolean canDelete;
+    private boolean isScrapped;
     private List<PostAttachmentResponse> attachments;
 
-    // 첨부파일이 없는 생성/수정 응답에서 사용
+    // 생성/수정 응답 (스크랩 정보 없음)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             Long currentUserId,
             UserRole currentUserRole
     ) {
-        return from(post, List.of(), currentUserId, currentUserRole);
+        return from(post, List.of(), currentUserId, currentUserRole, false);
     }
 
-    // 상세 조회처럼 첨부파일과 권한 정보를 함께 담아 응답 객체로 변환
+    // 상세 조회 (스크랩 정보 포함)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             List<PostAttachmentResponse> attachments,
             Long currentUserId,
-            UserRole currentUserRole
+            UserRole currentUserRole,
+            boolean isScrapped
     ) {
-        // 클라이언트가 작성자/관리자 권한을 다시 계산하지 않도록 수정/삭제 가능 여부를 함께 내려준다.
         boolean canManage = canManage(post, currentUserId, currentUserRole);
         return new TherapyPostDetailResponse(
                 post.getId(),
-                post.getTitle(),
                 post.getContent(),
                 post.getPostType(),
                 post.getAuthor().getId(),
-                post.getAuthor().getNickname(),
+                post.getAuthor().getDisplayNickname(),
                 post.getTherapyArea(),
-                post.getAgeGroup(),
+                post.getVisibility(),
                 post.getViewCount(),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 canManage,
                 canManage,
+                isScrapped,
                 attachments
         );
     }
