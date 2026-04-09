@@ -13,6 +13,7 @@ import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UpdateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -60,7 +61,8 @@ public class PostController {
     ) {
         PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
         Long userId = userDetails != null ? userDetails.getUserId() : null;
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(page, size, sortType, condition);
+        UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(page, size, sortType, condition, userRole);
 
         List<Long> postIds = response.getItems().stream()
                 .map(TherapyPostSummaryResponse::getId).toList();

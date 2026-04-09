@@ -41,6 +41,7 @@ class PostAttachmentServiceTest {
     private UserRepository userRepository;
     private FileStorageService fileStorageService;
     private ResourceAccessValidator resourceAccessValidator;
+    private PostVisibilityAccessPolicy visibilityPolicy;
     private PostAttachmentService postAttachmentService;
 
     @BeforeEach
@@ -51,6 +52,10 @@ class PostAttachmentServiceTest {
         userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
+        visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
 
         postAttachmentService = new PostAttachmentService(
                 activePostFinder,
@@ -58,7 +63,8 @@ class PostAttachmentServiceTest {
                 therapyPostDownloadRepository,
                 userRepository,
                 fileStorageService,
-                resourceAccessValidator
+                resourceAccessValidator,
+                visibilityPolicy
         );
     }
 
@@ -153,7 +159,7 @@ class PostAttachmentServiceTest {
                 .thenReturn(storedFile);
         when(therapyPostDownloadRepository.findByPostIdAndUserId(10L, userId)).thenReturn(Optional.empty());
 
-        StoredFileResource response = postAttachmentService.downloadAttachment(userId, 10L, 99L);
+        StoredFileResource response = postAttachmentService.downloadAttachment(userId, UserRole.THERAPIST, 10L, 99L);
 
         assertThat(response.getOriginalFilename()).isEqualTo("guide.pdf");
         verify(therapyPostDownloadRepository).save(any(TherapyPostDownload.class));
@@ -180,7 +186,7 @@ class PostAttachmentServiceTest {
                         1
                 ));
 
-        PagedResponse<DownloadedPostResponse> response = postAttachmentService.getMyDownloads(userId, 0, 10);
+        PagedResponse<DownloadedPostResponse> response = postAttachmentService.getMyDownloads(userId, UserRole.THERAPIST, 0, 10);
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).getPostId()).isEqualTo(10L);

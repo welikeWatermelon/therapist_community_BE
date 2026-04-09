@@ -71,6 +71,7 @@ public class PostAttachmentController {
     ) {
         StoredFileResource storedFile = postAttachmentService.downloadAttachment(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 attachmentId
         );

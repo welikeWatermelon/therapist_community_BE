@@ -4,6 +4,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
@@ -30,6 +31,7 @@ class ScrapServiceTest {
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ApplicationEventPublisher eventPublisher;
+    private PostVisibilityAccessPolicy visibilityPolicy;
     private ScrapService scrapService;
 
     @BeforeEach
@@ -38,7 +40,11 @@ class ScrapServiceTest {
         this.activePostFinder = mock(ActivePostFinder.class);
         this.userRepository = mock(UserRepository.class);
         this.eventPublisher = mock(ApplicationEventPublisher.class);
-        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository, eventPublisher);
+        this.visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
+        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository, eventPublisher, visibilityPolicy);
     }
 
     @Test
@@ -66,7 +72,7 @@ class ScrapServiceTest {
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
 
         // when
-        ScrapStatusResponse response = scrapService.addScrap(currentUserId, postId);
+        ScrapStatusResponse response = scrapService.addScrap(currentUserId, UserRole.THERAPIST, postId);
 
         // then
         verify(scrapRepository).save(any(TherapyPostScrap.class));
@@ -100,7 +106,7 @@ class ScrapServiceTest {
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
 
         // when
-        ScrapStatusResponse response = scrapService.addScrap(currentUserId, postId);
+        ScrapStatusResponse response = scrapService.addScrap(currentUserId, UserRole.THERAPIST, postId);
 
         // then
         verify(scrapRepository, never()).save(any(TherapyPostScrap.class));
@@ -133,7 +139,7 @@ class ScrapServiceTest {
         when(scrapRepository.findByPostIdAndUserId(postId, currentUserId)).thenReturn(Optional.of(scrap));
 
         // when
-        ScrapStatusResponse response = scrapService.removeScrap(currentUserId, postId);
+        ScrapStatusResponse response = scrapService.removeScrap(currentUserId, UserRole.THERAPIST, postId);
 
         // then
         verify(scrapRepository).delete(scrap);
@@ -171,7 +177,7 @@ class ScrapServiceTest {
                 .thenReturn(page);
 
         // when
-        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(currentUserId, 0, 10);
+        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(currentUserId, UserRole.THERAPIST, 0, 10);
 
         // then
         assertThat(response.getItems()).hasSize(1);

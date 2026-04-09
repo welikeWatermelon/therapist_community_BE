@@ -14,23 +14,27 @@ public record CurrentUserResponse(
         String profileImageUrl,
         String role,
         boolean canAccessCommunity,
+        String communityAccessLevel,
         TherapistVerificationSummary therapistVerification
 ) {
 
     public static CurrentUserResponse from(User user, Optional<TherapistVerification> verification) {
+        String accessLevel = communityAccessLevel(user);
         return new CurrentUserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getProfileImageUrl(),
                 user.getRole().getCode(),
-                canAccessCommunity(user),
+                "FULL".equals(accessLevel),
+                accessLevel,
                 TherapistVerificationSummary.from(verification)
         );
     }
 
-    private static boolean canAccessCommunity(User user) {
-        return user.getRole() == UserRole.THERAPIST || user.getRole() == UserRole.ADMIN;
+    private static String communityAccessLevel(User user) {
+        return (user.getRole() == UserRole.THERAPIST || user.getRole() == UserRole.ADMIN)
+                ? "FULL" : "PUBLIC_ONLY";
     }
 
     public record TherapistVerificationSummary(

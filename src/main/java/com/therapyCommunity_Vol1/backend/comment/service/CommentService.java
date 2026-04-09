@@ -12,6 +12,7 @@ import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -37,10 +38,12 @@ public class CommentService {
     private final ResourceAccessValidator resourceAccessValidator;
     private final CommentThreadAssembler commentThreadAssembler;
     private final ApplicationEventPublisher eventPublisher;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     @Transactional
     public CommentResponse createComment(
             Long currentUserId,
+            UserRole currentUserRole,
             Long postId,
             CreateCommentRequest request
     ) {
@@ -48,6 +51,7 @@ public class CommentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         TherapyPostComment comment;
 
@@ -104,7 +108,8 @@ public class CommentService {
             UserRole currentUserRole,
             Long postId
     ) {
-        activePostFinder.findOrThrow(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         List<TherapyPostComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
         return commentThreadAssembler.assemble(comments, currentUserId, currentUserRole);
@@ -119,6 +124,7 @@ public class CommentService {
     ) {
         TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        visibilityPolicy.checkAccess(comment.getPost(), currentUserRole);
 
         resourceAccessValidator.validateAuthorOrAdmin(comment.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.COMMENT_ACCESS_DENIED);
 
@@ -135,6 +141,7 @@ public class CommentService {
     ) {
         TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        visibilityPolicy.checkAccess(comment.getPost(), currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(comment.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.COMMENT_ACCESS_DENIED);
 
         comment.softDelete();

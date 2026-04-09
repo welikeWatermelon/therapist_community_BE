@@ -34,6 +34,7 @@ public class PostService {
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     @Transactional
     public TherapyPostDetailResponse createPost(
@@ -57,9 +58,10 @@ public class PostService {
             int page,
             int size,
             PostSortType sortType,
-            PostSearchCondition condition
+            PostSearchCondition condition,
+            UserRole currentUserRole
     ) {
-        Page<TherapyPost> result = findPosts(page, size, sortType, condition);
+        Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
 
         List<TherapyPostSummaryResponse> posts = result.getContent()
                 .stream()
@@ -69,24 +71,29 @@ public class PostService {
         return PagedResponse.from(result, posts);
     }
 
-    private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType, PostSearchCondition condition) {
+    private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType,
+                                         PostSearchCondition condition, UserRole role) {
         Pageable pageable = PageRequest.of(page, size, toSort(sortType));
+        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
 
         if (condition.isEmpty()) {
-            return therapyPostRepository.findByDeletedAtIsNull(pageable);
+            return publicOnly
+                    ? therapyPostRepository.findByDeletedAtIsNullAndVisibility(Visibility.PUBLIC, pageable)
+                    : therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
-            return therapyPostRepository.searchByKeyword(
-                    condition.getEscapedKeyword().trim(),
-                    condition.getTherapyArea(),
-                    condition.getPostType(),
-                    pageable
-            );
+            return publicOnly
+                    ? therapyPostRepository.searchByKeywordAndVisibility(
+                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            condition.getPostType(), Visibility.PUBLIC, pageable)
+                    : therapyPostRepository.searchByKeyword(
+                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            condition.getPostType(), pageable);
         } else {
-            return therapyPostRepository.searchByFilter(
-                    condition.getTherapyArea(),
-                    condition.getPostType(),
-                    pageable
-            );
+            return publicOnly
+                    ? therapyPostRepository.searchByFilterAndVisibility(
+                            condition.getTherapyArea(), condition.getPostType(), Visibility.PUBLIC, pageable)
+                    : therapyPostRepository.searchByFilter(
+                            condition.getTherapyArea(), condition.getPostType(), pageable);
         }
     }
 
@@ -122,7 +129,7 @@ public class PostService {
             boolean isScrapped
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateVisibility(post, currentUserId, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         post.increaseViewCount();
 
@@ -163,17 +170,6 @@ public class PostService {
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
-    }
-
-
-    private void validateVisibility(TherapyPost post, Long currentUserId, UserRole currentUserRole) {
-        if (post.getVisibility() == Visibility.PRIVATE) {
-            boolean isAdmin = currentUserRole == UserRole.ADMIN;
-            boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-            if (!isAdmin && !isAuthor) {
-                throw new CustomException(ErrorCode.POST_NOT_FOUND);
-            }
-        }
     }
 
 }

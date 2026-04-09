@@ -5,7 +5,10 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
@@ -35,6 +38,7 @@ public class ScrapService {
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     public Set<Long> getScrappedPostIds(Long userId, List<Long> postIds) {
         if (userId == null || postIds.isEmpty()) {
@@ -44,11 +48,12 @@ public class ScrapService {
     }
 
     @Transactional
-    public ScrapStatusResponse addScrap(Long currentUserId, Long postId) {
+    public ScrapStatusResponse addScrap(Long currentUserId, UserRole currentUserRole, Long postId) {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         boolean alreadyExists = scrapRepository.existsByPostIdAndUserId(postId,currentUserId);
 
@@ -69,22 +74,24 @@ public class ScrapService {
     }
 
     @Transactional
-    public ScrapStatusResponse removeScrap(Long currentUserId, Long postId) {
-        activePostFinder.findOrThrow(postId);
+    public ScrapStatusResponse removeScrap(Long currentUserId, UserRole currentUserRole, Long postId) {
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         scrapRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(scrapRepository::delete);
         return new ScrapStatusResponse(postId, false);
     }
 
-    public ScrapStatusResponse getScrapStatus(Long currentUserId, Long postId) {
-        activePostFinder.findOrThrow(postId);
+    public ScrapStatusResponse getScrapStatus(Long currentUserId, UserRole currentUserRole, Long postId) {
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         boolean scrapped = scrapRepository.existsByPostIdAndUserId(postId, currentUserId);
 
         return new ScrapStatusResponse(postId, scrapped);
     }
 
-    public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, int page, int size) {
+    public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, UserRole currentUserRole, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -93,7 +100,9 @@ public class ScrapService {
                 size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
         );
-        Page<TherapyPostScrap> result = scrapRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable);
+        Page<TherapyPostScrap> result = visibilityPolicy.canViewPrivate(currentUserRole)
+                ? scrapRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable)
+                : scrapRepository.findByUserIdAndPost_DeletedAtIsNullAndPost_Visibility(currentUserId, Visibility.PUBLIC, pageable);
 
         List<ScrappedPostResponse> scraps = result.getContent()
                 .stream()

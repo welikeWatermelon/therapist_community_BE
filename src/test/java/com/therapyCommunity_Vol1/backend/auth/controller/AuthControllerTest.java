@@ -72,6 +72,7 @@ class AuthControllerTest {
                         null,
                         "USER",
                         false,
+                        "PUBLIC_ONLY",
                         new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
                 ),
                 new LoginResponse.Tokens("access-token", 1800L)

@@ -26,6 +26,8 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -99,7 +101,7 @@ class MyDownloadControllerTest {
                 false
         );
 
-        given(postAttachmentService.getMyDownloads(1L, 0, 10)).willReturn(response);
+        given(postAttachmentService.getMyDownloads(eq(1L), any(UserRole.class), eq(0), eq(10))).willReturn(response);
 
         mockMvc.perform(get("/api/v1/me/downloads")
                         .queryParam("page", "0")
@@ -113,6 +115,6 @@ class MyDownloadControllerTest {
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.hasNext").value(false));
 
-        verify(postAttachmentService).getMyDownloads(1L, 0, 10);
+        verify(postAttachmentService).getMyDownloads(eq(1L), any(UserRole.class), eq(0), eq(10));
     }
 }

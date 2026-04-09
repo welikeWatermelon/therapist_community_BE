@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostAttachment;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPostDownload;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
@@ -42,6 +43,7 @@ public class PostAttachmentService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ResourceAccessValidator resourceAccessValidator;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     @Transactional
     public PostAttachmentResponse uploadAttachment(
@@ -77,6 +79,7 @@ public class PostAttachmentService {
     @Transactional
     public StoredFileResource downloadAttachment(
             Long currentUserId,
+            UserRole currentUserRole,
             Long postId,
             Long attachmentId
     ) {
@@ -84,6 +87,7 @@ public class PostAttachmentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
 
@@ -121,7 +125,7 @@ public class PostAttachmentService {
         safeDelete(storedPath, currentUserId);
     }
 
-    public PagedResponse<DownloadedPostResponse> getMyDownloads(Long currentUserId, int page, int size) {
+    public PagedResponse<DownloadedPostResponse> getMyDownloads(Long currentUserId, UserRole currentUserRole, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -131,8 +135,9 @@ public class PostAttachmentService {
                 Sort.by(Sort.Order.desc("lastDownloadedAt"), Sort.Order.desc("id"))
         );
 
-        Page<TherapyPostDownload> result =
-                therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable);
+        Page<TherapyPostDownload> result = visibilityPolicy.canViewPrivate(currentUserRole)
+                ? therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable)
+                : therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNullAndPost_Visibility(currentUserId, Visibility.PUBLIC, pageable);
 
         return PagedResponse.from(result, result.getContent().stream()
                         .map(DownloadedPostResponse::from)

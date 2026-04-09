@@ -49,6 +49,7 @@ public class CommentController {
     ) {
         CommentResponse response = commentService.createComment(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 request
         );

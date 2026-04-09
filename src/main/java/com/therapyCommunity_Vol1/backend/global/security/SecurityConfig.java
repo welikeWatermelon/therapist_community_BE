@@ -63,15 +63,16 @@ public class SecurityConfig {
                     .requestMatchers("/api/v1/notifications/**").authenticated()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                    // 치료사 전용
-                    .requestMatchers(
-                            "/api/v1/posts/**",
-                            "/api/v1/comments/**",
-                            "/api/v1/me/downloads",
-                            "/api/v1/me/downloads/**",
-                            "/api/v1/me/scraps",
-                            "/api/v1/me/scraps/**"
-                    ).hasAnyRole("THERAPIST","ADMIN")
+                    // 게시글 읽기/상호작용 — USER 포함 (서비스에서 PUBLIC/PRIVATE 체크)
+                    .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers("/api/v1/comments/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers("/api/v1/me/scraps", "/api/v1/me/scraps/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers("/api/v1/me/downloads", "/api/v1/me/downloads/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/v1/posts/{postId}/scrap").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/posts/{postId}/scrap").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/{postId}/scrap").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    // 게시글 작성/수정/삭제, 첨부 업로드/삭제 — 치료사/관리자만
+                    .requestMatchers("/api/v1/posts/**").hasAnyRole("THERAPIST", "ADMIN")
 
                     //나머지는 로그인 필요
                     .anyRequest().authenticated()
