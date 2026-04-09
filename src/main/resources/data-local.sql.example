@@ -1,0 +1,133 @@
+-- ============================================================
+-- 로컬 개발용 시드 데이터
+-- 사용법: cp data-local.sql.example data-local.sql
+-- 공통 비밀번호: test1234!
+-- ============================================================
+
+-- === 계정 ===
+INSERT INTO users (id, email, password_hash, nickname, role, created_at, updated_at)
+VALUES
+    (9001, 'admin@local.com',     '$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '관리자',       'ADMIN',     NOW(), NOW()),
+    (9002, 'therapist@local.com', '$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '김언어치료사', 'THERAPIST', NOW(), NOW()),
+    (9003, 'therapist2@local.com','$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '이작업치료사', 'THERAPIST', NOW(), NOW()),
+    (9004, 'user@local.com',     '$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '박일반유저',   'USER',      NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- === 치료사 인증 ===
+INSERT INTO therapist_verifications (id, user_id, license_code, status, created_at, updated_at)
+VALUES
+    (9001, 9002, 'LOCAL-001', 'APPROVED', NOW(), NOW()),
+    (9002, 9003, 'LOCAL-002', 'APPROVED', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- === 게시글 30개 ===
+-- 치료사1 (9002): PUBLIC 15개 + PRIVATE 3개
+-- 치료사2 (9003): PUBLIC 8개 + PRIVATE 2개
+-- 유저 (9004): PUBLIC 2개
+INSERT INTO therapy_posts (id, content, therapy_area, post_type, view_count, author_id, visibility, created_at, updated_at)
+VALUES
+    -- 치료사1 PUBLIC
+    (9001, '<p>언어치료에서 초기 평가의 중요성에 대해 이야기해보겠습니다. 아동의 언어 발달 수준을 정확하게 파악하는 것이 치료 계획의 첫걸음입니다.</p>', 'SPEECH', 'COMMUNITY', 42, 9002, 'PUBLIC', NOW() - INTERVAL '29 days', NOW() - INTERVAL '29 days'),
+    (9002, '<p>감각통합 치료 시 가정에서 할 수 있는 활동들을 정리했습니다. 부모님들이 일상에서 적용할 수 있는 간단한 놀이 위주로 구성했습니다.</p>', 'SENSORY_INTEGRATION', 'COMMUNITY', 88, 9002, 'PUBLIC', NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days'),
+    (9003, '<p>인지치료 프로그램 설계 시 고려해야 할 핵심 요소들입니다. 대상 아동의 연령, 인지 수준, 주의집중 시간 등을 종합적으로 평가해야 합니다.</p>', 'COGNITIVE', 'COMMUNITY', 156, 9002, 'PUBLIC', NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9004, '<p>작업치료에서 미세운동 발달을 촉진하는 도구들을 소개합니다. 가위 사용, 구슬 꿰기, 점토 놀이 등 다양한 활동이 있습니다.</p>', 'OCCUPATIONAL', 'COMMUNITY', 73, 9002, 'PUBLIC', NOW() - INTERVAL '26 days', NOW() - INTERVAL '26 days'),
+    (9005, '<p>음악치료 세션에서 리듬 활동이 아동의 정서 조절에 미치는 영향에 대한 사례를 공유합니다.</p>', 'MUSIC', 'COMMUNITY', 201, 9002, 'PUBLIC', NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
+    (9006, '<p>놀이치료 초기 세션에서 라포 형성 전략입니다. 아동이 안전하다고 느끼는 환경을 만드는 것이 가장 중요합니다.</p>', 'PLAY', 'COMMUNITY', 34, 9002, 'PUBLIC', NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9007, '<p>행동치료에서 강화 스케줄을 설계하는 방법론입니다. 연속 강화에서 간헐 강화로 전환하는 타이밍이 핵심입니다.</p>', 'BEHAVIOR', 'COMMUNITY', 127, 9002, 'PUBLIC', NOW() - INTERVAL '23 days', NOW() - INTERVAL '23 days'),
+    (9008, '<p>물리치료에서 대근육 발달 평가 도구를 비교 분석했습니다. GMFM과 PDMS-2의 장단점을 정리합니다.</p>', 'PHYSICAL', 'COMMUNITY', 95, 9002, 'PUBLIC', NOW() - INTERVAL '22 days', NOW() - INTERVAL '22 days'),
+    (9009, '<p>미술치료에서 색채 선택이 아동의 심리 상태를 반영하는 사례들입니다. 해석 시 주의할 점도 함께 다룹니다.</p>', 'ART', 'COMMUNITY', 64, 9002, 'PUBLIC', NOW() - INTERVAL '21 days', NOW() - INTERVAL '21 days'),
+    (9010, '<p>언어치료 보고서 작성 팁입니다. 목표 설정, 중재 방법, 진전도 기록 등 체계적인 문서화가 중요합니다.</p>', 'SPEECH', 'COMMUNITY', 312, 9002, 'PUBLIC', NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days'),
+    (9011, '<p>감각통합 치료실 환경 구성 가이드입니다. 그네, 볼풀, 트램폴린 등 필수 장비와 안전 기준을 정리했습니다.</p>', 'SENSORY_INTEGRATION', 'COMMUNITY', 178, 9002, 'PUBLIC', NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
+    (9012, '<p>인지치료에서 시각적 스케줄의 활용법입니다. 자폐 스펙트럼 아동에게 특히 효과적인 구조화 전략입니다.</p>', 'COGNITIVE', 'COMMUNITY', 89, 9002, 'PUBLIC', NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9013, '<p>작업치료 중 일상생활 활동(ADL) 훈련 프로그램을 공유합니다. 식사, 옷입기, 세수하기 등 단계별 접근법입니다.</p>', 'OCCUPATIONAL', 'COMMUNITY', 145, 9002, 'PUBLIC', NOW() - INTERVAL '17 days', NOW() - INTERVAL '17 days'),
+    (9014, '<p>음악치료에서 즉흥연주 기법이 아동의 자기표현에 미치는 효과에 대한 연구 결과를 공유합니다.</p>', 'MUSIC', 'COMMUNITY', 56, 9002, 'PUBLIC', NOW() - INTERVAL '16 days', NOW() - INTERVAL '16 days'),
+    (9015, '<p>놀이치료에서 모래놀이의 치료적 의미와 해석 방법입니다. 상징적 표현을 이해하는 관점을 제안합니다.</p>', 'PLAY', 'COMMUNITY', 223, 9002, 'PUBLIC', NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days'),
+    -- 치료사1 PRIVATE
+    (9016, '<p>[비공개] 내부 케이스 스터디: 언어 발달 지연 아동 6개월 추적 관찰 기록입니다.</p>', 'SPEECH', 'COMMUNITY', 12, 9002, 'PRIVATE', NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
+    (9017, '<p>[비공개] 치료 프로토콜 초안입니다. 팀 내부 리뷰용으로 작성했습니다.</p>', 'COGNITIVE', 'COMMUNITY', 5, 9002, 'PRIVATE', NOW() - INTERVAL '13 days', NOW() - INTERVAL '13 days'),
+    (9018, '<p>[비공개] 수퍼비전 노트: 이번 주 세션에서 느낀 점과 개선 방향입니다.</p>', 'SENSORY_INTEGRATION', 'COMMUNITY', 3, 9002, 'PRIVATE', NOW() - INTERVAL '12 days', NOW() - INTERVAL '12 days'),
+    -- 치료사2 PUBLIC
+    (9019, '<p>물리치료에서 수중치료의 효과에 대해 정리했습니다. 부력을 이용한 관절 가동 범위 확대가 핵심입니다.</p>', 'PHYSICAL', 'COMMUNITY', 167, 9003, 'PUBLIC', NOW() - INTERVAL '11 days', NOW() - INTERVAL '11 days'),
+    (9020, '<p>행동치료에서 소거 저항(extinction burst)에 대처하는 전략입니다. 부모 교육이 특히 중요합니다.</p>', 'BEHAVIOR', 'COMMUNITY', 98, 9003, 'PUBLIC', NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
+    (9021, '<p>미술치료 재료 선택 가이드입니다. 크레파스, 수채화, 점토 등 재료별 치료적 특성을 비교합니다.</p>', 'ART', 'COMMUNITY', 134, 9003, 'PUBLIC', NOW() - INTERVAL '9 days', NOW() - INTERVAL '9 days'),
+    (9022, '<p>언어치료에서 AAC(보완대체의사소통) 도구 활용 사례입니다. 태블릿 기반 AAC 앱의 장단점을 비교합니다.</p>', 'SPEECH', 'COMMUNITY', 245, 9003, 'PUBLIC', NOW() - INTERVAL '8 days', NOW() - INTERVAL '8 days'),
+    (9023, '<p>감각통합 평가 도구 SPM과 SP-2를 비교 분석합니다. 각 도구의 적용 연령과 특징을 정리했습니다.</p>', 'SENSORY_INTEGRATION', 'COMMUNITY', 87, 9003, 'PUBLIC', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    (9024, '<p>인지치료에서 실행 기능 훈련 프로그램입니다. 계획, 조직화, 유연성 등 핵심 영역별 활동을 소개합니다.</p>', 'COGNITIVE', 'COMMUNITY', 176, 9003, 'PUBLIC', NOW() - INTERVAL '6 days', NOW() - INTERVAL '6 days'),
+    (9025, '<p>작업치료에서 글씨쓰기 어려움에 대한 중재 전략입니다. 자세, 잡기 패턴, 시지각 요소를 종합적으로 접근합니다.</p>', 'OCCUPATIONAL', 'COMMUNITY', 112, 9003, 'PUBLIC', NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days'),
+    (9026, '<p>놀이치료에서 형제 참여 세션의 효과와 진행 방법입니다. 가족 역동을 이해하는 데 도움이 됩니다.</p>', 'PLAY', 'COMMUNITY', 67, 9003, 'PUBLIC', NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days'),
+    -- 치료사2 PRIVATE
+    (9027, '<p>[비공개] 내부 연구 데이터: 물리치료 효과 측정 결과 원시 데이터입니다.</p>', 'PHYSICAL', 'COMMUNITY', 8, 9003, 'PRIVATE', NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days'),
+    (9028, '<p>[비공개] 치료팀 회의록: 다학제 협력 방안 논의 내용입니다.</p>', 'UNSPECIFIED', 'COMMUNITY', 2, 9003, 'PRIVATE', NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days'),
+    -- 유저 PUBLIC
+    (9029, '<p>아이가 언어치료를 시작한 지 3개월째입니다. 조금씩 변화가 보여서 기록으로 남깁니다. 같은 경험 있으신 분 계신가요?</p>', 'SPEECH', 'COMMUNITY', 34, 9004, 'PUBLIC', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+    (9030, '<p>감각통합 치료 받고 있는데, 가정에서 할 수 있는 활동 추천해주세요! 선생님들 조언 부탁드립니다.</p>', 'SENSORY_INTEGRATION', 'COMMUNITY', 28, 9004, 'PUBLIC', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- === 댓글 + 대댓글 ===
+INSERT INTO therapy_post_comments (id, post_id, author_id, parent_comment_id, content, created_at, updated_at)
+VALUES
+    -- 게시글 9001 댓글
+    (9001, 9001, 9003, NULL, '초기 평가 관련해서 좋은 글이네요. 저도 비슷한 경험이 있습니다.', NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days'),
+    (9002, 9001, 9004, NULL, '언어치료에 관심이 많은데, 평가는 어디서 받을 수 있나요?', NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9003, 9001, 9002, 9002, '가까운 언어치료센터에서 초기 상담을 받으시면 됩니다.', NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    -- 게시글 9005 댓글
+    (9004, 9005, 9003, NULL, '음악치료의 정서 조절 효과는 정말 놀랍습니다. 리듬 활동 구체적인 예시가 있을까요?', NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9005, 9005, 9002, 9004, '드럼 서클, 핸드벨 순서 맞추기, 노래 만들기 등이 대표적입니다.', NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    -- 게시글 9010 댓글
+    (9006, 9010, 9003, NULL, '보고서 작성 팁 감사합니다! 특히 목표 설정 부분이 도움이 됐어요.', NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
+    (9007, 9010, 9004, NULL, '치료 보고서는 보호자에게도 공유되나요?', NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9008, 9010, 9002, 9007, '네, 보호자 상담 시 주요 내용을 함께 공유합니다.', NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    -- 게시글 9022 댓글
+    (9009, 9022, 9002, NULL, 'AAC 관련 좋은 정리네요. 저도 태블릿 AAC를 많이 활용하고 있습니다.', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    (9010, 9022, 9004, NULL, 'AAC가 뭔지 처음 알았어요. 도움이 많이 됩니다!', NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days'),
+    -- 게시글 9029 (유저 글) 댓글
+    (9011, 9029, 9002, NULL, '3개월이면 변화가 보이기 시작하는 시기입니다. 꾸준히 하시면 좋은 결과가 있을 거예요!', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
+    (9012, 9029, 9003, NULL, '저희 아이도 비슷한 시기에 눈에 띄는 변화가 있었어요. 응원합니다!', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours'),
+    -- 게시글 9030 (유저 글) 댓글
+    (9013, 9030, 9002, NULL, '촉각 놀이(밀가루 반죽, 물감 놀이)와 전정감각 활동(그네, 시소)을 추천드립니다.', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours'),
+    (9014, 9030, 9004, 9013, '감사합니다! 밀가루 반죽부터 시작해볼게요.', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- === 게시글 반응 ===
+INSERT INTO therapy_post_reactions (id, post_id, user_id, reaction_type, created_at, updated_at)
+VALUES
+    (9001, 9001, 9003, 'EMPATHY',     NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days'),
+    (9002, 9001, 9004, 'HELPFUL',     NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9003, 9003, 9003, 'HELPFUL',     NOW() - INTERVAL '26 days', NOW() - INTERVAL '26 days'),
+    (9004, 9005, 9003, 'APPRECIATE',  NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9005, 9005, 9004, 'EMPATHY',     NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9006, 9010, 9003, 'HELPFUL',     NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
+    (9007, 9010, 9004, 'APPRECIATE',  NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9008, 9010, 9001, 'EMPATHY',     NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9009, 9015, 9003, 'EMPATHY',     NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
+    (9010, 9015, 9004, 'HELPFUL',     NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
+    (9011, 9022, 9002, 'APPRECIATE',  NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
+    (9012, 9022, 9004, 'HELPFUL',     NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
+    (9013, 9029, 9002, 'EMPATHY',     NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
+    (9014, 9029, 9003, 'EMPATHY',     NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours'),
+    (9015, 9030, 9002, 'EMPATHY',     NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- === 댓글 반응 ===
+INSERT INTO therapy_post_comment_reactions (id, comment_id, user_id, reaction_type, created_at, updated_at)
+VALUES
+    (9001, 9001, 9002, 'LIKE', NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days'),
+    (9002, 9003, 9004, 'LIKE', NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9003, 9005, 9004, 'LIKE', NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9004, 9006, 9002, 'LIKE', NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
+    (9005, 9011, 9004, 'LIKE', NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
+    (9006, 9013, 9004, 'LIKE', NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- === 스크랩 ===
+INSERT INTO therapy_post_scraps (id, post_id, user_id, created_at, updated_at)
+VALUES
+    (9001, 9001, 9004, NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9002, 9005, 9004, NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9003, 9010, 9004, NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9004, 9015, 9004, NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
+    (9005, 9022, 9004, NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
+    (9006, 9002, 9003, NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9007, 9010, 9003, NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
+    (9008, 9029, 9002, NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours')
+ON CONFLICT (id) DO NOTHING;

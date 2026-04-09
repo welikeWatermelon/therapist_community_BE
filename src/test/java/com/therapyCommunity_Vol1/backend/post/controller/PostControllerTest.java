@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.controller;
 
+import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
@@ -105,5 +106,31 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.items").isArray());
 
         verify(postService).getPosts(eq(0), eq(10), eq(PostSortType.LATEST), any(PostSearchCondition.class), any(UserRole.class));
+    }
+
+    @Test
+    void 피드_조회_성공() throws Exception {
+        // given
+        CursorPagedResponse<TherapyPostSummaryResponse> feedResponse = new CursorPagedResponse<>(
+                List.of(),
+                null,
+                false,
+                20
+        );
+        given(postService.getPostsFeed(eq(20), eq(null), any(UserRole.class)))
+                .willReturn(feedResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/posts/feed")
+                        .queryParam("size", "20")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items").isArray())
+                .andExpect(jsonPath("$.data.hasNext").value(false))
+                .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.data.size").value(20));
+
+        verify(postService).getPostsFeed(eq(20), eq(null), any(UserRole.class));
     }
 }

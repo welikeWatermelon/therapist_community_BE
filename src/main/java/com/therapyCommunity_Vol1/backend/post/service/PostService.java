@@ -7,6 +7,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
+import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -42,8 +43,8 @@ public class PostService {
             UserRole currentUserRole,
             CreateTherapyPostRequest request
     ) {
-        if (currentUserRole == UserRole.USER && request.getVisibility() == Visibility.PRIVATE) {
-            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        if (request.getVisibility() == Visibility.PRIVATE) {
+            visibilityPolicy.checkCanWritePrivate(currentUserRole);
         }
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -112,6 +113,46 @@ public class PostService {
         return PagedResponse.from(result, posts);
     }
 
+    private static final int FEED_MAX_SIZE = 50;
+
+    /**
+     * 커서 기반 피드 조회 (LATEST 고정, 무한스크롤용)
+     *
+     * @param size   요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
+     * @param cursor 이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
+     * @param role   USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     */
+    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(int size, String cursor, UserRole role) {
+        // size 범위 보정: 최소 1, 최대 50
+        size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
+
+        // 커서 디코딩: null이면 첫 페이지, 값이 있으면 해당 위치부터
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+
+        // role에 따라 PUBLIC_ONLY / 전체 쿼리 분기
+        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
+
+        // size+1개 조회: 초과분이 있으면 다음 페이지 존재
+        List<TherapyPost> posts = publicOnly
+                ? therapyPostRepository.findFeedLatestByVisibility(
+                        Visibility.PUBLIC,
+                        postCursor != null ? postCursor.createdAt() : null,
+                        postCursor != null ? postCursor.id() : null,
+                        PageRequest.of(0, size + 1))
+                : therapyPostRepository.findFeedLatest(
+                        postCursor != null ? postCursor.createdAt() : null,
+                        postCursor != null ? postCursor.id() : null,
+                        PageRequest.of(0, size + 1));
+
+        List<TherapyPostSummaryResponse> dtos = posts.stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        // CursorPagedResponse.of()가 size+1 → trim + hasNext/nextCursor 계산
+        return CursorPagedResponse.of(dtos, size, item ->
+                new PostCursor(item.getCreatedAt(), item.getId()).encode());
+    }
+
     private Sort toSort(PostSortType sortType) {
         return switch (sortType) {
             case MOST_VIEWED -> Sort.by(
@@ -157,8 +198,8 @@ public class PostService {
         visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        if (currentUserRole == UserRole.USER && request.getVisibility() == Visibility.PRIVATE) {
-            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        if (request.getVisibility() == Visibility.PRIVATE) {
+            visibilityPolicy.checkCanWritePrivate(currentUserRole);
         }
 
         post.update(

@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> {
@@ -88,6 +90,40 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("therapyArea") TherapyArea therapyArea,
             @Param("postType") PostType postType,
             @Param("visibility") Visibility visibility,
+            Pageable pageable
+    );
+
+    // 커서 피드 — 전체 (THERAPIST/ADMIN)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND (:cursorCreatedAt IS NULL OR
+                   p.createdAt < :cursorCreatedAt OR
+                   (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedLatest(
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    // 커서 피드 — visibility 필터 (USER → PUBLIC)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility = :visibility
+              AND (:cursorCreatedAt IS NULL OR
+                   p.createdAt < :cursorCreatedAt OR
+                   (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedLatestByVisibility(
+            @Param("visibility") Visibility visibility,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 }

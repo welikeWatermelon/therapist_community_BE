@@ -48,6 +48,7 @@ backend.env
 # 로컬 전용 설정 파일 제외
 src/main/resources/application-local.yml
 src/main/resources/application-local.yaml
+src/main/resources/data-local.sql
 
 #CLAUDE
 CLAUDE.md
