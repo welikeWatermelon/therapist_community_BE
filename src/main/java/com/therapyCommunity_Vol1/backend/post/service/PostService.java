@@ -43,8 +43,8 @@ public class PostService {
             UserRole currentUserRole,
             CreateTherapyPostRequest request
     ) {
-        if (currentUserRole == UserRole.USER && request.getVisibility() == Visibility.PRIVATE) {
-            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        if (request.getVisibility() == Visibility.PRIVATE) {
+            visibilityPolicy.checkCanWritePrivate(currentUserRole);
         }
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -186,8 +186,8 @@ public class PostService {
         visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        if (currentUserRole == UserRole.USER && request.getVisibility() == Visibility.PRIVATE) {
-            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        if (request.getVisibility() == Visibility.PRIVATE) {
+            visibilityPolicy.checkCanWritePrivate(currentUserRole);
         }
 
         post.update(

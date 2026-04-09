@@ -16,6 +16,12 @@ public class PostVisibilityAccessPolicy {
         }
     }
 
+    public void checkCanWritePrivate(UserRole role) {
+        if (role == UserRole.USER) {
+            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        }
+    }
+
     public boolean canViewPrivate(UserRole role) {
         return role == UserRole.THERAPIST || role == UserRole.ADMIN;
     }
