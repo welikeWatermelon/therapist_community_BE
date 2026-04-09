@@ -72,6 +72,7 @@ public class ScrapController {
     ) {
         PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 page,
                 size
         );

@@ -5,6 +5,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -90,7 +91,7 @@ public class ScrapService {
         return new ScrapStatusResponse(postId, scrapped);
     }
 
-    public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, int page, int size) {
+    public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, UserRole currentUserRole, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -99,7 +100,9 @@ public class ScrapService {
                 size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
         );
-        Page<TherapyPostScrap> result = scrapRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable);
+        Page<TherapyPostScrap> result = visibilityPolicy.canViewPrivate(currentUserRole)
+                ? scrapRepository.findByUserIdAndPost_DeletedAtIsNull(currentUserId, pageable)
+                : scrapRepository.findByUserIdAndPost_DeletedAtIsNullAndPost_Visibility(currentUserId, Visibility.PUBLIC, pageable);
 
         List<ScrappedPostResponse> scraps = result.getContent()
                 .stream()

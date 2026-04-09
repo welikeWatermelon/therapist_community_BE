@@ -34,6 +34,7 @@ public class MyDownloadController {
     ) {
         PagedResponse<DownloadedPostResponse> response = postAttachmentService.getMyDownloads(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 page,
                 size
         );

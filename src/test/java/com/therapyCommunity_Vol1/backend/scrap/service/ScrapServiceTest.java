@@ -41,6 +41,9 @@ class ScrapServiceTest {
         this.userRepository = mock(UserRepository.class);
         this.eventPublisher = mock(ApplicationEventPublisher.class);
         this.visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
         this.scrapService = new ScrapService(scrapRepository, activePostFinder, userRepository, eventPublisher, visibilityPolicy);
     }
 
@@ -174,7 +177,7 @@ class ScrapServiceTest {
                 .thenReturn(page);
 
         // when
-        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(currentUserId, 0, 10);
+        PagedResponse<ScrappedPostResponse> response = scrapService.getMyScraps(currentUserId, UserRole.THERAPIST, 0, 10);
 
         // then
         assertThat(response.getItems()).hasSize(1);
