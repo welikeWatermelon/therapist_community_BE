@@ -43,7 +43,7 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateTherapyPostRequest request
     ) {
-        TherapyPostDetailResponse response = postService.createPost(userDetails.getUserId(), request);
+        TherapyPostDetailResponse response = postService.createPost(userDetails.getUserId(), userDetails.getUserRole(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
     }

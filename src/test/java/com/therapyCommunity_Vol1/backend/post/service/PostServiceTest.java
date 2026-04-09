@@ -88,7 +88,7 @@ class PostServiceTest {
         when(therapyPostRepository.save(any(TherapyPost.class))).thenReturn(savedPost);
 
         // when
-        TherapyPostDetailResponse response = postService.createPost(userId, request);
+        TherapyPostDetailResponse response = postService.createPost(userId, UserRole.THERAPIST, request);
 
         // then
         assertThat(response.getId()).isEqualTo(100L);
