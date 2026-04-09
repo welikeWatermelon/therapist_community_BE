@@ -7,6 +7,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
+import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -110,6 +111,33 @@ public class PostService {
                 .toList();
 
         return PagedResponse.from(result, posts);
+    }
+
+    private static final int FEED_MAX_SIZE = 50;
+    private static final int FEED_DEFAULT_SIZE = 20;
+
+    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(int size, String cursor, UserRole role) {
+        size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
+
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
+
+        List<TherapyPost> posts = publicOnly
+                ? therapyPostRepository.findFeedLatestPublicOnly(
+                        postCursor != null ? postCursor.createdAt() : null,
+                        postCursor != null ? postCursor.id() : null,
+                        PageRequest.of(0, size + 1))
+                : therapyPostRepository.findFeedLatest(
+                        postCursor != null ? postCursor.createdAt() : null,
+                        postCursor != null ? postCursor.id() : null,
+                        PageRequest.of(0, size + 1));
+
+        List<TherapyPostSummaryResponse> dtos = posts.stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        return CursorPagedResponse.of(dtos, size, item ->
+                new PostCursor(item.getCreatedAt(), item.getId()).encode());
     }
 
     private Sort toSort(PostSortType sortType) {
