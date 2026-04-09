@@ -71,8 +71,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/v1/posts/{postId}/scrap").hasAnyRole("USER", "THERAPIST", "ADMIN")
                     .requestMatchers(HttpMethod.POST, "/api/v1/posts/{postId}/scrap").hasAnyRole("USER", "THERAPIST", "ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/posts/{postId}/scrap").hasAnyRole("USER", "THERAPIST", "ADMIN")
-                    // 게시글 작성/수정/삭제, 첨부 업로드/삭제 — 치료사/관리자만
-                    .requestMatchers("/api/v1/posts/**").hasAnyRole("THERAPIST", "ADMIN")
+                    // 게시글 작성/수정/삭제, 첨부 업로드 — USER 포함 (서비스에서 PUBLIC 제한)
+                    .requestMatchers("/api/v1/posts/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
 
                     //나머지는 로그인 필요
                     .anyRequest().authenticated()

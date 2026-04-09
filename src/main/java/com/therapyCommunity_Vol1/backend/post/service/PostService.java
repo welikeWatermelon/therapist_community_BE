@@ -39,8 +39,12 @@ public class PostService {
     @Transactional
     public TherapyPostDetailResponse createPost(
             Long userId,
+            UserRole currentUserRole,
             CreateTherapyPostRequest request
     ) {
+        if (currentUserRole == UserRole.USER && request.getVisibility() == Visibility.PRIVATE) {
+            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        }
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         TherapyPost post = TherapyPost.create(
@@ -150,7 +154,12 @@ public class PostService {
             UpdateTherapyPostRequest request
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
+
+        if (currentUserRole == UserRole.USER && request.getVisibility() == Visibility.PRIVATE) {
+            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+        }
 
         post.update(
                 request.getContent(),
@@ -167,6 +176,7 @@ public class PostService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
