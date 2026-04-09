@@ -30,6 +30,7 @@ class PostServiceTest {
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
+    private PostVisibilityAccessPolicy visibilityPolicy;
     private PostService postService;
 
     @BeforeEach
@@ -39,12 +40,17 @@ class PostServiceTest {
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
+        visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
+        when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
                 userRepository,
-                resourceAccessValidator
+                resourceAccessValidator,
+                visibilityPolicy
         );
     }
 
@@ -128,7 +134,7 @@ class PostServiceTest {
 
         // when
         PostSearchCondition condition = new PostSearchCondition(null, null, null);
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(0, 10, PostSortType.LATEST, condition);
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(0, 10, PostSortType.LATEST, condition, UserRole.THERAPIST);
 
         // then
         assertThat(response.getItems()).hasSize(1);

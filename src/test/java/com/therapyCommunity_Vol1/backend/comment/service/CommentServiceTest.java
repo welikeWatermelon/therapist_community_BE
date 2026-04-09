@@ -11,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -34,6 +35,7 @@ class CommentServiceTest {
     private ResourceAccessValidator resourceAccessValidator;
     private CommentThreadAssembler commentThreadAssembler;
     private ApplicationEventPublisher eventPublisher;
+    private PostVisibilityAccessPolicy visibilityPolicy;
     private CommentService commentService;
 
     @BeforeEach
@@ -44,7 +46,8 @@ class CommentServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         commentThreadAssembler = new CommentThreadAssembler();
         eventPublisher = mock(ApplicationEventPublisher.class);
-        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, eventPublisher);
+        visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, eventPublisher, visibilityPolicy);
     }
 
     @Test
@@ -78,7 +81,7 @@ class CommentServiceTest {
         when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
 
         // when
-        CommentResponse response = commentService.createComment(currentUserId, 10L, request);
+        CommentResponse response = commentService.createComment(currentUserId, UserRole.THERAPIST, 10L, request);
 
         // then
         assertThat(response.getId()).isEqualTo(100L);
@@ -125,7 +128,7 @@ class CommentServiceTest {
         when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
 
         // when
-        CommentResponse response = commentService.createComment(currentUserId, 10L, request);
+        CommentResponse response = commentService.createComment(currentUserId, UserRole.THERAPIST, 10L, request);
 
         // then
         assertThat(response.getId()).isEqualTo(101L);
@@ -167,7 +170,7 @@ class CommentServiceTest {
         when(commentRepository.findByIdAndDeletedAtIsNull(60L)).thenReturn(Optional.of(reply));
 
         // when / then
-        assertThatThrownBy(() -> commentService.createComment(currentUserId, 10L, request))
+        assertThatThrownBy(() -> commentService.createComment(currentUserId, UserRole.THERAPIST, 10L, request))
                 .isInstanceOf(CustomException.class);
     }
 

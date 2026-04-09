@@ -42,6 +42,7 @@ public class PostAttachmentService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ResourceAccessValidator resourceAccessValidator;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     @Transactional
     public PostAttachmentResponse uploadAttachment(
@@ -77,6 +78,7 @@ public class PostAttachmentService {
     @Transactional
     public StoredFileResource downloadAttachment(
             Long currentUserId,
+            UserRole currentUserRole,
             Long postId,
             Long attachmentId
     ) {
@@ -84,6 +86,7 @@ public class PostAttachmentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
 

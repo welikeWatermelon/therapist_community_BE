@@ -29,6 +29,7 @@ public class ScrapController {
     ) {
         ScrapStatusResponse response = scrapService.getScrapStatus(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -42,6 +43,7 @@ public class ScrapController {
     ) {
         ScrapStatusResponse response = scrapService.addScrap(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -55,6 +57,7 @@ public class ScrapController {
     ) {
         ScrapStatusResponse response = scrapService.removeScrap(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));

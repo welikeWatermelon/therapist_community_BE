@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+
 import java.util.Optional;
 
 public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> {
@@ -21,6 +23,9 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
 
     @EntityGraph(attributePaths = "author")
     Page<TherapyPost> findByAuthorIdAndDeletedAtIsNull(Long authorId, Pageable pageable);
+
+    @EntityGraph(attributePaths = "author")
+    Page<TherapyPost> findByDeletedAtIsNullAndVisibility(Visibility visibility, Pageable pageable);
 
     // 텍스트 검색 (content ILIKE)
     @EntityGraph(attributePaths = "author")
@@ -49,6 +54,40 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     Page<TherapyPost> searchByFilter(
             @Param("therapyArea") TherapyArea therapyArea,
             @Param("postType") PostType postType,
+            Pageable pageable
+    );
+
+    // visibility 필터 포함 — 텍스트 검색
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility = :visibility
+              AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
+              AND (:postType IS NULL OR p.postType = :postType)
+            """)
+    Page<TherapyPost> searchByKeywordAndVisibility(
+            @Param("keyword") String keyword,
+            @Param("therapyArea") TherapyArea therapyArea,
+            @Param("postType") PostType postType,
+            @Param("visibility") Visibility visibility,
+            Pageable pageable
+    );
+
+    // visibility 필터 포함 — 필터만
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility = :visibility
+              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
+              AND (:postType IS NULL OR p.postType = :postType)
+            """)
+    Page<TherapyPost> searchByFilterAndVisibility(
+            @Param("therapyArea") TherapyArea therapyArea,
+            @Param("postType") PostType postType,
+            @Param("visibility") Visibility visibility,
             Pageable pageable
     );
 }
