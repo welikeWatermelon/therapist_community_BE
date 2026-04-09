@@ -4,6 +4,8 @@ import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostCommentReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.CommentReactionStatusResponse;
@@ -12,8 +14,11 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentR
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -23,6 +28,7 @@ public class CommentReactionService {
     private final CommentService commentService;
     private final UserRepository userRepository;
     private final TherapyPostCommentReactionRepository commentReactionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public CommentReactionStatusResponse toggleReaction(
@@ -49,6 +55,14 @@ public class CommentReactionService {
                             request.getReactionType()
                     );
                     commentReactionRepository.save(reaction);
+
+                    eventPublisher.publishEvent(NotificationEvent.builder()
+                            .senderId(currentUserId)
+                            .receiverIds(List.of(comment.getAuthor().getId()))
+                            .type(NotificationType.NEW_COMMENT_REACTION)
+                            .referenceId(commentId)
+                            .content(user.getNickname() + "님이 회원님의 댓글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
+                            .build());
                 });
         return getReactionStatus(currentUserId, commentId);
     }

@@ -2,6 +2,8 @@ package com.therapyCommunity_Vol1.backend.scrap.service;
 
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
@@ -12,6 +14,7 @@ import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,7 @@ public class ScrapService {
     private final TherapyPostScrapRepository scrapRepository;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Set<Long> getScrappedPostIds(Long userId, List<Long> postIds) {
         if (userId == null || postIds.isEmpty()) {
@@ -51,6 +55,14 @@ public class ScrapService {
         if (!alreadyExists) {
             TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
             scrapRepository.save(scrap);
+
+            eventPublisher.publishEvent(NotificationEvent.builder()
+                    .senderId(currentUserId)
+                    .receiverIds(List.of(post.getAuthor().getId()))
+                    .type(NotificationType.NEW_SCRAP)
+                    .referenceId(postId)
+                    .content(user.getNickname() + "님이 회원님의 게시글을 스크랩했습니다.")
+                    .build());
         }
 
         return new ScrapStatusResponse(postId, true);
