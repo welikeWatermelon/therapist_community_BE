@@ -114,14 +114,25 @@ public class PostService {
     }
 
     private static final int FEED_MAX_SIZE = 50;
-    private static final int FEED_DEFAULT_SIZE = 20;
 
+    /**
+     * 커서 기반 피드 조회 (LATEST 고정, 무한스크롤용)
+     *
+     * @param size   요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
+     * @param cursor 이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
+     * @param role   USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     */
     public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(int size, String cursor, UserRole role) {
+        // size 범위 보정: 최소 1, 최대 50
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
 
+        // 커서 디코딩: null이면 첫 페이지, 값이 있으면 해당 위치부터
         PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+
+        // role에 따라 PUBLIC_ONLY / 전체 쿼리 분기
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
 
+        // size+1개 조회: 초과분이 있으면 다음 페이지 존재
         List<TherapyPost> posts = publicOnly
                 ? therapyPostRepository.findFeedLatestByVisibility(
                         Visibility.PUBLIC,
@@ -137,6 +148,7 @@ public class PostService {
                 .map(post -> TherapyPostSummaryResponse.from(post, false))
                 .toList();
 
+        // CursorPagedResponse.of()가 size+1 → trim + hasNext/nextCursor 계산
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
     }
