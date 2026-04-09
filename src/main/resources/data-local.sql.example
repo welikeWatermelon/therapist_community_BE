@@ -1,0 +1,17 @@
+-- 로컬 개발용 시드 데이터
+-- 사용법: cp data-local.sql.example data-local.sql
+-- 공통 비밀번호: test1234!
+-- BCrypt hash: $2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO
+
+INSERT INTO users (id, email, password_hash, nickname, role, created_at, updated_at)
+VALUES
+    (9001, 'admin@local.com', '$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '관리자', 'ADMIN', NOW(), NOW()),
+    (9002, 'therapist@local.com', '$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '테스트치료사', 'THERAPIST', NOW(), NOW()),
+    (9003, 'user@local.com', '$2b$12$MwvRFKEiEfBgsXTGXDmakenzpTz3aQ21syUx2EvwauXyTm0..5FEO', '테스트유저', 'USER', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- 치료사 인증 상태 (therapist 계정용)
+INSERT INTO therapist_verifications (id, user_id, license_code, status, created_at, updated_at)
+VALUES
+    (9001, 9002, 'LOCAL-001', 'APPROVED', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
