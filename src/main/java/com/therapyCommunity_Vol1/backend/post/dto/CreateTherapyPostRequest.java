@@ -18,4 +18,6 @@ public class CreateTherapyPostRequest {
     private TherapyArea therapyArea;
 
     private Visibility visibility;
+
+    private Boolean requestAutoComment;
 }
