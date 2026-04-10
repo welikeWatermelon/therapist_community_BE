@@ -5,6 +5,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class PostReactionService {
 
     private final TherapyPostReactionRepository postReactionRepository;
+    private final TherapyPostRepository therapyPostRepository;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -76,6 +78,8 @@ public class PostReactionService {
                             .content(user.getNickname() + "님이 회원님의 게시글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
                             .build());
                 });
+
+        therapyPostRepository.recalculatePopularityScore(postId);
 
         return getReactionStatus(currentUserId, postId);
     }
