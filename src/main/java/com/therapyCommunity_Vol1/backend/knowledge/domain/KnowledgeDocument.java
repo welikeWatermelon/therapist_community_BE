@@ -112,8 +112,15 @@ public class KnowledgeDocument extends BaseEntity {
         this.lastErrorMessage = null;
     }
 
-    public void markFailed(String errorCode, String errorMessage, LocalDateTime nextAttempt) {
+    public void markFailed(String errorCode, String errorMessage) {
         this.status = DocumentStatus.FAILED;
+        this.lastErrorCode = errorCode;
+        this.lastErrorMessage = errorMessage;
+        this.nextAttemptAt = null;
+    }
+
+    public void markFailedRetryable(String errorCode, String errorMessage, LocalDateTime nextAttempt) {
+        this.status = DocumentStatus.QUEUED;
         this.lastErrorCode = errorCode;
         this.lastErrorMessage = errorMessage;
         this.nextAttemptAt = nextAttempt;

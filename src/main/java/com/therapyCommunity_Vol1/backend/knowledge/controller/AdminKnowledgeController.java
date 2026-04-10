@@ -64,7 +64,7 @@ public class AdminKnowledgeController {
         );
 
         if (!properties.isEnabled()) {
-            document.markFailed("FEATURE_DISABLED", "Knowledge ingestion is disabled", null);
+            document.markFailed("FEATURE_DISABLED", "Knowledge ingestion is disabled");
         }
 
         KnowledgeDocument saved = documentRepository.save(document);

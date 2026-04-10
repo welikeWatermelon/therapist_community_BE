@@ -55,7 +55,12 @@ public class KnowledgeIngestionService {
     }
 
     @Transactional
-    public void processDocument(KnowledgeDocument document) {
+    public void processDocument(KnowledgeDocument inputDocument) {
+        // pessimistic lock으로 재조회 — 스케줄러/이벤트 동시 접근 방지
+        KnowledgeDocument document = documentRepository.findByIdForUpdate(inputDocument.getId())
+                .orElse(null);
+        if (document == null || document.getStatus() == DocumentStatus.READY || document.getStatus() == DocumentStatus.PROCESSING) return;
+
         document.markProcessing();
 
         try {
@@ -68,7 +73,7 @@ public class KnowledgeIngestionService {
             ExtractedDocument extracted = extractor.extract(fileStream, document.getContentType());
 
             if (extracted.getPlainText() == null || extracted.getPlainText().isBlank()) {
-                document.markFailed("EMPTY_EXTRACTION", "Extracted text is empty", null);
+                document.markFailed("EMPTY_EXTRACTION", "Extracted text is empty");
                 return;
             }
 
@@ -116,10 +121,9 @@ public class KnowledgeIngestionService {
         if (document.isRetryable()) {
             int backoffIndex = Math.min(document.getAttemptCount() - 1, BACKOFF_MINUTES.length - 1);
             LocalDateTime nextAttempt = LocalDateTime.now().plusMinutes(BACKOFF_MINUTES[backoffIndex]);
-            document.markFailed(errorCode, errorMessage, nextAttempt);
-            document.retry();
+            document.markFailedRetryable(errorCode, errorMessage, nextAttempt);
         } else {
-            document.markFailed(errorCode, errorMessage, null);
+            document.markFailed(errorCode, errorMessage);
         }
     }
 
