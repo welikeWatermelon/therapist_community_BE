@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.auth.dto;
 
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 
@@ -13,7 +13,7 @@ public record LoginResponse(
 
     public static LoginResponse of(
             User user,
-            Optional<TherapistVerification> verification,
+            Optional<TherapistVerificationStatusDto> verification,
             String accessToken,
             long accessTokenExpiresInSec
     ) {

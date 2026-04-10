@@ -2,18 +2,14 @@ package com.therapyCommunity_Vol1.backend.admin.service;
 
 import com.therapyCommunity_Vol1.backend.admin.dto.RejectTherapistVerificationRequest;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
-import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerificationStatus;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
 import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
-import com.therapyCommunity_Vol1.backend.user.domain.User;
-import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -21,25 +17,19 @@ import static org.mockito.Mockito.*;
 class AdminTherapistVerificationServiceTest {
 
     private TherapistVerificationRepository therapistVerificationRepository;
-    private UserRepository userRepository;
     private FileStorageService fileStorageService;
-    private UserCacheService userCacheService;
-    private ApplicationEventPublisher eventPublisher;
+    private TherapistVerificationService therapistVerificationService;
     private AdminTherapistVerificationService adminTherapistVerificationService;
 
     @BeforeEach
     void setUp() {
         therapistVerificationRepository = mock(TherapistVerificationRepository.class);
-        userRepository = mock(UserRepository.class);
         fileStorageService = mock(FileStorageService.class);
-        userCacheService = mock(UserCacheService.class);
-        eventPublisher = mock(ApplicationEventPublisher.class);
+        therapistVerificationService = mock(TherapistVerificationService.class);
         adminTherapistVerificationService = new AdminTherapistVerificationService(
                 therapistVerificationRepository,
-                userRepository,
                 fileStorageService,
-                userCacheService,
-                eventPublisher
+                therapistVerificationService
         );
     }
 
@@ -47,81 +37,66 @@ class AdminTherapistVerificationServiceTest {
     void 관리자_승인시_상태가_APPROVED로_변경된다() {
 
         // given
-        User applicant = User.builder()
-                .id(1L)
-                .email("user@test.com")
-                .nickname("user")
-                .role(UserRole.THERAPIST)
-                .build();
+        Long adminUserId = 2L;
+        Long verificationId = 10L;
 
-        User admin = User.builder()
-                .id(2L)
-                .email("admin@test.com")
-                .nickname("admin")
-                .role(UserRole.ADMIN)
-                .build();
-
-        TherapistVerification verification = TherapistVerification.create(
-                applicant,
-                "LICENSE-001",
-                "therapist-verifications/a.png",
-                "license.png",
-                "image/png"
+        TherapistVerificationResponse expectedResponse = new TherapistVerificationResponse(
+                verificationId, 1L, "user@test.com", "user",
+                "LICENSE-001", "license.png",
+                "/api/v1/admin/therapist-verifications/10/image",
+                TherapistVerificationStatus.APPROVED,
+                adminUserId, "admin",
+                LocalDateTime.now(), null,
+                LocalDateTime.now(), LocalDateTime.now(),
+                false
         );
 
-        when(userRepository.findById(2L)).thenReturn(Optional.of(admin));
-        when(therapistVerificationRepository.findWithUserById(10L)).thenReturn(Optional.of(verification));
+        when(therapistVerificationService.approveVerificationReview(verificationId, adminUserId))
+                .thenReturn(expectedResponse);
 
         // when
         TherapistVerificationResponse response =
-                adminTherapistVerificationService.approve(2L, 10L);
+                adminTherapistVerificationService.approve(adminUserId, verificationId);
 
         // then
         assertThat(response.getStatus().getCode()).isEqualTo("APPROVED");
-        assertThat(applicant.getRole()).isEqualTo(UserRole.THERAPIST);
+        verify(therapistVerificationService).approveVerificationReview(verificationId, adminUserId);
     }
 
     @Test
     void 관리자_거절시_rejectReason_저장되고_사용자가_USER로_강등된다() {
 
         // given
-        User applicant = User.builder()
-                .id(1L)
-                .email("user@test.com")
-                .nickname("user")
-                .role(UserRole.THERAPIST)
-                .build();
+        Long adminUserId = 2L;
+        Long verificationId = 10L;
+        String reason = "번호가 불명확합니다.";
 
-        User admin = User.builder()
-                .id(2L)
-                .email("admin@test.com")
-                .nickname("admin")
-                .role(UserRole.ADMIN)
-                .build();
-
-        TherapistVerification verification = TherapistVerification.create(
-                applicant,
-                "LICENSE-001",
-                "therapist-verifications/a.png",
-                "license.png",
-                "image/png"
+        TherapistVerificationResponse expectedResponse = new TherapistVerificationResponse(
+                verificationId, 1L, "user@test.com", "user",
+                "LICENSE-001", "license.png",
+                "/api/v1/admin/therapist-verifications/10/image",
+                TherapistVerificationStatus.REJECTED,
+                adminUserId, "admin",
+                LocalDateTime.now(), reason,
+                LocalDateTime.now(), LocalDateTime.now(),
+                true
         );
 
-        when(userRepository.findById(2L)).thenReturn(Optional.of(admin));
-        when(therapistVerificationRepository.findWithUserById(10L)).thenReturn(Optional.of(verification));
+        when(therapistVerificationService.rejectVerificationReview(verificationId, adminUserId, reason))
+                .thenReturn(expectedResponse);
 
         // when
         TherapistVerificationResponse response =
                 adminTherapistVerificationService.reject(
-                        2L,
-                        10L,
-                        new RejectTherapistVerificationRequest("번호가 불명확합니다.")
+                        adminUserId,
+                        verificationId,
+                        new RejectTherapistVerificationRequest(reason)
                 );
 
         // then
         assertThat(response.getStatus().getCode()).isEqualTo("REJECTED");
         assertThat(response.getRejectReason()).isEqualTo("번호가 불명확합니다.");
         assertThat(response.isDemoted()).isTrue();
-        assertThat(applicant.getRole()).isEqualTo(UserRole.USER);
+        verify(therapistVerificationService).rejectVerificationReview(verificationId, adminUserId, reason);
     }
 }

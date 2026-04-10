@@ -9,7 +9,7 @@ import com.therapyCommunity_Vol1.backend.global.cache.LoginAttemptService;
 import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -17,8 +17,6 @@ import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -85,7 +83,7 @@ class AuthServiceTest {
         when(tokenService.getAccessTokenValiditySec()).thenReturn(1800L);
         when(tokenService.issueRefreshToken(eq(user), any(UUID.class), eq("Mozilla/5.0"), eq("127.0.0.1")))
                 .thenReturn(new TokenService.IssuedToken("raw-refresh-token", 1209600L));
-        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.empty());
+        when(therapistVerificationService.findVerificationStatusByUserId(1L)).thenReturn(Optional.empty());
 
         // when
         AuthService.LoginResult result = authService.login(request, "Mozilla/5.0", "127.0.0.1");
@@ -111,15 +109,10 @@ class AuthServiceTest {
                 .nickname("tester")
                 .role(UserRole.USER)
                 .build();
-        TherapistVerification verification = TherapistVerification.create(
-                user,
-                "LIC-123",
-                "/tmp/license.png",
-                "license.png",
-                "image/png"
-        );
         LocalDateTime requestedAt = LocalDateTime.of(2026, 3, 15, 9, 0);
-        ReflectionTestUtils.setField(verification, "createdAt", requestedAt);
+        TherapistVerificationStatusDto statusDto = new TherapistVerificationStatusDto(
+                "PENDING", requestedAt, null, null
+        );
 
         when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("1234", "encoded")).thenReturn(true);
@@ -127,7 +120,7 @@ class AuthServiceTest {
         when(tokenService.getAccessTokenValiditySec()).thenReturn(1800L);
         when(tokenService.issueRefreshToken(eq(user), any(UUID.class), eq("Mozilla/5.0"), eq("127.0.0.1")))
                 .thenReturn(new TokenService.IssuedToken("raw-refresh-token", 1209600L));
-        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.of(verification));
+        when(therapistVerificationService.findVerificationStatusByUserId(1L)).thenReturn(Optional.of(statusDto));
 
         AuthService.LoginResult result = authService.login(request, "Mozilla/5.0", "127.0.0.1");
 

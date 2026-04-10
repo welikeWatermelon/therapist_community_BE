@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.user.dto;
 
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 
@@ -18,7 +18,7 @@ public record CurrentUserResponse(
         TherapistVerificationSummary therapistVerification
 ) {
 
-    public static CurrentUserResponse from(User user, Optional<TherapistVerification> verification) {
+    public static CurrentUserResponse from(User user, Optional<TherapistVerificationStatusDto> verification) {
         String accessLevel = communityAccessLevel(user);
         return new CurrentUserResponse(
                 user.getId(),
@@ -45,17 +45,17 @@ public record CurrentUserResponse(
     ) {
         private static final String NOT_REQUESTED = "NOT_REQUESTED";
 
-        public static TherapistVerificationSummary from(Optional<TherapistVerification> verification) {
+        public static TherapistVerificationSummary from(Optional<TherapistVerificationStatusDto> verification) {
             if (verification.isEmpty()) {
                 return new TherapistVerificationSummary(NOT_REQUESTED, null, null, null);
             }
 
-            TherapistVerification therapistVerification = verification.get();
+            TherapistVerificationStatusDto dto = verification.get();
             return new TherapistVerificationSummary(
-                    therapistVerification.getStatus().getCode(),
-                    therapistVerification.getCreatedAt(),
-                    therapistVerification.getReviewedAt(),
-                    therapistVerification.getRejectReason()
+                    dto.status(),
+                    dto.requestedAt(),
+                    dto.reviewedAt(),
+                    dto.rejectionReason()
             );
         }
     }
