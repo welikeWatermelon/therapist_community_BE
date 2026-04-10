@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class ReplyCommentResponse {
 
     private static final String DELETED_PLACEHOLDER = "삭제된 댓글입니다.";
+    private static final String AI_USER_EMAIL = "ai-comment@system.local";
 
     private Long id;
     private Long postId;
@@ -19,6 +20,7 @@ public class ReplyCommentResponse {
     private Long authorId;
     private String authorNickname;
     private String authorRole;
+    private boolean authorIsAi;
     private String content;
     private boolean deleted;
     private boolean canEdit;
@@ -39,6 +41,7 @@ public class ReplyCommentResponse {
                 comment.getAuthor().getId(),
                 comment.getAuthor().getDisplayNickname(),
                 comment.getAuthor().getRole().getCode(),
+                AI_USER_EMAIL.equals(comment.getAuthor().getEmail()),
                 comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),
                 canManage,
