@@ -55,6 +55,9 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "visibility", nullable = false, length = 20)
     private Visibility visibility;
 
+    @Column(name = "popularity_score", nullable = false)
+    private Double popularityScore = 0.0;
+
     private TherapyPost(
             String content,
             TherapyArea therapyArea,
