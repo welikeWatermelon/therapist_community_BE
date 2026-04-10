@@ -1,5 +1,9 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
+import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
+import com.therapyCommunity_Vol1.backend.autocomment.event.AutoCommentRequestedEvent;
+import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -17,6 +21,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +44,9 @@ public class PostService {
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
+    private final PostAiCommentJobRepository aiCommentJobRepository;
+    private final AiCommentProperties aiCommentProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -63,6 +71,21 @@ public class PostService {
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);
+
+        // 자동 댓글 요청 처리
+        if (Boolean.TRUE.equals(request.getRequestAutoComment())) {
+            if (request.getVisibility() == Visibility.PRIVATE) {
+                throw new CustomException(ErrorCode.INVALID_INPUT);
+            }
+            if (!aiCommentProperties.isEnabled() || aiCommentProperties.getApiKey() == null || aiCommentProperties.getApiKey().isBlank()) {
+                PostAiCommentJob failedJob = PostAiCommentJob.createFailed(saved, author, "FEATURE_DISABLED", "AI comment feature is disabled");
+                aiCommentJobRepository.save(failedJob);
+            } else {
+                PostAiCommentJob job = PostAiCommentJob.create(saved, author);
+                PostAiCommentJob savedJob = aiCommentJobRepository.save(job);
+                eventPublisher.publishEvent(new AutoCommentRequestedEvent(savedJob.getId()));
+            }
+        }
 
         return TherapyPostDetailResponse.from(saved, userId, author.getRole());
     }
