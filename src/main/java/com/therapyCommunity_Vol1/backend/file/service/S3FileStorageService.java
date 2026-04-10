@@ -100,6 +100,28 @@ public class S3FileStorageService implements FileStorageService {
 
 
     @Override
+    public StoredFileInfo storeKnowledgeDocument(MultipartFile file) {
+        try {
+            return store(file, "knowledge-documents");
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
+        }
+    }
+
+    @Override
+    public java.io.InputStream loadAsStream(String storedPath) {
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(storedPath)
+                    .build();
+            return s3Client.getObject(request);
+        } catch (NoSuchKeyException e) {
+            throw new CustomException(ErrorCode.RESOURCE_NOT_FOUND);
+        }
+    }
+
+    @Override
     public void delete(String storedPath) {
         try {
             s3Client.deleteObject(DeleteObjectRequest.builder()
