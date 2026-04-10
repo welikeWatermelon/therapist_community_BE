@@ -12,6 +12,7 @@ import com.therapyCommunity_Vol1.backend.global.cache.LoginAttemptService;
 import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -106,7 +107,7 @@ public class AuthService {
         TokenService.IssuedToken issuedRefreshToken =
                 tokenService.issueRefreshToken(user, UUID.randomUUID(), userAgent, ipAddress);
 
-        var verification =
+        Optional<TherapistVerificationStatusDto> verification =
                 therapistVerificationService.findVerificationStatusByUserId(user.getId());
 
         return new LoginResult(
