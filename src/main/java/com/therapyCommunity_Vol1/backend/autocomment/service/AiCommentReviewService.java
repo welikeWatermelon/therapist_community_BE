@@ -5,7 +5,10 @@ import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.ReviewStatus;
 import com.therapyCommunity_Vol1.backend.autocomment.dto.AiCommentDraftResponse;
 import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
+import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -24,6 +27,7 @@ public class AiCommentReviewService {
     private final PostAiCommentJobRepository jobRepository;
     private final UserRepository userRepository;
     private final CommentService commentService;
+    private final TherapyPostCommentRepository commentRepository;
     private final AiCommentProperties properties;
 
     public AiCommentDraftResponse getDraft(Long postId) {
@@ -48,15 +52,16 @@ public class AiCommentReviewService {
         User aiUser = userRepository.findByEmail(properties.getAiUserEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        var comment = commentService.createComment(
+        CommentResponse commentResponse = commentService.createComment(
                 aiUser.getId(),
                 UserRole.ADMIN,
                 job.getPost().getId(),
                 new CreateCommentRequest(job.getDraftComment(), null)
         );
 
-        // comment 엔티티 연결을 위해 ID로 조회
-        job.approve(admin, null); // comment 엔티티 연결은 생략 (ID만 있으면 충분)
+        TherapyPostComment savedComment = commentRepository.findById(commentResponse.getId())
+                .orElse(null);
+        job.approve(admin, savedComment);
 
         return AiCommentDraftResponse.from(job);
     }

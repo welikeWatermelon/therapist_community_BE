@@ -87,7 +87,14 @@ public class PostService {
             }
         }
 
-        return TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        aiCommentJobRepository.findByPostId(saved.getId()).ifPresent(job ->
+                response.setAutoComment(job.getStatus().name(),
+                        job.getSourceMode() != null ? job.getSourceMode().name() : null));
+        if (response.getAutoCommentStatus() == null) {
+            response.setAutoComment("NOT_REQUESTED", null);
+        }
+        return response;
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getPosts(
@@ -253,7 +260,14 @@ public class PostService {
                 .map(PostAttachmentResponse::from)
                 .toList();
 
-        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
+        aiCommentJobRepository.findByPostId(postId).ifPresent(job ->
+                response.setAutoComment(job.getStatus().name(),
+                        job.getSourceMode() != null ? job.getSourceMode().name() : null));
+        if (response.getAutoCommentStatus() == null) {
+            response.setAutoComment("NOT_REQUESTED", null);
+        }
+        return response;
     }
 
     @Transactional

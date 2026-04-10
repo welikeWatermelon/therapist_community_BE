@@ -58,7 +58,11 @@ public class AiCommentJobService {
 
     @Transactional
     public void processJob(PostAiCommentJob job) {
-        if (job.isTerminal()) return;
+        // pessimistic lock으로 재조회 — 스케줄러/이벤트 동시 접근 방지
+        PostAiCommentJob lockedJob = jobRepository.findByIdForUpdate(job.getId())
+                .orElse(null);
+        if (lockedJob == null || lockedJob.isTerminal()) return;
+        job = lockedJob;
 
         job.markProcessing();
 
