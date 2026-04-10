@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -126,4 +127,49 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    // 인기순 커서 피드 — 전체 (THERAPIST/ADMIN)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND (:cursorScore IS NULL OR
+                   p.popularityScore < :cursorScore OR
+                   (p.popularityScore = :cursorScore AND p.id < :cursorId))
+            ORDER BY p.popularityScore DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedPopular(
+            @Param("cursorScore") Double cursorScore,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    // 인기순 커서 피드 — visibility 필터 (USER → PUBLIC)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility = :visibility
+              AND (:cursorScore IS NULL OR
+                   p.popularityScore < :cursorScore OR
+                   (p.popularityScore = :cursorScore AND p.id < :cursorId))
+            ORDER BY p.popularityScore DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedPopularByVisibility(
+            @Param("visibility") Visibility visibility,
+            @Param("cursorScore") Double cursorScore,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
+    // popularity_score 재계산 (반응/스크랩 토글 시 호출)
+    @Modifying
+    @Query(value = """
+            UPDATE therapy_posts SET popularity_score =
+                (SELECT COUNT(*) FROM therapy_post_reactions WHERE post_id = :postId) * 3
+              + (SELECT COUNT(*) FROM therapy_post_scraps WHERE post_id = :postId) * 2
+              + (EXTRACT(EPOCH FROM created_at) / 86400)
+            WHERE id = :postId
+            """, nativeQuery = true)
+    void recalculatePopularityScore(@Param("postId") Long postId);
 }
