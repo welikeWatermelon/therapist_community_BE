@@ -11,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
 import com.therapyCommunity_Vol1.backend.therapist.dto.ApplyTherapistVerificationRequest;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -139,8 +140,53 @@ public class TherapistVerificationService {
         }
     }
 
-    public Optional<TherapistVerification> findByUserId(Long userId) {
+    Optional<TherapistVerification> findByUserId(Long userId) {
         return therapistVerificationRepository.findByUserId(userId);
+    }
+
+    public Optional<TherapistVerificationStatusDto> findVerificationStatusByUserId(Long userId) {
+        return therapistVerificationRepository.findByUserId(userId)
+                .map(v -> new TherapistVerificationStatusDto(
+                        v.getStatus().getCode(),
+                        v.getCreatedAt(),
+                        v.getReviewedAt(),
+                        v.getRejectReason()
+                ));
+    }
+
+    @Transactional
+    public TherapistVerificationResponse approveVerificationReview(Long verificationId, Long adminUserId) {
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        TherapistVerification verification = therapistVerificationRepository.findWithUserById(verificationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_FOUND));
+        if (!verification.isPending()) {
+            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_PENDING);
+        }
+        verification.approve(admin);
+        return TherapistVerificationResponse.from(
+                verification,
+                "/api/v1/admin/therapist-verifications/" + verification.getId() + "/image"
+        );
+    }
+
+    @Transactional
+    public TherapistVerificationResponse rejectVerificationReview(Long verificationId, Long adminUserId, String reason) {
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        TherapistVerification verification = therapistVerificationRepository.findWithUserById(verificationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_FOUND));
+        if (!verification.isPending()) {
+            throw new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_PENDING);
+        }
+        verification.reject(admin, reason);
+        verification.getUser().demoteToUser();
+        userCacheService.evict(verification.getUser().getId());
+        return TherapistVerificationResponse.from(
+                verification,
+                "/api/v1/admin/therapist-verifications/" + verification.getId() + "/image",
+                true
+        );
     }
 
     public TherapistVerificationResponse getMyVerification(Long currentUserId) {

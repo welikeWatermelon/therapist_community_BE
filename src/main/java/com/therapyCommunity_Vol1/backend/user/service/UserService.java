@@ -37,7 +37,7 @@ public class UserService {
 
         return CurrentUserResponse.from(
                 user,
-                therapistVerificationService.findByUserId(currentUserId)
+                therapistVerificationService.findVerificationStatusByUserId(currentUserId)
         );
     }
 
@@ -72,7 +72,7 @@ public class UserService {
 
         return CurrentUserResponse.from(
                 user,
-                therapistVerificationService.findByUserId(currentUserId)
+                therapistVerificationService.findVerificationStatusByUserId(currentUserId)
         );
     }
 

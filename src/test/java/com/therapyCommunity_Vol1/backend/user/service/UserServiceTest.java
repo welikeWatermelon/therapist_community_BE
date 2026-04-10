@@ -5,7 +5,7 @@ import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -13,8 +13,6 @@ import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -58,7 +56,7 @@ class UserServiceTest {
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.empty());
+        when(therapistVerificationService.findVerificationStatusByUserId(1L)).thenReturn(Optional.empty());
 
         CurrentUserResponse response = userService.getCurrentUser(1L);
 
@@ -76,18 +74,13 @@ class UserServiceTest {
                 .nickname("tester")
                 .role(UserRole.USER)
                 .build();
-        TherapistVerification verification = TherapistVerification.create(
-                user,
-                "LIC-123",
-                "/tmp/license.png",
-                "license.png",
-                "image/png"
-        );
         LocalDateTime requestedAt = LocalDateTime.of(2026, 3, 16, 10, 0);
-        ReflectionTestUtils.setField(verification, "createdAt", requestedAt);
+        TherapistVerificationStatusDto statusDto = new TherapistVerificationStatusDto(
+                "PENDING", requestedAt, null, null
+        );
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationService.findByUserId(1L)).thenReturn(Optional.of(verification));
+        when(therapistVerificationService.findVerificationStatusByUserId(1L)).thenReturn(Optional.of(statusDto));
 
         CurrentUserResponse response = userService.getCurrentUser(1L);
 
