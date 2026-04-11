@@ -3,6 +3,8 @@ package com.therapyCommunity_Vol1.backend.post.controller;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
@@ -10,6 +12,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.dto.CreateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
+import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostDetailResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UpdateTherapyPostRequest;
@@ -91,6 +94,46 @@ public class PostController {
                 .map(TherapyPostSummaryResponse::getId).toList();
         Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
         response.getItems().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * RELEVANCE 검색 (무한스크롤 기반).
+     *
+     * 기존 GET /posts (offset / PagedResponse) 와 분리된 별도 엔드포인트.
+     * 정렬은 pg_trgm similarity 점수 DESC, id DESC 고정이며, 페이지네이션은
+     * (lastScore, lastId) 커서 기반이다. 첫 페이지 호출 시에는 두 값 모두 null.
+     * 다음 페이지부터는 직전 응답의 meta.nextScore / meta.nextId 를 그대로 전달한다.
+     */
+    @Operation(summary = "게시글 검색 (무한스크롤)",
+            description = "RELEVANCE 정렬 전용. (lastScore, lastId) 커서 기반. 첫 페이지는 두 값 모두 생략")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<SearchCursorResponse>> searchPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam String keyword,
+            @RequestParam(required = false) TherapyArea therapyArea,
+            @RequestParam(required = false) PostType postType,
+            @RequestParam(required = false) Double lastScore,
+            @RequestParam(required = false) Long lastId,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        // 커서는 (lastScore, lastId) 가 항상 쌍으로 와야 한다. 한쪽만 오면 클라이언트 버그 → 400.
+        if ((lastScore == null) != (lastId == null)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
+        UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
+        SearchCursorResponse response = postService.searchPostsByRelevance(
+                condition, lastScore, lastId, size, userRole
+        );
+
+        Long userId = userDetails != null ? userDetails.getUserId() : null;
+        List<Long> postIds = response.getData().stream()
+                .map(TherapyPostSummaryResponse::getId).toList();
+        Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
+        response.getData().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
