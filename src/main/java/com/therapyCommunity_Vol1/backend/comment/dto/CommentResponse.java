@@ -13,7 +13,6 @@ import java.util.List;
 public class CommentResponse {
 
     private static final String DELETED_PLACEHOLDER = "삭제된 댓글입니다.";
-    private static final String AI_USER_EMAIL = "ai-comment@system.local";
 
     private Long id;
     private Long postId;
@@ -33,7 +32,8 @@ public class CommentResponse {
     public static CommentResponse from(
             TherapyPostComment comment,
             Long currentUserId,
-            UserRole currentUserRole
+            UserRole currentUserRole,
+            String aiUserEmail
     ) {
         boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
         return new CommentResponse(
@@ -43,7 +43,7 @@ public class CommentResponse {
                 comment.getAuthor().getId(),
                 comment.getAuthor().getDisplayNickname(),
                 comment.getAuthor().getRole().getCode(),
-                AI_USER_EMAIL.equals(comment.getAuthor().getEmail()),
+                aiUserEmail != null && aiUserEmail.equals(comment.getAuthor().getEmail()),
                 comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),
                 canManage,

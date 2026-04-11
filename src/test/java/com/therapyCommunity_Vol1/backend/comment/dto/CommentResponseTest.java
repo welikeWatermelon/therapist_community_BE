@@ -46,7 +46,7 @@ class CommentResponseTest {
         comment.softDelete();
 
         // when
-        CommentResponse response = CommentResponse.from(comment, 2L, UserRole.THERAPIST);
+        CommentResponse response = CommentResponse.from(comment, 2L, UserRole.THERAPIST, null);
 
         // then
         assertThat(response.isDeleted()).isTrue();
