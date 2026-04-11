@@ -50,7 +50,15 @@ public class GeminiEmbeddingClient {
                 "content", Map.of("parts", List.of(Map.of("text", text)))
         );
 
-        String response = RestClient.create().post()
+        Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
+        RestClient client = RestClient.builder()
+                .requestFactory(ClientHttpRequestFactories.get(
+                        ClientHttpRequestFactorySettings.DEFAULTS
+                                .withConnectTimeout(timeout)
+                                .withReadTimeout(timeout)))
+                .build();
+
+        String response = client.post()
                 .uri(fullUrl)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
