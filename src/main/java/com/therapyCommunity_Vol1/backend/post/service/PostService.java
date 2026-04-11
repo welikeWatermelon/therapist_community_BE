@@ -1,6 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
-import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -42,7 +42,7 @@ public class PostService {
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
-    private final PostAiCommentJobRepository aiCommentJobRepository;
+    private final AiCommentStatusProvider aiCommentStatusProvider;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -79,12 +79,8 @@ public class PostService {
         eventPublisher.publishEvent(new PostCreatedEvent(saved.getId(), userId, requestAutoComment));
 
         TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, author.getRole());
-        aiCommentJobRepository.findByPostId(saved.getId()).ifPresent(job ->
-                response.setAutoComment(job.getStatus().name(),
-                        job.getSourceMode() != null ? job.getSourceMode().name() : null));
-        if (response.getAutoCommentStatus() == null) {
-            response.setAutoComment("NOT_REQUESTED", null);
-        }
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(saved.getId());
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
         return response;
     }
 
@@ -252,12 +248,8 @@ public class PostService {
                 .toList();
 
         TherapyPostDetailResponse response = TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
-        aiCommentJobRepository.findByPostId(postId).ifPresent(job ->
-                response.setAutoComment(job.getStatus().name(),
-                        job.getSourceMode() != null ? job.getSourceMode().name() : null));
-        if (response.getAutoCommentStatus() == null) {
-            response.setAutoComment("NOT_REQUESTED", null);
-        }
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
         return response;
     }
 
