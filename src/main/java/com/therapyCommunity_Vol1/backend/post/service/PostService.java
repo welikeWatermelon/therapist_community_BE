@@ -1,14 +1,12 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
-import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
-import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
-import com.therapyCommunity_Vol1.backend.autocomment.event.AutoCommentRequestedEvent;
 import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
+import com.therapyCommunity_Vol1.backend.post.event.PostCreatedEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -45,7 +43,6 @@ public class PostService {
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
     private final PostAiCommentJobRepository aiCommentJobRepository;
-    private final AiCommentProperties aiCommentProperties;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -72,20 +69,14 @@ public class PostService {
         );
         TherapyPost saved = therapyPostRepository.save(post);
 
-        // 자동 댓글 요청 처리
-        if (Boolean.TRUE.equals(request.getRequestAutoComment())) {
-            if (request.getVisibility() == Visibility.PRIVATE) {
-                throw new CustomException(ErrorCode.INVALID_INPUT);
-            }
-            if (!aiCommentProperties.isEnabled() || aiCommentProperties.getApiKey() == null || aiCommentProperties.getApiKey().isBlank()) {
-                PostAiCommentJob failedJob = PostAiCommentJob.createFailed(saved, author, "FEATURE_DISABLED", "AI comment feature is disabled");
-                aiCommentJobRepository.save(failedJob);
-            } else {
-                PostAiCommentJob job = PostAiCommentJob.create(saved, author);
-                PostAiCommentJob savedJob = aiCommentJobRepository.save(job);
-                eventPublisher.publishEvent(new AutoCommentRequestedEvent(savedJob.getId()));
-            }
+        // 자동 댓글 요청: 검증만 하고, job 생성은 autocomment 패키지의 리스너에서 처리
+        boolean requestAutoComment = Boolean.TRUE.equals(request.getRequestAutoComment());
+        if (requestAutoComment && request.getVisibility() == Visibility.PRIVATE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+
+        // PostCreatedEvent 발행 — autocomment 리스너가 job 생성/이벤트 처리
+        eventPublisher.publishEvent(new PostCreatedEvent(saved.getId(), userId, requestAutoComment));
 
         TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, author.getRole());
         aiCommentJobRepository.findByPostId(saved.getId()).ifPresent(job ->
