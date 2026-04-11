@@ -55,6 +55,9 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "visibility", nullable = false, length = 20)
     private Visibility visibility;
 
+    @Column(name = "search_text", columnDefinition = "TEXT")
+    private String searchText;
+
     private TherapyPost(
             String content,
             TherapyArea therapyArea,
@@ -67,6 +70,7 @@ public class TherapyPost extends BaseEntity {
         this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.author = author;
         this.viewCount = 0L;
+        this.searchText = buildSearchText(this.title, this.content, this.therapyArea, this.ageGroup);
     }
 
     public static TherapyPost create(
@@ -90,6 +94,22 @@ public class TherapyPost extends BaseEntity {
         this.content = content;
         this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
         this.visibility = visibility != null ? visibility : this.visibility;
+        this.searchText = buildSearchText(this.title, this.content, this.therapyArea, this.ageGroup);
+    }
+
+    private static String buildSearchText(
+            String title,
+            String content,
+            TherapyArea therapyArea,
+            AgeGroup ageGroup
+    ) {
+        String t = title == null ? "" : title;
+        String c = content == null
+                ? ""
+                : content.substring(0, Math.min(100, content.length()));
+        String a = therapyArea == null ? "" : therapyArea.getDescription();
+        String g = ageGroup == null ? "" : ageGroup.getDescription();
+        return (t + " " + c + " " + a + " " + g).trim();
     }
 
     public void updatePostType(PostType postType) {
