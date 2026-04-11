@@ -36,35 +36,48 @@ public class GeminiEmbeddingClient {
     }
 
     public float[] embed(String text) {
-        return embed(text, properties.getApiKey(), properties.getEmbeddingModel(), properties.getBaseUrl(), properties.getTimeoutSeconds());
+        String url = String.format("/v1beta/models/%s:embedContent", properties.getEmbeddingModel());
+
+        Map<String, Object> body = Map.of(
+                "model", "models/" + properties.getEmbeddingModel(),
+                "content", Map.of("parts", List.of(Map.of("text", text)))
+        );
+
+        String response = restClient.post()
+                .uri(url)
+                .header("x-goog-api-key", properties.getApiKey())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(String.class);
+
+        return parseEmbedding(response);
     }
 
+    private volatile RestClient aiCommentClient;
+
     public float[] embed(String text, String apiKey, String model, String baseUrl, int timeoutSeconds) {
-        String fullUrl = String.format(
-                "%s/v1beta/models/%s:embedContent?key=%s",
-                baseUrl, model, apiKey
-        );
+        RestClient client = getOrCreateAiCommentClient(baseUrl, timeoutSeconds);
+
+        String url = String.format("/v1beta/models/%s:embedContent", model);
 
         Map<String, Object> body = Map.of(
                 "model", "models/" + model,
                 "content", Map.of("parts", List.of(Map.of("text", text)))
         );
 
-        Duration timeout = Duration.ofSeconds(timeoutSeconds);
-        RestClient client = RestClient.builder()
-                .requestFactory(ClientHttpRequestFactories.get(
-                        ClientHttpRequestFactorySettings.DEFAULTS
-                                .withConnectTimeout(timeout)
-                                .withReadTimeout(timeout)))
-                .build();
-
         String response = client.post()
-                .uri(fullUrl)
+                .uri(url)
+                .header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
                 .body(String.class);
 
+        return parseEmbedding(response);
+    }
+
+    private float[] parseEmbedding(String response) {
         try {
             JsonNode root = objectMapper.readTree(response);
             JsonNode values = root.path("embedding").path("values");
@@ -76,5 +89,23 @@ public class GeminiEmbeddingClient {
         } catch (Exception e) {
             throw new RuntimeException("Embedding response parsing failed", e);
         }
+    }
+
+    private RestClient getOrCreateAiCommentClient(String baseUrl, int timeoutSeconds) {
+        if (aiCommentClient == null) {
+            synchronized (this) {
+                if (aiCommentClient == null) {
+                    Duration timeout = Duration.ofSeconds(timeoutSeconds);
+                    aiCommentClient = RestClient.builder()
+                            .baseUrl(baseUrl)
+                            .requestFactory(ClientHttpRequestFactories.get(
+                                    ClientHttpRequestFactorySettings.DEFAULTS
+                                            .withConnectTimeout(timeout)
+                                            .withReadTimeout(timeout)))
+                            .build();
+                }
+            }
+        }
+        return aiCommentClient;
     }
 }

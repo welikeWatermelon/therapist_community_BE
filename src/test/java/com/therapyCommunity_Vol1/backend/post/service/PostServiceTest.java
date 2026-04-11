@@ -12,7 +12,6 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
-import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +39,6 @@ class PostServiceTest {
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
     private PostAiCommentJobRepository aiCommentJobRepository;
-    private AiCommentProperties aiCommentProperties;
     private ApplicationEventPublisher eventPublisher;
     private PostService postService;
 
@@ -54,7 +52,6 @@ class PostServiceTest {
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
         aiCommentJobRepository = mock(PostAiCommentJobRepository.class);
-        aiCommentProperties = mock(AiCommentProperties.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
@@ -69,7 +66,6 @@ class PostServiceTest {
                 visibilityPolicy,
                 postViewCountService,
                 aiCommentJobRepository,
-                aiCommentProperties,
                 eventPublisher
         );
     }
