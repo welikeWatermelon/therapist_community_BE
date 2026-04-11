@@ -33,19 +33,18 @@ public class GeminiEmbeddingClient {
     }
 
     public float[] embed(String text, String apiKey, String model, String baseUrl) {
-        String url = String.format(
-                "/v1beta/models/%s:embedContent?key=%s",
-                model,
-                apiKey
+        String fullUrl = String.format(
+                "%s/v1beta/models/%s:embedContent?key=%s",
+                baseUrl, model, apiKey
         );
 
         Map<String, Object> body = Map.of(
-                "model", "models/" + properties.getEmbeddingModel(),
+                "model", "models/" + model,
                 "content", Map.of("parts", List.of(Map.of("text", text)))
         );
 
-        String response = restClient.post()
-                .uri(url)
+        String response = RestClient.create().post()
+                .uri(fullUrl)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
