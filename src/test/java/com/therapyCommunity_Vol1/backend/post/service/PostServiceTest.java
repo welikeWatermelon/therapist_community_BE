@@ -12,7 +12,7 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
-import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,7 +38,7 @@ class PostServiceTest {
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
-    private PostAiCommentJobRepository aiCommentJobRepository;
+    private AiCommentStatusProvider aiCommentStatusProvider;
     private ApplicationEventPublisher eventPublisher;
     private PostService postService;
 
@@ -51,7 +51,9 @@ class PostServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
-        aiCommentJobRepository = mock(PostAiCommentJobRepository.class);
+        aiCommentStatusProvider = mock(AiCommentStatusProvider.class);
+        when(aiCommentStatusProvider.getStatus(anyLong()))
+                .thenReturn(new AiCommentStatusProvider.AutoCommentStatus("NOT_REQUESTED", null));
         eventPublisher = mock(ApplicationEventPublisher.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
@@ -65,7 +67,7 @@ class PostServiceTest {
                 resourceAccessValidator,
                 visibilityPolicy,
                 postViewCountService,
-                aiCommentJobRepository,
+                aiCommentStatusProvider,
                 eventPublisher
         );
     }
