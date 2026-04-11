@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.therapyCommunity_Vol1.backend.knowledge.config.KnowledgeProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.client.ClientHttpRequestFactories;
+import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -23,8 +25,13 @@ public class GeminiEmbeddingClient {
     public GeminiEmbeddingClient(KnowledgeProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
         this.restClient = RestClient.builder()
                 .baseUrl(properties.getBaseUrl())
+                .requestFactory(ClientHttpRequestFactories.get(
+                        ClientHttpRequestFactorySettings.DEFAULTS
+                                .withConnectTimeout(timeout)
+                                .withReadTimeout(timeout)))
                 .build();
     }
 

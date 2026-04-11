@@ -29,12 +29,20 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 
 @Tag(name = "지식 관리 (Admin)", description = "RAG용 지식 문서 인입/관리")
 @RestController
 @RequestMapping("/api/v1/admin/knowledge/documents")
 @RequiredArgsConstructor
 public class AdminKnowledgeController {
+
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "application/pdf", "text/plain", "text/markdown", "text/html"
+    );
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            "pdf", "txt", "md", "html"
+    );
 
     private final KnowledgeDocumentRepository documentRepository;
     private final FileStorageService fileStorageService;
@@ -50,6 +58,8 @@ public class AdminKnowledgeController {
             @RequestParam(defaultValue = "UPLOAD") String sourceType,
             @RequestParam(defaultValue = "LICENSED") String rightsStatus
     ) {
+        validateKnowledgeDocument(file);
+
         String checksum = computeChecksum(file);
         if (documentRepository.existsByChecksum(checksum)) {
             throw new CustomException(ErrorCode.CONFLICT);
@@ -112,6 +122,28 @@ public class AdminKnowledgeController {
         eventPublisher.publishEvent(new KnowledgeDocumentCreatedEvent(doc.getId()));
 
         return ResponseEntity.ok(ApiResponse.success(KnowledgeDocumentResponse.from(doc)));
+    }
+
+    private void validateKnowledgeDocument(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename != null) {
+            int dotIndex = filename.lastIndexOf('.');
+            if (dotIndex >= 0) {
+                String ext = filename.substring(dotIndex + 1).toLowerCase();
+                if (!ALLOWED_EXTENSIONS.contains(ext)) {
+                    throw new CustomException(ErrorCode.INVALID_INPUT);
+                }
+            }
+        }
     }
 
     private String computeChecksum(MultipartFile file) {
