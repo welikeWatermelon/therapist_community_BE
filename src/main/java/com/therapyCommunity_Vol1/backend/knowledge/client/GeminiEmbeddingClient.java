@@ -29,10 +29,14 @@ public class GeminiEmbeddingClient {
     }
 
     public float[] embed(String text) {
+        return embed(text, properties.getApiKey(), properties.getEmbeddingModel(), properties.getBaseUrl());
+    }
+
+    public float[] embed(String text, String apiKey, String model, String baseUrl) {
         String url = String.format(
                 "/v1beta/models/%s:embedContent?key=%s",
-                properties.getEmbeddingModel(),
-                properties.getApiKey()
+                model,
+                apiKey
         );
 
         Map<String, Object> body = Map.of(

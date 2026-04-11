@@ -81,15 +81,19 @@ public class AiCommentJobService {
                 cleanContent = cleanContent.substring(0, MAX_CONTENT_LENGTH);
             }
 
-            // embedding + retrieval
-            float[] queryEmbedding = embeddingClient.embed(cleanContent);
-            List<ChunkSearchResult> chunks = chunkSearchRepository.findSimilarChunks(
-                    queryEmbedding, post.getTherapyArea(), properties.getRetrieval().getTopK()
-            );
-
-            // RAG vs FALLBACK 판정
-            boolean hasGoodResults = !chunks.isEmpty()
-                    && chunks.get(0).score() >= properties.getRetrieval().getMinScore();
+            // embedding + retrieval (ai-comment 자체 API key 사용, knowledge 설정과 분리)
+            List<ChunkSearchResult> chunks = List.of();
+            boolean hasGoodResults = false;
+            try {
+                float[] queryEmbedding = embeddingClient.embed(
+                        cleanContent, properties.getApiKey(), properties.getEmbeddingModel(), properties.getBaseUrl());
+                chunks = chunkSearchRepository.findSimilarChunks(
+                        queryEmbedding, post.getTherapyArea(), properties.getRetrieval().getTopK());
+                hasGoodResults = !chunks.isEmpty()
+                        && chunks.get(0).score() >= properties.getRetrieval().getMinScore();
+            } catch (Exception e) {
+                log.warn("RAG retrieval failed, falling back to generation-only: {}", e.getMessage());
+            }
 
             SourceMode sourceMode = hasGoodResults ? SourceMode.RAG : SourceMode.FALLBACK;
             double confidenceScore = hasGoodResults ? chunks.get(0).score() : 0.1;
