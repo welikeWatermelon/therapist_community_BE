@@ -56,6 +56,11 @@ public class KnowledgeIngestionService {
 
     @Transactional
     public void processDocument(KnowledgeDocument inputDocument) {
+        if (!properties.isEnabled()) {
+            log.warn("Knowledge ingestion disabled, skipping documentId={}", inputDocument.getId());
+            return;
+        }
+
         // pessimistic lock으로 재조회 — 스케줄러/이벤트 동시 접근 방지
         KnowledgeDocument document = documentRepository.findByIdForUpdate(inputDocument.getId())
                 .orElse(null);
@@ -69,8 +74,10 @@ public class KnowledgeIngestionService {
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("No extractor for: " + document.getContentType()));
 
-            InputStream fileStream = fileStorageService.loadAsStream(document.getStoredPath());
-            ExtractedDocument extracted = extractor.extract(fileStream, document.getContentType());
+            ExtractedDocument extracted;
+            try (InputStream fileStream = fileStorageService.loadAsStream(document.getStoredPath())) {
+                extracted = extractor.extract(fileStream, document.getContentType());
+            }
 
             if (extracted.getPlainText() == null || extracted.getPlainText().isBlank()) {
                 document.markFailed("EMPTY_EXTRACTION", "Extracted text is empty");
