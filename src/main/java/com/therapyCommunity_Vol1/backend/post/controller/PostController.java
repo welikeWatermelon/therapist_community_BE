@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -112,7 +113,7 @@ public class PostController {
             @RequestParam String keyword,
             @RequestParam(required = false) TherapyArea therapyArea,
             @RequestParam(required = false) PostType postType,
-            @RequestParam(required = false) Double lastScore,
+            @RequestParam(required = false) BigDecimal lastScore,
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "10") int size
     ) {

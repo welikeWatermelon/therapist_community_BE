@@ -14,6 +14,8 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +42,11 @@ public class PostService {
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+
+    // RELEVANCE 검색에서 SET LOCAL pg_trgm.similarity_threshold 를 실행하기 위한 EntityManager.
+    // @RequiredArgsConstructor 가 생성자에 포함하지 않도록 final 을 붙이지 않는다.
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Transactional
     public TherapyPostDetailResponse createPost(
@@ -112,10 +120,17 @@ public class PostService {
      * RELEVANCE 검색 (무한스크롤) — 외부 진입 메서드.
      * lastScore/lastId 가 모두 null 이면 첫 페이지, 모두 있으면 다음 페이지.
      * 컨트롤러에서 두 값의 쌍 검증을 통과한 뒤 호출되는 것을 가정한다.
+     *
+     * 클래스 레벨 readOnly=true 를 명시적으로 오버라이드해 readOnly=false 트랜잭션을 연다.
+     * 그 안에서 SET LOCAL pg_trgm.similarity_threshold 를 안전하게 실행하기 위함이다
+     * (PG READ ONLY 트랜잭션에서도 SET LOCAL 자체는 허용되지만, JDBC/Hibernate 일부
+     *  버전에서 거부된 사례가 보고되어 안전 차원에서 명시적으로 풀어둔다).
+     * SET LOCAL 은 트랜잭션 종료 시 자동 해제되므로 RESET 호출은 불필요하다.
      */
+    @Transactional
     public SearchCursorResponse searchPostsByRelevance(
             PostSearchCondition condition,
-            Double lastScore,
+            BigDecimal lastScore,
             Long lastId,
             int size,
             UserRole role
@@ -125,20 +140,30 @@ public class PostService {
     }
 
     /**
-     * RELEVANCE 정렬 — pg_trgm similarity + ILIKE fallback 으로 점수 매겨 정렬.
+     * RELEVANCE 정렬 — pg_trgm % 연산자 + ILIKE fallback 으로 후보를 모으고 similarity 점수로 정렬.
      * 두 단계 fetch: 1) native 로 (id, score) + 정렬, 2) ID 로 author 까지 EntityGraph fetch.
      * native query 는 @EntityGraph 가 동작하지 않아 N+1 회피 목적.
      *
      * 페이지네이션은 (lastScore, lastId) 커서 기반. take+1 조회로 hasNextData 를 판단한다.
+     * score 는 numeric(10,8) 로 캐스트해 BigDecimal 로 왕복시켜 동등 비교 안전성을 확보한다.
+     *
+     * 호출 직전에 SET LOCAL pg_trgm.similarity_threshold = 0.03 을 실행해 % 연산자가
+     * 0.03 임계값으로 동작하도록 만든다. 이 임계값은 한국어 짧은 키워드 회귀를 방지하기 위한
+     * memory 노트의 0.03 과 일치한다.
      */
     private SearchCursorResponse findPostsByRelevance(
             PostSearchCondition condition,
             boolean publicOnly,
-            Double lastScore,
+            BigDecimal lastScore,
             Long lastId,
             int size
     ) {
-        // similarity 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
+        // pg_trgm % 연산자의 임계값을 트랜잭션 스코프로 0.03 으로 낮춘다.
+        // 트랜잭션 종료 시 자동으로 원복된다.
+        entityManager.createNativeQuery("SET LOCAL pg_trgm.similarity_threshold = 0.03")
+                .executeUpdate();
+
+        // similarity/% 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
         String rawKeyword = condition.getKeyword().trim();
         String escapedKeyword = condition.getEscapedKeyword().trim();
         String area = condition.getTherapyArea() != null ? condition.getTherapyArea().name() : null;
@@ -189,12 +214,13 @@ public class PostService {
                 .toList();
 
         // 다음 커서: 트림된 마지막 행의 (score, id). 마지막 페이지면 둘 다 null.
-        Double nextScore = null;
+        // score 는 SQL 에서 numeric(10,8) 로 캐스트되어 BigDecimal 로 그대로 전달된다.
+        BigDecimal nextScore = null;
         Long nextId = null;
         if (hasNextData) {
             Object[] lastRow = pageRows.get(pageRows.size() - 1);
             nextId = ((Number) lastRow[0]).longValue();
-            nextScore = ((Number) lastRow[1]).doubleValue();
+            nextScore = (BigDecimal) lastRow[1];
         }
 
         return new SearchCursorResponse(

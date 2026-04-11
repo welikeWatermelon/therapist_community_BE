@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -127,21 +128,30 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // RELEVANCE 검색 — pg_trgm similarity + ILIKE fallback, 커서 기반 무한스크롤 전용.
-    // :keyword 는 raw (similarity 전용), :escapedKeyword 는 LIKE 메타문자 이스케이프된 값 (ILIKE 전용).
-    // 반환은 (id, score) 두 컬럼의 Object[] — Service 에서 다음 커서 계산에 score 가 필요해서 함께 노출.
-    // LIMIT 은 :limit 파라미터로 받아 hasNext 판별용 take+1 조회를 수행한다.
+    // RELEVANCE 검색 — pg_trgm % 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
+    //
+    // 주요 설계:
+    // - 매칭 술어: `search_text % :keyword` (gin_trgm_ops 가 직접 지원하는 연산자) 와
+    //   `ILIKE` 양쪽을 OR 로 묶는다. 둘 다 idx_therapy_posts_search_text_trgm GIN 인덱스를
+    //   사용해 BitmapOr 로 후보를 좁힌다. 임계값은 호출자가 SET LOCAL pg_trgm.similarity_threshold
+    //   로 미리 지정한다 (현재 0.03). similarity(...) > 0.03 함수 호출 형태는 GIN 인덱스를
+    //   못 타기 때문에 % 연산자로 교체했다.
+    // - 점수 컬럼: similarity() 결과(real/float4) 를 numeric(10,8) 로 캐스트해 노출한다.
+    //   응답 BigDecimal → 클라이언트 → 다음 요청 BigDecimal 왕복에서 정밀도 손실이 없어
+    //   동등 비교(=) 가 안전하다.
+    // - 커서 조건: 동일하게 numeric(10,8) 캐스트한 값과 :lastScore 를 비교한다.
+    // - LIMIT 은 :limit 파라미터로 받아 hasNext 판별용 take+1 조회를 수행한다.
 
     // (a) visibility 필터 없음 — 첫 페이지
     @Query(
             value = """
-                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    SELECT p.id, CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) AS score
                     FROM therapy_posts p
                     WHERE p.deleted_at IS NULL
                       AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
                       AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
                       AND (
-                            similarity(p.search_text, :keyword) > 0.03
+                            p.search_text % :keyword
                          OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
                       )
                     ORDER BY score DESC, p.id DESC
@@ -160,18 +170,18 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     // (b) visibility 필터 없음 — 다음 페이지 (커서 조건 추가)
     @Query(
             value = """
-                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    SELECT p.id, CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) AS score
                     FROM therapy_posts p
                     WHERE p.deleted_at IS NULL
                       AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
                       AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
                       AND (
-                            similarity(p.search_text, :keyword) > 0.03
+                            p.search_text % :keyword
                          OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
                       )
                       AND (
-                            similarity(p.search_text, :keyword) < :lastScore
-                         OR (similarity(p.search_text, :keyword) = :lastScore AND p.id < :lastId)
+                            CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) < :lastScore
+                         OR (CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) = :lastScore AND p.id < :lastId)
                       )
                     ORDER BY score DESC, p.id DESC
                     LIMIT :limit
@@ -183,7 +193,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("escapedKeyword") String escapedKeyword,
             @Param("therapyArea") String therapyArea,
             @Param("postType") String postType,
-            @Param("lastScore") double lastScore,
+            @Param("lastScore") BigDecimal lastScore,
             @Param("lastId") long lastId,
             @Param("limit") int limit
     );
@@ -191,14 +201,14 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     // (c) visibility 필터 있음 — 첫 페이지 (USER → PUBLIC)
     @Query(
             value = """
-                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    SELECT p.id, CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) AS score
                     FROM therapy_posts p
                     WHERE p.deleted_at IS NULL
                       AND p.visibility = CAST(:visibility AS text)
                       AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
                       AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
                       AND (
-                            similarity(p.search_text, :keyword) > 0.03
+                            p.search_text % :keyword
                          OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
                       )
                     ORDER BY score DESC, p.id DESC
@@ -218,19 +228,19 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     // (d) visibility 필터 있음 — 다음 페이지
     @Query(
             value = """
-                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    SELECT p.id, CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) AS score
                     FROM therapy_posts p
                     WHERE p.deleted_at IS NULL
                       AND p.visibility = CAST(:visibility AS text)
                       AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
                       AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
                       AND (
-                            similarity(p.search_text, :keyword) > 0.03
+                            p.search_text % :keyword
                          OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
                       )
                       AND (
-                            similarity(p.search_text, :keyword) < :lastScore
-                         OR (similarity(p.search_text, :keyword) = :lastScore AND p.id < :lastId)
+                            CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) < :lastScore
+                         OR (CAST(similarity(p.search_text, :keyword) AS numeric(10,8)) = :lastScore AND p.id < :lastId)
                       )
                     ORDER BY score DESC, p.id DESC
                     LIMIT :limit
@@ -243,7 +253,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("therapyArea") String therapyArea,
             @Param("postType") String postType,
             @Param("visibility") String visibility,
-            @Param("lastScore") double lastScore,
+            @Param("lastScore") BigDecimal lastScore,
             @Param("lastId") long lastId,
             @Param("limit") int limit
     );
