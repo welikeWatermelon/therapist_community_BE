@@ -36,10 +36,10 @@ public class GeminiEmbeddingClient {
     }
 
     public float[] embed(String text) {
-        return embed(text, properties.getApiKey(), properties.getEmbeddingModel(), properties.getBaseUrl());
+        return embed(text, properties.getApiKey(), properties.getEmbeddingModel(), properties.getBaseUrl(), properties.getTimeoutSeconds());
     }
 
-    public float[] embed(String text, String apiKey, String model, String baseUrl) {
+    public float[] embed(String text, String apiKey, String model, String baseUrl, int timeoutSeconds) {
         String fullUrl = String.format(
                 "%s/v1beta/models/%s:embedContent?key=%s",
                 baseUrl, model, apiKey
@@ -50,7 +50,7 @@ public class GeminiEmbeddingClient {
                 "content", Map.of("parts", List.of(Map.of("text", text)))
         );
 
-        Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
+        Duration timeout = Duration.ofSeconds(timeoutSeconds);
         RestClient client = RestClient.builder()
                 .requestFactory(ClientHttpRequestFactories.get(
                         ClientHttpRequestFactorySettings.DEFAULTS

@@ -60,7 +60,7 @@ class AiCommentJobServiceTest {
         ReflectionTestUtils.setField(job, "id", 1L);
 
         when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
-        when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString()))
+        when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(new float[768]);
         when(chunkSearchRepository.findSimilarChunks(any(), eq(TherapyArea.SPEECH), anyInt()))
                 .thenReturn(List.of(new ChunkSearchResult(1L, 1L, "근거 텍스트", "문서 제목", 0.8)));
@@ -84,7 +84,7 @@ class AiCommentJobServiceTest {
         ReflectionTestUtils.setField(job, "id", 1L);
 
         when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
-        when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString()))
+        when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(new float[768]);
         when(chunkSearchRepository.findSimilarChunks(any(), any(), anyInt()))
                 .thenReturn(List.of());

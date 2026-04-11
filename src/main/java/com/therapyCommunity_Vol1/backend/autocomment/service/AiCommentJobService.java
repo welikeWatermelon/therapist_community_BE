@@ -86,7 +86,8 @@ public class AiCommentJobService {
             boolean hasGoodResults = false;
             try {
                 float[] queryEmbedding = embeddingClient.embed(
-                        cleanContent, properties.getApiKey(), properties.getEmbeddingModel(), properties.getBaseUrl());
+                        cleanContent, properties.getApiKey(), properties.getEmbeddingModel(),
+                        properties.getBaseUrl(), properties.getTimeoutSeconds());
                 chunks = chunkSearchRepository.findSimilarChunks(
                         queryEmbedding, post.getTherapyArea(), properties.getRetrieval().getTopK());
                 hasGoodResults = !chunks.isEmpty()
