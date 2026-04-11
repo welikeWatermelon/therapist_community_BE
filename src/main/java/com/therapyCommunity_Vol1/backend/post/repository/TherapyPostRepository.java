@@ -126,4 +126,130 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    // RELEVANCE 검색 — pg_trgm similarity + ILIKE fallback, 커서 기반 무한스크롤 전용.
+    // :keyword 는 raw (similarity 전용), :escapedKeyword 는 LIKE 메타문자 이스케이프된 값 (ILIKE 전용).
+    // 반환은 (id, score) 두 컬럼의 Object[] — Service 에서 다음 커서 계산에 score 가 필요해서 함께 노출.
+    // LIMIT 은 :limit 파라미터로 받아 hasNext 판별용 take+1 조회를 수행한다.
+
+    // (a) visibility 필터 없음 — 첫 페이지
+    @Query(
+            value = """
+                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    FROM therapy_posts p
+                    WHERE p.deleted_at IS NULL
+                      AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+                      AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+                      AND (
+                            similarity(p.search_text, :keyword) > 0.03
+                         OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
+                      )
+                    ORDER BY score DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<Object[]> searchIdsByRelevanceFirstPage(
+            @Param("keyword") String keyword,
+            @Param("escapedKeyword") String escapedKeyword,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("limit") int limit
+    );
+
+    // (b) visibility 필터 없음 — 다음 페이지 (커서 조건 추가)
+    @Query(
+            value = """
+                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    FROM therapy_posts p
+                    WHERE p.deleted_at IS NULL
+                      AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+                      AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+                      AND (
+                            similarity(p.search_text, :keyword) > 0.03
+                         OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
+                      )
+                      AND (
+                            similarity(p.search_text, :keyword) < :lastScore
+                         OR (similarity(p.search_text, :keyword) = :lastScore AND p.id < :lastId)
+                      )
+                    ORDER BY score DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<Object[]> searchIdsByRelevanceNextPage(
+            @Param("keyword") String keyword,
+            @Param("escapedKeyword") String escapedKeyword,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("lastScore") double lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
+
+    // (c) visibility 필터 있음 — 첫 페이지 (USER → PUBLIC)
+    @Query(
+            value = """
+                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    FROM therapy_posts p
+                    WHERE p.deleted_at IS NULL
+                      AND p.visibility = CAST(:visibility AS text)
+                      AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+                      AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+                      AND (
+                            similarity(p.search_text, :keyword) > 0.03
+                         OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
+                      )
+                    ORDER BY score DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<Object[]> searchIdsByRelevanceFirstPageAndVisibility(
+            @Param("keyword") String keyword,
+            @Param("escapedKeyword") String escapedKeyword,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("limit") int limit
+    );
+
+    // (d) visibility 필터 있음 — 다음 페이지
+    @Query(
+            value = """
+                    SELECT p.id, similarity(p.search_text, :keyword) AS score
+                    FROM therapy_posts p
+                    WHERE p.deleted_at IS NULL
+                      AND p.visibility = CAST(:visibility AS text)
+                      AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+                      AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+                      AND (
+                            similarity(p.search_text, :keyword) > 0.03
+                         OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
+                      )
+                      AND (
+                            similarity(p.search_text, :keyword) < :lastScore
+                         OR (similarity(p.search_text, :keyword) = :lastScore AND p.id < :lastId)
+                      )
+                    ORDER BY score DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<Object[]> searchIdsByRelevanceNextPageAndVisibility(
+            @Param("keyword") String keyword,
+            @Param("escapedKeyword") String escapedKeyword,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("lastScore") double lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
+
+    // ID 리스트로 author 까지 fetch (RELEVANCE 두 단계 fetch 의 두 번째 단계)
+    @EntityGraph(attributePaths = "author")
+    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids")
+    List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids);
 }
