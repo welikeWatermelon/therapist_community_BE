@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 
 import static org.assertj.core.api.Assertions.*;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
@@ -422,7 +423,7 @@ class PostServiceTest {
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         // then
         assertThat(response.getItems()).hasSize(3);
@@ -450,7 +451,7 @@ class PostServiceTest {
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         // then
         assertThat(response.getItems()).hasSize(size);
@@ -463,7 +464,7 @@ class PostServiceTest {
         when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         assertThat(response.getItems()).isEmpty();
         assertThat(response.isHasNext()).isFalse();
@@ -475,7 +476,7 @@ class PostServiceTest {
         when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        postService.getPostsFeed(10, null, UserRole.USER);
+        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
 
         verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
         verify(therapyPostRepository, never()).findFeedLatest(any(), any(), any(Pageable.class));

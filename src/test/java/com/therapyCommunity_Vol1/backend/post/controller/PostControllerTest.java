@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.post.controller;
 import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
@@ -117,7 +118,7 @@ class PostControllerTest {
                 false,
                 20
         );
-        given(postService.getPostsFeed(eq(20), eq(null), any(UserRole.class)))
+        given(postService.getPostsFeed(eq(20), eq(null), any(UserRole.class), eq(FeedSortType.LATEST)))
                 .willReturn(feedResponse);
 
         // when & then
@@ -131,6 +132,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
                 .andExpect(jsonPath("$.data.size").value(20));
 
-        verify(postService).getPostsFeed(eq(20), eq(null), any(UserRole.class));
+        verify(postService).getPostsFeed(eq(20), eq(null), any(UserRole.class), eq(FeedSortType.LATEST));
     }
 }
