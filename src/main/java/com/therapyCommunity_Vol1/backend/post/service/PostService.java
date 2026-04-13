@@ -140,9 +140,12 @@ public class PostService {
             int size,
             UserRole role
     ) {
+        // 치료사 아닌 애들이 들오면 true
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
         // pg_trgm % 연산자의 임계값을 트랜잭션 스코프로 0.03 으로 낮춘다.
         // 트랜잭션 종료 시 자동으로 원복된다.
+        // 전역으로 관리해도 되나, 해당 검색에서만 쓰이고, 딱히 트레이드 오프가 없을 것 같음. 그래서 그냥 둠
+        // 수정할때도 여기서 수정하는게 편리하다고 판단
         entityManager.createNativeQuery("SET LOCAL pg_trgm.similarity_threshold = 0.03")
                 .executeUpdate();
 
@@ -155,14 +158,24 @@ public class PostService {
         int limit = size + 1; // hasNext 판별용 take+1 조회
         boolean firstPage = (lastScore == null && lastId == null);
 
+        //
+        // 여기서 rows는 postId와 score가 들어감
+        // nextCursor의 score보다 낮거나 같다면 id가 낮은거부터 limit개 들어감
+        // 만약 limit보다 숫자가 적다면 그만큼만 들어감
+        // 조건에 맞는 게시판Id와 score를 가져옴
         List<Object[]> rows;
+        // 첫 페이지라면 (커서 없이)
+
         if (firstPage) {
             rows = publicOnly
+                    // 치료사가 아니라면 공개된 글만
                     ? therapyPostRepository.searchIdsByRelevanceFirstPageAndVisibility(
                             rawKeyword, escapedKeyword, area, type, Visibility.PUBLIC.name(), limit)
+                    // 치료사라면 전체 글
                     : therapyPostRepository.searchIdsByRelevanceFirstPage(
                             rawKeyword, escapedKeyword, area, type, limit);
-        } else {
+        }// 첫 페이지가 아니라면 (커서로 이어서)
+        else {
             rows = publicOnly
                     ? therapyPostRepository.searchIdsByRelevanceNextPageAndVisibility(
                             rawKeyword, escapedKeyword, area, type, Visibility.PUBLIC.name(),
@@ -172,9 +185,18 @@ public class PostService {
         }
 
         // hasNext 판별 + take 개로 트림
+        // 다음 페이지 있나?(현 size()를 넘을만큼?)
+        // 만약 10개씩 가져오는데 5개라면 5개만 보여줌
+        // size는 20이고, 위의 데이터에서 limit을 size+1로 걸어둠
+        // 그래서 limit개 가져오면 21개를 가져오게 됨.(최대)
+        // 이걸 통해 다음 데이터가 있는지 판단할 수 있음
         boolean hasNextData = rows.size() > size;
+
+        // <postId,score>
+        // 이 떄는 정렬 되어있는 상태
         List<Object[]> pageRows = hasNextData ? rows.subList(0, size) : rows;
 
+        // 비어있으면 빈 결과 반환
         if (pageRows.isEmpty()) {
             return new SearchCursorResponse(
                     List.of(),
@@ -182,14 +204,22 @@ public class PostService {
             );
         }
 
-        // ID 추출 → author 까지 fetch
+        // postId만 추출
+        // 이 때도 정렬 되어있음
         List<Long> ids = pageRows.stream()
                 .map(r -> ((Number) r[0]).longValue())
                 .toList();
+
+        // ids를 통해 author 까지 join해서 가져옴
+        // 여기서 Id를 가져와서 Map으로 만드는데, 이 때 정렬이 틀어짐
+        // Map<POSTID,POST> 구조로 한 이유
+        // HashMap의 구조로 PostId를 바로 찾을 수 있기 때문임.
+        // Post안의 id로 접근하려면 모든 자료를 다 뒤지면서 비교해야함. (O(N))
+        // 근데 HashMap은 O(1)으로 Key를 바로 찾아버림
         Map<Long, TherapyPost> byId = therapyPostRepository.findAllByIdInWithAuthor(ids).stream()
                 .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
 
-        // IN 절은 정렬을 보존하지 않으므로 native 결과의 ID 순서대로 재정렬
+        // byId(정렬되지않은 데이터)들을 native 결과의 ID 순서(ids)대로 정렬
         List<TherapyPostSummaryResponse> items = ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
@@ -201,7 +231,7 @@ public class PostService {
         BigDecimal nextScore = null;
         Long nextId = null;
         if (hasNextData) {
-            Object[] lastRow = pageRows.get(pageRows.size() - 1);
+            Object[] lastRow = pageRows.get(pageRows.size() - 1); // 마지막 데이터 (limit+1 인덱스의 데이터 추출)
             nextId = ((Number) lastRow[0]).longValue();
             nextScore = (BigDecimal) lastRow[1];
         }

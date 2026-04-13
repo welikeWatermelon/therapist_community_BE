@@ -124,14 +124,18 @@ public class PostController {
 
         PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
         UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
+        // 검색 결과 게시글 목록 반환
         SearchCursorResponse response = postService.searchPostsByRelevance(
                 condition, lastScore, lastId, size, userRole
         );
 
         Long userId = userDetails != null ? userDetails.getUserId() : null;
+        // 게시글 ID만 추출
         List<Long> postIds = response.getData().stream()
                 .map(TherapyPostSummaryResponse::getId).toList();
+        // 이 유저가 스크랩한 게시글 ID를 조회
         Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
+        // 스크랩 표시 확인
         response.getData().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
 
         return ResponseEntity.ok(ApiResponse.success(response));
