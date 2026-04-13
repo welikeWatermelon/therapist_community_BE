@@ -18,7 +18,7 @@ public class TherapyPostSummaryResponse {
     private TherapyArea therapyArea;
     private Visibility visibility;
     private Long viewCount;
-    private Double popularityScore;
+    private Long popularityScore;
     private LocalDateTime createdAt;
     private boolean isScrapped;
 
@@ -30,7 +30,7 @@ public class TherapyPostSummaryResponse {
             TherapyArea therapyArea,
             Visibility visibility,
             Long viewCount,
-            Double popularityScore,
+            Long popularityScore,
             LocalDateTime createdAt,
             boolean isScrapped
     ) {

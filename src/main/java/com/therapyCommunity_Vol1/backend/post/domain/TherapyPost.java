@@ -56,7 +56,7 @@ public class TherapyPost extends BaseEntity {
     private Visibility visibility;
 
     @Column(name = "popularity_score", nullable = false)
-    private Double popularityScore = 0.0;
+    private Long popularityScore = 0L;
 
     private TherapyPost(
             String content,
@@ -70,6 +70,7 @@ public class TherapyPost extends BaseEntity {
         this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.author = author;
         this.viewCount = 0L;
+        this.popularityScore = java.time.Instant.now().getEpochSecond() / 8640;
     }
 
     public static TherapyPost create(

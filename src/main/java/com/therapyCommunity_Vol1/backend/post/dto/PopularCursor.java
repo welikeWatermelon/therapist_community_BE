@@ -7,7 +7,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import java.util.Base64;
 
 public record PopularCursor(
-        Double score,
+        Long score,
         Long id
 ) {
     private static final ObjectMapper MAPPER = new ObjectMapper();
