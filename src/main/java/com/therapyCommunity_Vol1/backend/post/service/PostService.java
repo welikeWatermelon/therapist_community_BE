@@ -39,6 +39,11 @@ public class PostService {
     private final PostVisibilityAccessPolicy visibilityPolicy;
 
     @Transactional
+    public void recalculatePopularityScore(Long postId) {
+        therapyPostRepository.recalculatePopularityScore(postId);
+    }
+
+    @Transactional
     public TherapyPostDetailResponse createPost(
             Long userId,
             UserRole currentUserRole,
@@ -56,7 +61,6 @@ public class PostService {
                 author
         );
         TherapyPost saved = therapyPostRepository.save(post);
-        therapyPostRepository.recalculatePopularityScore(saved.getId());
 
         return TherapyPostDetailResponse.from(saved, userId, author.getRole());
     }

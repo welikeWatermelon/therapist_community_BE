@@ -5,8 +5,8 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
@@ -31,7 +31,7 @@ import java.util.Map;
 public class PostReactionService {
 
     private final TherapyPostReactionRepository postReactionRepository;
-    private final TherapyPostRepository therapyPostRepository;
+    private final PostService postService;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -79,7 +79,7 @@ public class PostReactionService {
                             .build());
                 });
 
-        therapyPostRepository.recalculatePopularityScore(postId);
+        postService.recalculatePopularityScore(postId);
 
         return getReactionStatus(currentUserId, postId);
     }

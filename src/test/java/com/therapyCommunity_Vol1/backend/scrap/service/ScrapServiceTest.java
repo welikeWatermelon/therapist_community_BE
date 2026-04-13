@@ -4,7 +4,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
-import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 class ScrapServiceTest {
 
     private TherapyPostScrapRepository scrapRepository;
-    private TherapyPostRepository therapyPostRepository;
+    private PostService postService;
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ApplicationEventPublisher eventPublisher;
@@ -39,7 +39,7 @@ class ScrapServiceTest {
     @BeforeEach
     void setUp() {
         this.scrapRepository = mock(TherapyPostScrapRepository.class);
-        this.therapyPostRepository = mock(TherapyPostRepository.class);
+        this.postService = mock(PostService.class);
         this.activePostFinder = mock(ActivePostFinder.class);
         this.userRepository = mock(UserRepository.class);
         this.eventPublisher = mock(ApplicationEventPublisher.class);
@@ -47,7 +47,7 @@ class ScrapServiceTest {
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
-        this.scrapService = new ScrapService(scrapRepository, therapyPostRepository, activePostFinder, userRepository, eventPublisher, visibilityPolicy);
+        this.scrapService = new ScrapService(scrapRepository, postService, activePostFinder, userRepository, eventPublisher, visibilityPolicy);
     }
 
     @Test
