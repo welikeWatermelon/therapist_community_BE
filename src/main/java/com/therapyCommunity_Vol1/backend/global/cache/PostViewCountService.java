@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.Boolean.TRUE;
+
 /**
  * 게시글 조회수 중복 증가 방지 (Redis SETNX + TTL).
  *
@@ -36,7 +38,9 @@ public class PostViewCountService {
             String cacheEntry = KEY_PREFIX + postId + ":" + userId;
             Boolean wasAbsent = stringRedisTemplate.opsForValue()
                     .setIfAbsent(cacheEntry, "1", TTL_SECONDS, TimeUnit.SECONDS);
-            return Boolean.TRUE.equals(wasAbsent);
+            return TRUE.equals(wasAbsent);
+            // wasAbsent는 Wrapper 타입이라 null이 올 수 있음. 따라서 방어적으로 코드 작성한 것
+            // null이 올 가능성이 없다면 wasAbsent만 와도 됨.
         } catch (Exception e) {
             log.warn("Redis isFirstView 실패 postId={}, userId={}", postId, userId, e);
             return true;
