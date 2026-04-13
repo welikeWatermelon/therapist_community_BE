@@ -483,3 +483,10 @@ LIMIT 11;
 - **임계값 0.03 의 운영 튜닝**: 데이터가 쌓이면 0.03 이 너무 낮아 노이즈가 늘 수 있다. 임계값을 application property 로 빼서 조정 가능하게 만드는 안.
 - **Frontend 가이드**: `nextScore` 를 문자열로 보존하라는 안내를 `FRONTEND_BREAKING_CHANGES.md` 또는 API 스펙에 추가.
 - **`PostSearchCondition` 키워드 정규화**: 양 끝 trim 외에 NFC 정규화 등 한국어 정규화도 고려할지 검토.
+
+
+
+
+핵심은 similarity() 자체가 비싼 연산이라는 점. trigram을 쪼개고 집합 비교하는 건데, 이걸    
+매칭된 모든 행에 대해 4번씩 돌리면 CPU 부하가 4배. 정렬(ORDER BY)에도 4번 중 최대값을 매번  
+계산해야 함.
