@@ -117,14 +117,19 @@ public class PostService {
     }
 
     /**
-     * RELEVANCE 검색 (무한스크롤) — 외부 진입 메서드.
-     * lastScore/lastId 가 모두 null 이면 첫 페이지, 모두 있으면 다음 페이지.
-     * 컨트롤러에서 두 값의 쌍 검증을 통과한 뒤 호출되는 것을 가정한다.
+     * RELEVANCE 검색 (무한스크롤) — pg_trgm % 연산자 + ILIKE fallback 으로 후보를 모으고
+     * similarity 점수로 정렬한다.
+     *
+     * 두 단계 fetch: 1) native 로 (id, score) + 정렬, 2) ID 로 author 까지 EntityGraph fetch.
+     * native query 는 @EntityGraph 가 동작하지 않아 N+1 회피 목적.
+     *
+     * 페이지네이션은 (lastScore, lastId) 커서 기반. take+1 조회로 hasNextData 를 판단한다.
+     * score 는 numeric(10,8) 로 캐스트해 BigDecimal 로 왕복시켜 동등 비교 안전성을 확보한다.
      *
      * 클래스 레벨 readOnly=true 를 명시적으로 오버라이드해 readOnly=false 트랜잭션을 연다.
-     * 그 안에서 SET LOCAL pg_trgm.similarity_threshold 를 안전하게 실행하기 위함이다
-     * (PG READ ONLY 트랜잭션에서도 SET LOCAL 자체는 허용되지만, JDBC/Hibernate 일부
-     *  버전에서 거부된 사례가 보고되어 안전 차원에서 명시적으로 풀어둔다).
+     * SET LOCAL pg_trgm.similarity_threshold 를 안전하게 실행하기 위함이다
+     * (JDBC/Hibernate 일부 버전에서 READ ONLY 트랜잭션의 SET LOCAL 을 거부한 사례가 있어
+     *  안전 차원에서 명시적으로 풀어둔다).
      * SET LOCAL 은 트랜잭션 종료 시 자동 해제되므로 RESET 호출은 불필요하다.
      */
     @Transactional
@@ -136,28 +141,6 @@ public class PostService {
             UserRole role
     ) {
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
-        return findPostsByRelevance(condition, publicOnly, lastScore, lastId, size);
-    }
-
-    /**
-     * RELEVANCE 정렬 — pg_trgm % 연산자 + ILIKE fallback 으로 후보를 모으고 similarity 점수로 정렬.
-     * 두 단계 fetch: 1) native 로 (id, score) + 정렬, 2) ID 로 author 까지 EntityGraph fetch.
-     * native query 는 @EntityGraph 가 동작하지 않아 N+1 회피 목적.
-     *
-     * 페이지네이션은 (lastScore, lastId) 커서 기반. take+1 조회로 hasNextData 를 판단한다.
-     * score 는 numeric(10,8) 로 캐스트해 BigDecimal 로 왕복시켜 동등 비교 안전성을 확보한다.
-     *
-     * 호출 직전에 SET LOCAL pg_trgm.similarity_threshold = 0.03 을 실행해 % 연산자가
-     * 0.03 임계값으로 동작하도록 만든다. 이 임계값은 한국어 짧은 키워드 회귀를 방지하기 위한
-     * memory 노트의 0.03 과 일치한다.
-     */
-    private SearchCursorResponse findPostsByRelevance(
-            PostSearchCondition condition,
-            boolean publicOnly,
-            BigDecimal lastScore,
-            Long lastId,
-            int size
-    ) {
         // pg_trgm % 연산자의 임계값을 트랜잭션 스코프로 0.03 으로 낮춘다.
         // 트랜잭션 종료 시 자동으로 원복된다.
         entityManager.createNativeQuery("SET LOCAL pg_trgm.similarity_threshold = 0.03")
