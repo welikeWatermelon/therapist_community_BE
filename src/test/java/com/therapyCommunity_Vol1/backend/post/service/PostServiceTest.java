@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
@@ -33,6 +34,7 @@ class PostServiceTest {
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private PostViewCountService postViewCountService;
     private PostService postService;
 
     @BeforeEach
@@ -43,16 +45,19 @@ class PostServiceTest {
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        postViewCountService = mock(PostViewCountService.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
+        when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
                 userRepository,
                 resourceAccessValidator,
-                visibilityPolicy
+                visibilityPolicy,
+                postViewCountService
         );
     }
 

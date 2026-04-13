@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
@@ -36,6 +37,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final PostViewCountService postViewCountService;
 
     @Transactional
     public TherapyPostDetailResponse createPost(
@@ -176,7 +178,9 @@ public class PostService {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
 
-        post.increaseViewCount();
+        if (postViewCountService.isFirstView(postId, currentUserId)) {
+            post.increaseViewCount();
+        }
 
         List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
                 .findByPostIdOrderByCreatedAtAsc(postId)
