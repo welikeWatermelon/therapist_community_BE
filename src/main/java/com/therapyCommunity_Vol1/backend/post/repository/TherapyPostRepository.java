@@ -163,6 +163,8 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     );
 
     // popularity_score 재계산 (반응/스크랩 토글 시 호출)
+    // 공식: 반응수 * 30 + 스크랩수 * 20 + (created_at epoch초 / 8640)
+    // 8640 = TherapyPost.TIME_SCORE_DIVISOR — 약 2.4시간마다 1점 자연 증가. V25 마이그레이션과 동일.
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE therapy_posts SET popularity_score =

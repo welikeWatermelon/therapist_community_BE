@@ -58,6 +58,13 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "popularity_score", nullable = false)
     private Long popularityScore = 0L;
 
+    /**
+     * 시간 가중치 분모. 86400초(1일) / 10 → 약 2.4시간마다 점수 1점 자연 증가.
+     * 반응 30점 / 스크랩 20점 스케일과 균형을 맞추기 위한 값.
+     * V25 마이그레이션 및 TherapyPostRepository.recalculatePopularityScore 쿼리와 동일하게 유지해야 함.
+     */
+    private static final long TIME_SCORE_DIVISOR = 8640L;
+
     private TherapyPost(
             String content,
             TherapyArea therapyArea,
@@ -70,7 +77,7 @@ public class TherapyPost extends BaseEntity {
         this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.author = author;
         this.viewCount = 0L;
-        this.popularityScore = java.time.Instant.now().getEpochSecond() / 8640;
+        this.popularityScore = java.time.Instant.now().getEpochSecond() / TIME_SCORE_DIVISOR;
     }
 
     public static TherapyPost create(

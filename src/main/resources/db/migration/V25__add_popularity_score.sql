@@ -4,6 +4,8 @@ ALTER TABLE therapy_posts
 
 -- 2. 기존 데이터 초기값 세팅
 --    공식: reactions * 30 + scraps * 20 + (created_at epoch초 / 8640)
+--    8640 = 86400(1일) / 10 → 약 2.4시간마다 1점 자연 증가 (시간 가중치).
+--    반응 30점 / 스크랩 20점 스케일과 균형 맞춤. TherapyPost.TIME_SCORE_DIVISOR 와 동일.
 UPDATE therapy_posts p
 SET popularity_score = (
     COALESCE((SELECT COUNT(*) FROM therapy_post_reactions r WHERE r.post_id = p.id), 0) * 30
