@@ -18,7 +18,6 @@ public class TherapyPostSummaryResponse {
     private TherapyArea therapyArea;
     private Visibility visibility;
     private Long viewCount;
-    private Long popularityScore;
     private LocalDateTime createdAt;
     private boolean isScrapped;
 
@@ -30,7 +29,6 @@ public class TherapyPostSummaryResponse {
             TherapyArea therapyArea,
             Visibility visibility,
             Long viewCount,
-            Long popularityScore,
             LocalDateTime createdAt,
             boolean isScrapped
     ) {
@@ -41,7 +39,6 @@ public class TherapyPostSummaryResponse {
         this.therapyArea = therapyArea;
         this.visibility = visibility;
         this.viewCount = viewCount;
-        this.popularityScore = popularityScore;
         this.createdAt = createdAt;
         this.isScrapped = isScrapped;
     }
@@ -60,7 +57,6 @@ public class TherapyPostSummaryResponse {
                 post.getTherapyArea(),
                 post.getVisibility(),
                 post.getViewCount(),
-                post.getPopularityScore(),
                 post.getCreatedAt(),
                 isScrapped
         );

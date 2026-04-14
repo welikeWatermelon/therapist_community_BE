@@ -178,12 +178,21 @@ public class PostService {
                         popCursor != null ? popCursor.id() : null,
                         PageRequest.of(0, size + 1));
 
-        List<TherapyPostSummaryResponse> dtos = posts.stream()
+        boolean hasNext = posts.size() > size;
+        List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
+
+        List<TherapyPostSummaryResponse> dtos = trimmed.stream()
                 .map(post -> TherapyPostSummaryResponse.from(post, false))
                 .toList();
 
-        return CursorPagedResponse.of(dtos, size, item ->
-                new PopularCursor(item.getPopularityScore(), item.getId()).encode());
+        String nextCursor = hasNext
+                ? new PopularCursor(
+                        trimmed.get(trimmed.size() - 1).getPopularityScore(),
+                        trimmed.get(trimmed.size() - 1).getId()
+                ).encode()
+                : null;
+
+        return new CursorPagedResponse<>(dtos, nextCursor, hasNext, size);
     }
 
     private Sort toSort(PostSortType sortType) {
