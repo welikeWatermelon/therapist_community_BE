@@ -96,6 +96,10 @@ public class TherapyPost extends BaseEntity {
         this.postType = postType;
     }
 
+    public void changeVisibility(Visibility visibility) {
+        this.visibility = visibility;
+    }
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }

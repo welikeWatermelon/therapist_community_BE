@@ -9,6 +9,7 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerificationStatus;
 import com.therapyCommunity_Vol1.backend.therapist.dto.ApplyTherapistVerificationRequest;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
@@ -196,6 +197,10 @@ public class TherapistVerificationService {
                         "/api/v1/therapist-verifications/me/image"
                 ))
                 .orElse(null);
+    }
+
+    public long countPendingVerifications() {
+        return therapistVerificationRepository.countByStatus(TherapistVerificationStatus.PENDING);
     }
 
     public StoredFileResource loadMyVerificationImage(Long currentUserId) {

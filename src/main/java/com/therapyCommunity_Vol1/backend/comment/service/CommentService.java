@@ -25,6 +25,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -155,5 +156,32 @@ public class CommentService {
     public Page<TherapyPostComment> getMyComments(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         return commentRepository.findByAuthorId(userId, pageable);
+    }
+
+    // ===== Admin 통계/관리용 =====
+
+    public long countActiveComments() {
+        return commentRepository.countByDeletedAtIsNull();
+    }
+
+    public long countTodayNewComments() {
+        return commentRepository.countActiveCommentsCreatedAfter(LocalDate.now().atStartOfDay());
+    }
+
+    public long countCommentsByAuthor(Long authorId) {
+        return commentRepository.countByAuthorIdAndDeletedAtIsNull(authorId);
+    }
+
+    public Page<TherapyPostComment> searchCommentsForAdmin(Long postId, Pageable pageable) {
+        return commentRepository.adminSearch(postId, pageable);
+    }
+
+    @Transactional
+    public void adminSoftDelete(Long commentId) {
+        TherapyPostComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        if (!comment.isDeleted()) {
+            comment.softDelete();
+        }
     }
 }

@@ -9,14 +9,21 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -88,5 +95,45 @@ public class UserService {
     private User findUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    // ===== Admin 통계/관리용 =====
+
+    public long countActiveUsers() {
+        return userRepository.countByDeletedAtIsNull();
+    }
+
+    public long countTodayNewUsers() {
+        return userRepository.countActiveUsersCreatedAfter(LocalDate.now().atStartOfDay());
+    }
+
+    public long countByRole(UserRole role) {
+        return userRepository.countByRole(role);
+    }
+
+    public List<Object[]> countUsersByRole() {
+        return userRepository.countGroupByRole();
+    }
+
+    public List<Object[]> getDailySignupCounts(int days) {
+        LocalDateTime since = LocalDate.now().minusDays(days - 1L).atStartOfDay();
+        return userRepository.countDailySignups(since);
+    }
+
+    public Page<User> searchUsers(String keyword, UserRole role, Pageable pageable) {
+        String trimmed = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        return userRepository.searchByKeywordAndRole(trimmed, role, pageable);
+    }
+
+    public User findUserById(Long userId) {
+        return findUserOrThrow(userId);
+    }
+
+    @Transactional
+    public User changeRole(Long userId, UserRole newRole) {
+        User user = findUserOrThrow(userId);
+        user.changeRole(newRole);
+        userCacheService.evict(userId);
+        return user;
     }
 }

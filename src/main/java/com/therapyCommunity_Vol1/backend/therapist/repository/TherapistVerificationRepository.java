@@ -24,4 +24,6 @@ public interface TherapistVerificationRepository extends JpaRepository<Therapist
 
     @EntityGraph(attributePaths = {"user", "reviewedBy"})
     Page<TherapistVerification> findAll(Pageable pageable);
+
+    long countByStatus(TherapistVerificationStatus status);
 }

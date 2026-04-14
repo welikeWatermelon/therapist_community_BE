@@ -91,6 +91,10 @@ public class ScrapService {
         return new ScrapStatusResponse(postId, scrapped);
     }
 
+    public long countScrapsByUser(Long userId) {
+        return scrapRepository.countByUserId(userId);
+    }
+
     public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, UserRole currentUserRole, int page, int size) {
         userRepository.findById(currentUserId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));

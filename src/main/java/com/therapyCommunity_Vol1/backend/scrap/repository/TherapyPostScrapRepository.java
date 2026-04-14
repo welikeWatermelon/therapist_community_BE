@@ -28,4 +28,6 @@ public interface TherapyPostScrapRepository extends JpaRepository<TherapyPostScr
 
     @EntityGraph(attributePaths = {"post", "post.author"})
     Page<TherapyPostScrap> findByUserIdAndPost_DeletedAtIsNullAndPost_Visibility(Long userId, Visibility visibility, Pageable pageable);
+
+    long countByUserId(Long userId);
 }

@@ -44,6 +44,10 @@ public class User extends BaseEntity {
         this.role = UserRole.USER;
     }
 
+    public void changeRole(UserRole role) {
+        this.role = role;
+    }
+
     public void updateProfile(String nickname, String profileImageUrl) {
         if (nickname != null) {
             this.nickname = nickname;

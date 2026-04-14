@@ -4,6 +4,8 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
+import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
@@ -22,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -221,6 +224,64 @@ public class PostService {
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
+    }
+
+    // ===== Admin 통계/관리용 =====
+
+    public long countActivePosts() {
+        return therapyPostRepository.countByDeletedAtIsNull();
+    }
+
+    public long countTodayNewPosts() {
+        return therapyPostRepository.countActivePostsCreatedAfter(LocalDate.now().atStartOfDay());
+    }
+
+    public long countPostsByAuthor(Long authorId) {
+        return therapyPostRepository.countByAuthorIdAndDeletedAtIsNull(authorId);
+    }
+
+    public List<Object[]> countPostsByTherapyArea() {
+        return therapyPostRepository.countGroupByTherapyArea();
+    }
+
+    public List<Object[]> avgViewCountByTherapyArea() {
+        return therapyPostRepository.avgViewCountGroupByTherapyArea();
+    }
+
+    public List<Object[]> countPostsByAgeGroup() {
+        return therapyPostRepository.countGroupByAgeGroup();
+    }
+
+    public List<Object[]> countPostsByPostType() {
+        return therapyPostRepository.countGroupByPostType();
+    }
+
+    public Page<TherapyPost> searchPostsForAdmin(
+            String keyword,
+            TherapyArea therapyArea,
+            PostType postType,
+            Visibility visibility,
+            Pageable pageable
+    ) {
+        String trimmed = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        return therapyPostRepository.adminSearch(trimmed, therapyArea, postType, visibility, pageable);
+    }
+
+    @Transactional
+    public TherapyPost changeVisibility(Long postId, Visibility visibility) {
+        TherapyPost post = therapyPostRepository.findById(postId)
+                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        post.changeVisibility(visibility);
+        return post;
+    }
+
+    @Transactional
+    public void adminSoftDelete(Long postId) {
+        TherapyPost post = therapyPostRepository.findById(postId)
+                .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+        if (!post.isDeleted()) {
+            post.softDelete();
+        }
     }
 
 }

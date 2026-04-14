@@ -126,4 +126,42 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
+
+    // ===== Admin 통계용 =====
+
+    long countByDeletedAtIsNull();
+
+    @Query("SELECT COUNT(p) FROM TherapyPost p WHERE p.deletedAt IS NULL AND p.createdAt >= :since")
+    long countActivePostsCreatedAfter(@Param("since") LocalDateTime since);
+
+    long countByAuthorIdAndDeletedAtIsNull(Long authorId);
+
+    @Query("SELECT p.therapyArea, COUNT(p) FROM TherapyPost p WHERE p.deletedAt IS NULL GROUP BY p.therapyArea")
+    List<Object[]> countGroupByTherapyArea();
+
+    @Query("SELECT p.therapyArea, AVG(p.viewCount) FROM TherapyPost p WHERE p.deletedAt IS NULL GROUP BY p.therapyArea")
+    List<Object[]> avgViewCountGroupByTherapyArea();
+
+    @Query("SELECT p.ageGroup, COUNT(p) FROM TherapyPost p WHERE p.deletedAt IS NULL GROUP BY p.ageGroup")
+    List<Object[]> countGroupByAgeGroup();
+
+    @Query("SELECT p.postType, COUNT(p) FROM TherapyPost p WHERE p.deletedAt IS NULL GROUP BY p.postType")
+    List<Object[]> countGroupByPostType();
+
+    // Admin 게시글 검색 — 삭제된 게시글 포함, 모든 visibility
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE (:keyword IS NULL OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')
+              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
+              AND (:postType IS NULL OR p.postType = :postType)
+              AND (:visibility IS NULL OR p.visibility = :visibility)
+            """)
+    Page<TherapyPost> adminSearch(
+            @Param("keyword") String keyword,
+            @Param("therapyArea") TherapyArea therapyArea,
+            @Param("postType") PostType postType,
+            @Param("visibility") Visibility visibility,
+            Pageable pageable
+    );
 }
