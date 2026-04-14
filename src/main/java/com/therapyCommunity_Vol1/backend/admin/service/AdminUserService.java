@@ -4,8 +4,6 @@ import com.therapyCommunity_Vol1.backend.admin.dto.AdminUserDetailResponse;
 import com.therapyCommunity_Vol1.backend.admin.dto.AdminUserListResponse;
 import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
-import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
-import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -56,20 +54,6 @@ public class AdminUserService {
 
     @Transactional
     public AdminUserDetailResponse changeUserRole(Long adminUserId, Long targetUserId, UserRole newRole) {
-        if (adminUserId.equals(targetUserId)) {
-            throw new CustomException(ErrorCode.ADMIN_CANNOT_CHANGE_OWN_ROLE);
-        }
-
-        User target = userService.findUserById(targetUserId);
-
-        // 마지막 ADMIN 강등 방지
-        if (target.getRole() == UserRole.ADMIN && newRole != UserRole.ADMIN) {
-            long adminCount = userService.countByRole(UserRole.ADMIN);
-            if (adminCount <= 1) {
-                throw new CustomException(ErrorCode.ADMIN_LAST_ADMIN);
-            }
-        }
-
         userService.changeRole(targetUserId, newRole);
         return getUserDetail(targetUserId);
     }
