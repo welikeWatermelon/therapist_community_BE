@@ -9,17 +9,23 @@ import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStat
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
+import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UserServiceTest {
@@ -101,5 +107,54 @@ class UserServiceTest {
 
         assertThat(thrown).isInstanceOf(CustomException.class);
         assertThat(((CustomException) thrown).getErrorCode()).isEqualTo(ErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    void 프로필_이미지_업로드시_DB에는_파일명만_저장되고_응답은_풀_URL로_나간다() {
+        User user = User.builder()
+                .id(1L)
+                .email("user@example.com")
+                .nickname("tester")
+                .role(UserRole.USER)
+                .build();
+        MultipartFile mockFile = mock(MultipartFile.class);
+        // 스토리지 반환값은 "profile-images/{uuid}.jpg" 형태 — 디렉토리 prefix 포함
+        StoredFileInfo storedFileInfo = new StoredFileInfo(
+                "profile-images/abc-123.jpg", "orig.jpg", "image/jpeg"
+        );
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(fileStorageService.storeProfileImage(mockFile)).thenReturn(storedFileInfo);
+
+        String returnedUrl = userService.uploadProfileImage(1L, mockFile);
+
+        // DB에는 파일명만 (디렉토리 prefix 제거됨)
+        assertThat(user.getProfileImageUrl()).isEqualTo("abc-123.jpg");
+        // 응답은 풀 URL 로 조립됨
+        assertThat(returnedUrl).isEqualTo("http://localhost:8080/api/v1/me/profile-image/abc-123.jpg");
+        // 캐시 무효화 호출 확인
+        verify(userCacheService).evict(1L);
+    }
+
+    @Test
+    void 닉네임만_수정하면_프로필_이미지는_그대로_유지된다() {
+        User user = User.builder()
+                .id(1L)
+                .email("user@example.com")
+                .nickname("oldNick")
+                .role(UserRole.USER)
+                .build();
+        ReflectionTestUtils.setField(user, "profileImageUrl", "existing.jpg");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.existsByNicknameAndIdNot("newNick", 1L)).thenReturn(false);
+        when(therapistVerificationService.findVerificationStatusByUserId(1L))
+                .thenReturn(Optional.empty());
+
+        UpdateProfileRequest request = new UpdateProfileRequest("newNick");
+        userService.updateProfile(1L, request);
+
+        assertThat(user.getNickname()).isEqualTo("newNick");
+        // 프로필 이미지 변경 경로는 PATCH 에서 제거됨 → 기존 값 그대로
+        assertThat(user.getProfileImageUrl()).isEqualTo("existing.jpg");
     }
 }

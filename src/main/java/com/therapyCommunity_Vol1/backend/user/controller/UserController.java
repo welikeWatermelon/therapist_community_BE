@@ -81,6 +81,28 @@ public class UserController {
     @Operation(summary = "프로필 이미지 조회", description = "인증 불필요. 프로필 이미지 파일 반환", security = {})
     @GetMapping("/profile-image/{filename}")
     public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
+        return serveProfileImage(filename);
+    }
+
+    /**
+     * 구형 경로 호환용 매핑.
+     * 이 PR 배포 이전의 응답이나 Redis 캐시(`CachedUser`)에 남아있을 수 있는
+     * `/api/v1/me/profile-image/profile-images/{filename}` 형태의 URL을 계속 서비스하기 위함.
+     * 제거 조건(ToDoListForAfterMvp.md 참조): (a) `CachedUser` TTL 완전 만료 후
+     * (b) 1~2 릴리즈 관측 결과 구형 URL 요청이 더 이상 들어오지 않음이 확인되면 삭제.
+     */
+    @Deprecated
+    @Operation(
+            summary = "[DEPRECATED] 프로필 이미지 조회 — 구형 경로",
+            description = "구형 URL 호환용. 신규 클라이언트는 /profile-image/{filename}를 사용할 것.",
+            security = {}
+    )
+    @GetMapping("/profile-image/profile-images/{filename}")
+    public ResponseEntity<Resource> getProfileImageLegacy(@PathVariable String filename) {
+        return serveProfileImage(filename);
+    }
+
+    private ResponseEntity<Resource> serveProfileImage(String filename) {
         StoredFileResource storedFile = myPageFacade.loadProfileImage(filename);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(storedFile.getContentType()))
@@ -89,7 +111,7 @@ public class UserController {
                 .body(storedFile.getResource());
     }
 
-    @Operation(summary = "프로필 수정", description = "닉네임(2~20자), 프로필 이미지 URL 변경. null이면 기존 값 유지")
+    @Operation(summary = "프로필 수정", description = "닉네임(2~20자) 변경. null이면 기존 값 유지")
     @PatchMapping
     public ResponseEntity<ApiResponse<CurrentUserResponse>> updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,

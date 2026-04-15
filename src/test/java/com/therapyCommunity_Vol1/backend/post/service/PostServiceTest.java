@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 
 import static org.assertj.core.api.Assertions.*;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
@@ -33,6 +35,7 @@ class PostServiceTest {
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private PostViewCountService postViewCountService;
     private PostService postService;
 
     @BeforeEach
@@ -43,16 +46,19 @@ class PostServiceTest {
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        postViewCountService = mock(PostViewCountService.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
+        when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
                 userRepository,
                 resourceAccessValidator,
-                visibilityPolicy
+                visibilityPolicy,
+                postViewCountService
         );
     }
 
@@ -187,6 +193,46 @@ class PostServiceTest {
         assertThat(response.getContent()).isEqualTo("<p>본문</p>");
         assertThat(response.isCanEdit()).isTrue();
         assertThat(response.isCanDelete()).isTrue();
+    }
+
+    @Test
+    void 게시글_상세조회_중복조회시_viewCount_증가없음() {
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                Visibility.PUBLIC,
+                author
+        );
+
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of());
+        // 30분 내 재조회 시나리오 — isFirstView가 false를 반환
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(false);
+
+        // when
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                1L,
+                UserRole.THERAPIST,
+                1L,
+                false
+        );
+
+        // then — viewCount가 증가하지 않고 10으로 유지
+        assertThat(response.getViewCount()).isEqualTo(10L);
     }
 
     @Test
@@ -422,7 +468,7 @@ class PostServiceTest {
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         // then
         assertThat(response.getItems()).hasSize(3);
@@ -450,7 +496,7 @@ class PostServiceTest {
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         // then
         assertThat(response.getItems()).hasSize(size);
@@ -463,7 +509,7 @@ class PostServiceTest {
         when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         assertThat(response.getItems()).isEmpty();
         assertThat(response.isHasNext()).isFalse();
@@ -475,9 +521,48 @@ class PostServiceTest {
         when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        postService.getPostsFeed(10, null, UserRole.USER);
+        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
 
         verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
         verify(therapyPostRepository, never()).findFeedLatest(any(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void 인기순_피드_첫페이지_조회_성공() {
+        // given
+        User author = User.builder()
+                .id(1L).email("test@test.com").nickname("tester").role(UserRole.THERAPIST).build();
+
+        List<TherapyPost> posts = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            TherapyPost post = TherapyPost.create("<p>본문" + i + "</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+            ReflectionTestUtils.setField(post, "id", (long) i);
+            ReflectionTestUtils.setField(post, "viewCount", 0L);
+            ReflectionTestUtils.setField(post, "popularityScore", (long) (100 - i));
+            ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now().minusMinutes(i));
+            posts.add(post);
+        }
+
+        when(therapyPostRepository.findFeedPopular(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(posts);
+
+        // when
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.POPULAR);
+
+        // then
+        assertThat(response.getItems()).hasSize(3);
+        assertThat(response.isHasNext()).isFalse();
+        assertThat(response.getNextCursor()).isNull();
+    }
+
+    @Test
+    void 인기순_피드_USER는_PUBLIC_ONLY_쿼리_사용() {
+        when(therapyPostRepository.findFeedPopularByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
+
+        verify(therapyPostRepository).findFeedPopularByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedPopular(any(), any(), any(Pageable.class));
     }
 }
