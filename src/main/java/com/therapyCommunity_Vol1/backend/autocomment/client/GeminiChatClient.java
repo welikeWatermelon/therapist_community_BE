@@ -40,10 +40,7 @@ public class GeminiChatClient {
     }
 
     public ChatResponse generate(String systemPrompt, String userPrompt) {
-        // Gemini AI Studio REST API는 x-goog-api-key header 미지원 — query param만 동작
-        // TODO: Vertex AI 전환 시 OAuth2 bearer token으로 변경
-        String url = String.format("/v1beta/models/%s:generateContent?key=%s",
-                properties.getChatModel(), properties.getApiKey());
+        String url = String.format("/v1beta/models/%s:generateContent", properties.getChatModel());
 
         Map<String, Object> body = Map.of(
                 "contents", List.of(
@@ -58,6 +55,7 @@ public class GeminiChatClient {
 
         String response = restClient.post()
                 .uri(url)
+                .header("x-goog-api-key", properties.getApiKey())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()

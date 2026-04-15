@@ -82,7 +82,8 @@ public class AiCommentJobService {
 
     @Transactional
     public void processJob(Long jobId) {
-        PostAiCommentJob job = jobRepository.findByIdWithPost(jobId).orElse(null);
+        // pessimistic lock + fetch join — 이벤트/스케줄러 동시 접근 방지
+        PostAiCommentJob job = jobRepository.findByIdWithPostForUpdate(jobId).orElse(null);
         if (job == null || job.isTerminal()) return;
 
         TherapyPost post = job.getPost();
