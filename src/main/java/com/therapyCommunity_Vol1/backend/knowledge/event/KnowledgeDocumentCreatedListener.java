@@ -21,10 +21,14 @@ public class KnowledgeDocumentCreatedListener {
     @Async("knowledgeIngestionExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(KnowledgeDocumentCreatedEvent event) {
+        log.info("Knowledge document event received: documentId={}", event.getDocumentId());
         try {
             KnowledgeDocument document = documentRepository.findById(event.getDocumentId())
                     .orElse(null);
-            if (document == null) return;
+            if (document == null) {
+                log.warn("Knowledge document not found for event: documentId={}", event.getDocumentId());
+                return;
+            }
 
             ingestionService.processDocument(document);
         } catch (Exception e) {

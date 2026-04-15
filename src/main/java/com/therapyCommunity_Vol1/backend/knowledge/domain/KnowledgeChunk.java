@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -36,6 +38,7 @@ public class KnowledgeChunk {
     // embedding은 native SQL로 직접 관리 (pgvector)
     // JPA 엔티티에서는 매핑하지 않음
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata_json", columnDefinition = "JSONB")
     private String metadataJson;
 

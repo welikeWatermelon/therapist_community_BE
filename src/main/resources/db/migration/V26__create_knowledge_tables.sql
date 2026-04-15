@@ -35,7 +35,7 @@ CREATE TABLE knowledge_chunks (
     content TEXT NOT NULL,
     token_count INT,
     embedding_model VARCHAR(100),
-    embedding vector(768),
+    embedding vector(3072),
     metadata_json JSONB,
     created_at TIMESTAMP NOT NULL,
 
@@ -46,8 +46,8 @@ CREATE TABLE knowledge_chunks (
 CREATE INDEX idx_knowledge_chunks_document_index
     ON knowledge_chunks(document_id, chunk_index);
 
-CREATE INDEX idx_knowledge_chunks_embedding
-    ON knowledge_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+-- vector index 생략: gemini-embedding-001이 3072차원이라 ivfflat/hnsw 2000차원 제한 초과
+-- MVP 데이터 규모에서는 sequential scan으로 충분
 
 -- 문서 추출 결과 보존
 CREATE TABLE knowledge_document_artifacts (

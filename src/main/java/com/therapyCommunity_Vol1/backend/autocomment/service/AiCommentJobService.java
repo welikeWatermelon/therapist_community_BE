@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AiCommentJobService {
 
     private static final int MAX_CONTENT_LENGTH = 2000;
@@ -40,48 +39,68 @@ public class AiCommentJobService {
     private final KnowledgeChunkSearchRepository chunkSearchRepository;
     private final AiCommentProperties properties;
     private final ObjectMapper objectMapper;
+    private final AiCommentJobService self;
+
+    public AiCommentJobService(
+            PostAiCommentJobRepository jobRepository,
+            GeminiEmbeddingClient embeddingClient,
+            GeminiChatClient chatClient,
+            KnowledgeChunkSearchRepository chunkSearchRepository,
+            AiCommentProperties properties,
+            ObjectMapper objectMapper,
+            @org.springframework.context.annotation.Lazy AiCommentJobService self
+    ) {
+        this.jobRepository = jobRepository;
+        this.embeddingClient = embeddingClient;
+        this.chatClient = chatClient;
+        this.chunkSearchRepository = chunkSearchRepository;
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+        this.self = self;
+    }
 
     @Scheduled(fixedDelay = 60000)
-    @Transactional
     public void pollDueJobs() {
         if (!properties.isEnabled()) return;
 
-        List<PostAiCommentJob> dueJobs = jobRepository.findDueJobs(LocalDateTime.now(), MAX_POLL);
-        for (PostAiCommentJob job : dueJobs) {
+        List<Long> jobIds = fetchDueJobIds();
+        log.info("AI comment poll: found {} due job(s)", jobIds.size());
+        for (Long jobId : jobIds) {
             try {
-                processJob(job);
+                self.processJob(jobId);
             } catch (Exception e) {
-                log.error("AI comment job processing failed: jobId={}", job.getId(), e);
+                log.error("AI comment job processing failed: jobId={}", jobId, e);
             }
         }
     }
 
     @Transactional
-    public void processJob(PostAiCommentJob job) {
-        // pessimistic lock으로 재조회 — 스케줄러/이벤트 동시 접근 방지
-        PostAiCommentJob lockedJob = jobRepository.findByIdForUpdate(job.getId())
-                .orElse(null);
-        if (lockedJob == null || lockedJob.isTerminal()) return;
-        job = lockedJob;
+    public List<Long> fetchDueJobIds() {
+        return jobRepository.findDueJobs(LocalDateTime.now(), MAX_POLL)
+                .stream().map(PostAiCommentJob::getId).toList();
+    }
+
+    @Transactional
+    public void processJob(Long jobId) {
+        PostAiCommentJob job = jobRepository.findByIdWithPost(jobId).orElse(null);
+        if (job == null || job.isTerminal()) return;
+
+        TherapyPost post = job.getPost();
+        if (post.isDeleted() || post.getVisibility() == Visibility.PRIVATE) {
+            job.markCancelled();
+            return;
+        }
 
         job.markProcessing();
+        log.info("AI comment processJob start: jobId={}, postId={}", jobId, post.getId());
 
         try {
-            TherapyPost post = job.getPost();
-
-            // 삭제/PRIVATE 체크
-            if (post.isDeleted() || post.getVisibility() == Visibility.PRIVATE) {
-                job.markCancelled();
-                return;
-            }
-
-            // content 정제
             String cleanContent = cleanHtml(post.getContent());
             if (cleanContent.length() > MAX_CONTENT_LENGTH) {
                 cleanContent = cleanContent.substring(0, MAX_CONTENT_LENGTH);
             }
 
-            // embedding + retrieval (ai-comment 자체 API key 사용, knowledge 설정과 분리)
+            log.info("AI comment embedding start: jobId={}", jobId);
             List<ChunkSearchResult> chunks = List.of();
             boolean hasGoodResults = false;
             try {
@@ -92,32 +111,33 @@ public class AiCommentJobService {
                         queryEmbedding, post.getTherapyArea(), properties.getRetrieval().getTopK());
                 hasGoodResults = !chunks.isEmpty()
                         && chunks.get(0).score() >= properties.getRetrieval().getMinScore();
+                log.info("AI comment retrieval done: jobId={}, chunks={}, hasGoodResults={}", jobId, chunks.size(), hasGoodResults);
             } catch (Exception e) {
-                log.warn("RAG retrieval failed, falling back to generation-only: {}", e.getMessage());
+                log.warn("RAG retrieval failed, falling back: jobId={}, error={}", jobId, e.getMessage());
             }
 
             SourceMode sourceMode = hasGoodResults ? SourceMode.RAG : SourceMode.FALLBACK;
             double confidenceScore = hasGoodResults ? chunks.get(0).score() : 0.1;
 
-            // 프롬프트 구성
             String systemPrompt = buildSystemPrompt(sourceMode);
             String userPrompt = buildUserPrompt(cleanContent, post.getTherapyArea(), chunks, sourceMode);
 
-            // Gemini 호출
+            log.info("AI comment chat start: jobId={}, sourceMode={}", jobId, sourceMode);
             GeminiChatClient.ChatResponse chatResponse = chatClient.generate(systemPrompt, userPrompt);
+            log.info("AI comment chat done: jobId={}", jobId);
 
             if (chatResponse.comment() == null || chatResponse.comment().isBlank()) {
                 job.markFailed("EMPTY_COMMENT", "LLM returned empty comment", null);
                 return;
             }
 
-            // retrieval context JSON
             String contextJson = null;
             if (sourceMode == SourceMode.RAG && chatResponse.grounds() != null) {
                 contextJson = objectMapper.writeValueAsString(chatResponse.grounds());
             }
 
             job.markSucceeded(chatResponse.comment(), contextJson, sourceMode, confidenceScore);
+            log.info("AI comment succeeded: jobId={}, sourceMode={}", jobId, sourceMode);
 
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode().value() == 429) {
@@ -130,6 +150,7 @@ public class AiCommentJobService {
         } catch (ResourceAccessException e) {
             handleRetryable(job, "TIMEOUT", e.getMessage());
         } catch (Exception e) {
+            log.error("AI comment processJob error: jobId={}", jobId, e);
             job.markFailed(e.getClass().getSimpleName(), truncate(e.getMessage()), null);
         }
     }
@@ -142,6 +163,7 @@ public class AiCommentJobService {
         } else {
             job.markFailed(errorCode, truncate(errorMessage), null);
         }
+        log.warn("AI comment retryable failure: jobId={}, errorCode={}", job.getId(), errorCode);
     }
 
     private String buildSystemPrompt(SourceMode sourceMode) {

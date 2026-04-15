@@ -13,7 +13,7 @@ public class KnowledgeProperties {
 
     private boolean enabled = false;
     private String apiKey;
-    private String embeddingModel = "text-embedding-004";
+    private String embeddingModel = "gemini-embedding-001";
     private String baseUrl = "https://generativelanguage.googleapis.com";
     private int timeoutSeconds = 10;
 }

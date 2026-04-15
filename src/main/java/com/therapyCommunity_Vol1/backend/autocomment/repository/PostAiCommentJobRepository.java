@@ -15,6 +15,9 @@ public interface PostAiCommentJobRepository extends JpaRepository<PostAiCommentJ
 
     Optional<PostAiCommentJob> findByPostId(Long postId);
 
+    @Query("SELECT j FROM PostAiCommentJob j JOIN FETCH j.post WHERE j.id = :id")
+    Optional<PostAiCommentJob> findByIdWithPost(@Param("id") Long id);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT j FROM PostAiCommentJob j WHERE j.id = :id")
     Optional<PostAiCommentJob> findByIdForUpdate(@Param("id") Long id);
@@ -24,8 +27,8 @@ public interface PostAiCommentJobRepository extends JpaRepository<PostAiCommentJ
             WHERE status = 'QUEUED'
               AND (next_attempt_at IS NULL OR next_attempt_at <= :now)
             ORDER BY next_attempt_at ASC NULLS FIRST
-            LIMIT :limit
+            LIMIT :maxRows
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
-    List<PostAiCommentJob> findDueJobs(@Param("now") LocalDateTime now, @Param("limit") int limit);
+    List<PostAiCommentJob> findDueJobs(@Param("now") LocalDateTime now, @Param("maxRows") int maxRows);
 }

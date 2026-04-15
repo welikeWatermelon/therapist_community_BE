@@ -8,6 +8,8 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -48,6 +50,7 @@ public class PostAiCommentJob extends BaseEntity {
     @Column(name = "draft_comment", columnDefinition = "TEXT")
     private String draftComment;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "retrieval_context_json", columnDefinition = "JSONB")
     private String retrievalContextJson;
 

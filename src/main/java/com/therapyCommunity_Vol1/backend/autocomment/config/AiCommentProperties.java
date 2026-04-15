@@ -14,7 +14,7 @@ public class AiCommentProperties {
     private boolean enabled = false;
     private String apiKey;
     private String chatModel = "gemini-2.5-flash";
-    private String embeddingModel = "text-embedding-004";
+    private String embeddingModel = "gemini-embedding-001";
     private String baseUrl = "https://generativelanguage.googleapis.com";
     private int timeoutSeconds = 10;
     private String aiUserEmail = "ai-comment@system.local";
