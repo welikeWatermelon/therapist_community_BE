@@ -79,7 +79,7 @@ public class UserController {
     }
 
     @Operation(summary = "프로필 이미지 조회", description = "인증 불필요. 프로필 이미지 파일 반환", security = {})
-    @GetMapping("/profile-image/profile-images/{filename}")
+    @GetMapping("/profile-image/{filename}")
     public ResponseEntity<Resource> getProfileImage(@PathVariable String filename) {
         StoredFileResource storedFile = myPageFacade.loadProfileImage(filename);
         return ResponseEntity.ok()

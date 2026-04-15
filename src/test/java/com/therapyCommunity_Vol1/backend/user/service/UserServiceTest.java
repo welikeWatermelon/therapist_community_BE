@@ -11,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ class UserServiceTest {
     private TokenService tokenService;
     private FileStorageService fileStorageService;
     private UserCacheService userCacheService;
+    private ProfileImageUrlAssembler profileImageUrlAssembler;
     private UserService userService;
 
     @BeforeEach
@@ -37,12 +39,14 @@ class UserServiceTest {
         tokenService = mock(TokenService.class);
         fileStorageService = mock(FileStorageService.class);
         userCacheService = mock(UserCacheService.class);
+        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080");
         userService = new UserService(
                 userRepository,
                 therapistVerificationService,
                 tokenService,
                 fileStorageService,
-                userCacheService
+                userCacheService,
+                profileImageUrlAssembler
         );
     }
 

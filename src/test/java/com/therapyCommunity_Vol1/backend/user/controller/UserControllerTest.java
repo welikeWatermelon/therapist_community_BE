@@ -164,7 +164,7 @@ class UserControllerTest {
         );
         when(myPageFacade.loadProfileImage("abc.jpg")).thenReturn(storedFile);
 
-        mockMvc.perform(get("/api/v1/me/profile-image/profile-images/abc.jpg"))
+        mockMvc.perform(get("/api/v1/me/profile-image/abc.jpg"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_JPEG));
 

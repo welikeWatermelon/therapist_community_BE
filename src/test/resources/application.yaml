@@ -16,6 +16,7 @@ jwt:
   refresh-ttl-sec: 1209600
 
 app:
+  base-url: http://localhost:8080
   aws:
     region: ap-northeast-2
     s3:

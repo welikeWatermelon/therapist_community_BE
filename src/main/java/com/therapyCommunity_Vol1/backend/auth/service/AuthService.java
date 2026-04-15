@@ -40,6 +40,7 @@ public class AuthService {
     private final NicknameGenerator nicknameGenerator;
     private final UserAgreementRepository userAgreementRepository;
     private final LoginAttemptService loginAttemptService;
+    private final com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler;
 
     @Transactional
     public SignupResult signup(SignupRequest request, String userAgent, String ipAddress) {
@@ -115,7 +116,8 @@ public class AuthService {
                         user,
                         verification,
                         accessToken,
-                        accessTokenExpiresInSec
+                        accessTokenExpiresInSec,
+                        profileImageUrlAssembler
                 ),
                 issuedRefreshToken.rawToken(),
                 issuedRefreshToken.expiresInSec()
