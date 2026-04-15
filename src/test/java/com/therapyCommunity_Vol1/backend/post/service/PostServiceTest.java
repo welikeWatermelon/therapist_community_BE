@@ -195,6 +195,46 @@ class PostServiceTest {
     }
 
     @Test
+    void 게시글_상세조회_중복조회시_viewCount_증가없음() {
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                Visibility.PUBLIC,
+                author
+        );
+
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of());
+        // 30분 내 재조회 시나리오 — isFirstView가 false를 반환
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(false);
+
+        // when
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                1L,
+                UserRole.THERAPIST,
+                1L,
+                false
+        );
+
+        // then — viewCount가 증가하지 않고 10으로 유지
+        assertThat(response.getViewCount()).isEqualTo(10L);
+    }
+
+    @Test
     void 게시글_상세조회_실패_게시글없음() {
 
         // given
