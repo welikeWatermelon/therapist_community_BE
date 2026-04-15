@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.post.domain.*;
@@ -34,6 +35,7 @@ class PostServiceTest {
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private PostViewCountService postViewCountService;
     private PostService postService;
 
     @BeforeEach
@@ -44,16 +46,19 @@ class PostServiceTest {
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        postViewCountService = mock(PostViewCountService.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
+        when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
                 activePostFinder,
                 userRepository,
                 resourceAccessValidator,
-                visibilityPolicy
+                visibilityPolicy,
+                postViewCountService
         );
     }
 
@@ -188,6 +193,46 @@ class PostServiceTest {
         assertThat(response.getContent()).isEqualTo("<p>본문</p>");
         assertThat(response.isCanEdit()).isTrue();
         assertThat(response.isCanDelete()).isTrue();
+    }
+
+    @Test
+    void 게시글_상세조회_중복조회시_viewCount_증가없음() {
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost post = TherapyPost.create(
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                Visibility.PUBLIC,
+                author
+        );
+
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of());
+        // 30분 내 재조회 시나리오 — isFirstView가 false를 반환
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(false);
+
+        // when
+        TherapyPostDetailResponse response = postService.getPostDetail(
+                1L,
+                UserRole.THERAPIST,
+                1L,
+                false
+        );
+
+        // then — viewCount가 증가하지 않고 10으로 유지
+        assertThat(response.getViewCount()).isEqualTo(10L);
     }
 
     @Test
