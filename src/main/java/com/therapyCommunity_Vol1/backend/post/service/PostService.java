@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -36,6 +37,11 @@ public class PostService {
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+
+    @Transactional
+    public void recalculatePopularityScore(Long postId) {
+        therapyPostRepository.recalculatePopularityScore(postId);
+    }
 
     @Transactional
     public TherapyPostDetailResponse createPost(
@@ -116,23 +122,28 @@ public class PostService {
     private static final int FEED_MAX_SIZE = 50;
 
     /**
-     * 커서 기반 피드 조회 (LATEST 고정, 무한스크롤용)
+     * 커서 기반 피드 조회 (무한스크롤용)
      *
-     * @param size   요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
-     * @param cursor 이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
-     * @param role   USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     * @param size     요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
+     * @param cursor   이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
+     * @param role     USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     * @param sortType LATEST(최신순) 또는 POPULAR(인기순)
      */
-    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(int size, String cursor, UserRole role) {
-        // size 범위 보정: 최소 1, 최대 50
+    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(
+            int size, String cursor, UserRole role, FeedSortType sortType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
-
-        // 커서 디코딩: null이면 첫 페이지, 값이 있으면 해당 위치부터
-        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
-
-        // role에 따라 PUBLIC_ONLY / 전체 쿼리 분기
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
 
-        // size+1개 조회: 초과분이 있으면 다음 페이지 존재
+        return switch (sortType) {
+            case LATEST -> fetchLatestFeed(size, cursor, publicOnly);
+            case POPULAR -> fetchPopularFeed(size, cursor, publicOnly);
+        };
+    }
+
+    private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
+            int size, String cursor, boolean publicOnly) {
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+
         List<TherapyPost> posts = publicOnly
                 ? therapyPostRepository.findFeedLatestByVisibility(
                         Visibility.PUBLIC,
@@ -148,9 +159,40 @@ public class PostService {
                 .map(post -> TherapyPostSummaryResponse.from(post, false))
                 .toList();
 
-        // CursorPagedResponse.of()가 size+1 → trim + hasNext/nextCursor 계산
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
+    }
+
+    private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
+            int size, String cursor, boolean publicOnly) {
+        PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
+
+        List<TherapyPost> posts = publicOnly
+                ? therapyPostRepository.findFeedPopularByVisibility(
+                        Visibility.PUBLIC,
+                        popCursor != null ? popCursor.score() : null,
+                        popCursor != null ? popCursor.id() : null,
+                        PageRequest.of(0, size + 1))
+                : therapyPostRepository.findFeedPopular(
+                        popCursor != null ? popCursor.score() : null,
+                        popCursor != null ? popCursor.id() : null,
+                        PageRequest.of(0, size + 1));
+
+        boolean hasNext = posts.size() > size;
+        List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
+
+        List<TherapyPostSummaryResponse> dtos = trimmed.stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        String nextCursor = hasNext
+                ? new PopularCursor(
+                        trimmed.get(trimmed.size() - 1).getPopularityScore(),
+                        trimmed.get(trimmed.size() - 1).getId()
+                ).encode()
+                : null;
+
+        return new CursorPagedResponse<>(dtos, nextCursor, hasNext, size);
     }
 
     private Sort toSort(PostSortType sortType) {

@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
 import com.therapyCommunity_Vol1.backend.reaction.dto.TogglePostReactionRequest;
+import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.*;
 class PostReactionServiceTest {
 
     private TherapyPostReactionRepository postReactionRepository;
+    private PostService postService;
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ApplicationEventPublisher eventPublisher;
@@ -37,11 +39,12 @@ class PostReactionServiceTest {
     @BeforeEach
     void setUp() {
         postReactionRepository = mock(TherapyPostReactionRepository.class);
+        postService = mock(PostService.class);
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         postReactionService = new PostReactionService(
-                postReactionRepository, activePostFinder, userRepository, eventPublisher
+                postReactionRepository, postService, activePostFinder, userRepository, eventPublisher
         );
 
         user = User.builder()

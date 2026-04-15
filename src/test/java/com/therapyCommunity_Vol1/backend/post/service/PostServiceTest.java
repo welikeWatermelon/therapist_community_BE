@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 
 import static org.assertj.core.api.Assertions.*;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
@@ -422,7 +423,7 @@ class PostServiceTest {
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         // then
         assertThat(response.getItems()).hasSize(3);
@@ -450,7 +451,7 @@ class PostServiceTest {
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         // then
         assertThat(response.getItems()).hasSize(size);
@@ -463,7 +464,7 @@ class PostServiceTest {
         when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
 
         assertThat(response.getItems()).isEmpty();
         assertThat(response.isHasNext()).isFalse();
@@ -475,9 +476,48 @@ class PostServiceTest {
         when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        postService.getPostsFeed(10, null, UserRole.USER);
+        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
 
         verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
         verify(therapyPostRepository, never()).findFeedLatest(any(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void 인기순_피드_첫페이지_조회_성공() {
+        // given
+        User author = User.builder()
+                .id(1L).email("test@test.com").nickname("tester").role(UserRole.THERAPIST).build();
+
+        List<TherapyPost> posts = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            TherapyPost post = TherapyPost.create("<p>본문" + i + "</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+            ReflectionTestUtils.setField(post, "id", (long) i);
+            ReflectionTestUtils.setField(post, "viewCount", 0L);
+            ReflectionTestUtils.setField(post, "popularityScore", (long) (100 - i));
+            ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now().minusMinutes(i));
+            posts.add(post);
+        }
+
+        when(therapyPostRepository.findFeedPopular(isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(posts);
+
+        // when
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.POPULAR);
+
+        // then
+        assertThat(response.getItems()).hasSize(3);
+        assertThat(response.isHasNext()).isFalse();
+        assertThat(response.getNextCursor()).isNull();
+    }
+
+    @Test
+    void 인기순_피드_USER는_PUBLIC_ONLY_쿼리_사용() {
+        when(therapyPostRepository.findFeedPopularByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
+
+        verify(therapyPostRepository).findFeedPopularByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedPopular(any(), any(), any(Pageable.class));
     }
 }

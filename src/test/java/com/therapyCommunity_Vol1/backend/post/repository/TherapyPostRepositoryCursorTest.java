@@ -105,6 +105,37 @@ class TherapyPostRepositoryCursorTest {
         assertThat(publicOnly).allMatch(p -> p.getVisibility() == Visibility.PUBLIC);
     }
 
+    @Test
+    void 커서_피드_인기순_정렬_및_tie_break() {
+        LocalDateTime now = LocalDateTime.of(2026, 4, 9, 12, 0, 0);
+
+        TherapyPost postA = createPost("글A", Visibility.PUBLIC, now);
+        TherapyPost postB = createPost("글B", Visibility.PUBLIC, now.minusSeconds(1));
+        TherapyPost postC = createPost("글C", Visibility.PUBLIC, now.minusSeconds(2));
+
+        // postB에 높은 점수, postA와 postC는 같은 점수
+        setPopularityScore(postB.getId(), 999L);
+        setPopularityScore(postA.getId(), 500L);
+        setPopularityScore(postC.getId(), 500L);
+
+        List<TherapyPost> result = therapyPostRepository.findFeedPopular(null, null, PageRequest.of(0, 10));
+
+        assertThat(result).hasSize(3);
+        // 가장 높은 점수가 먼저
+        assertThat(result.get(0).getId()).isEqualTo(postB.getId());
+        // 같은 점수일 때 id DESC로 tie-break
+        assertThat(result.get(1).getId()).isGreaterThan(result.get(2).getId());
+    }
+
+    private void setPopularityScore(Long postId, Long score) {
+        entityManager.createNativeQuery("UPDATE therapy_posts SET popularity_score = :score WHERE id = :id")
+                .setParameter("score", score)
+                .setParameter("id", postId)
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+    }
+
     private TherapyPost createPost(String content, Visibility visibility, LocalDateTime createdAt) {
         TherapyPost post = TherapyPost.create(content, TherapyArea.SPEECH, visibility, author);
         TherapyPost saved = therapyPostRepository.save(post);
