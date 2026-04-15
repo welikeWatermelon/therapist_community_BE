@@ -60,7 +60,7 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
         when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(new float[768]);
         when(chunkSearchRepository.findSimilarChunks(any(), eq(TherapyArea.SPEECH), anyInt()))
@@ -84,7 +84,7 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
         when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(new float[768]);
         when(chunkSearchRepository.findSimilarChunks(any(), any(), anyInt()))
@@ -108,7 +108,7 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
 
         service.processJob(1L);
 
@@ -124,7 +124,7 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
 
         service.processJob(1L);
 
@@ -141,7 +141,7 @@ class AiCommentJobServiceTest {
         ReflectionTestUtils.setField(job, "id", 1L);
         job.markCancelled();
 
-        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
 
         service.processJob(1L);
 

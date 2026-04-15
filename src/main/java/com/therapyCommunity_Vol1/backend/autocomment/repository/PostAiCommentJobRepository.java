@@ -19,8 +19,8 @@ public interface PostAiCommentJobRepository extends JpaRepository<PostAiCommentJ
     Optional<PostAiCommentJob> findByIdWithPost(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT j FROM PostAiCommentJob j WHERE j.id = :id")
-    Optional<PostAiCommentJob> findByIdForUpdate(@Param("id") Long id);
+    @Query("SELECT j FROM PostAiCommentJob j JOIN FETCH j.post WHERE j.id = :id")
+    Optional<PostAiCommentJob> findByIdWithPostForUpdate(@Param("id") Long id);
 
     @Query(value = """
             SELECT * FROM post_ai_comment_jobs
