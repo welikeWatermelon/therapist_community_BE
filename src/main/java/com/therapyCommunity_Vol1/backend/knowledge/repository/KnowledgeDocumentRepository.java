@@ -29,8 +29,8 @@ public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocu
             WHERE status = 'QUEUED'
               AND (next_attempt_at IS NULL OR next_attempt_at <= :now)
             ORDER BY next_attempt_at ASC NULLS FIRST
-            LIMIT :limit
+            LIMIT :maxRows
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
-    List<KnowledgeDocument> findDueDocuments(@Param("now") LocalDateTime now, @Param("limit") int limit);
+    List<KnowledgeDocument> findDueDocuments(@Param("now") LocalDateTime now, @Param("maxRows") int maxRows);
 }

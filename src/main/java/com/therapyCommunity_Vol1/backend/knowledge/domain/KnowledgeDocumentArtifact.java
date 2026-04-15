@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -28,6 +30,7 @@ public class KnowledgeDocumentArtifact {
     @Column(name = "content_text", columnDefinition = "TEXT")
     private String contentText;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "content_json", columnDefinition = "JSONB")
     private String contentJson;
 

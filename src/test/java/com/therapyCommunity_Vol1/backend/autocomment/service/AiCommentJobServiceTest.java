@@ -46,8 +46,9 @@ class AiCommentJobServiceTest {
 
         service = new AiCommentJobService(
                 jobRepository, embeddingClient, chatClient,
-                chunkSearchRepository, properties, new ObjectMapper()
+                chunkSearchRepository, properties, new ObjectMapper(), null
         );
+        ReflectionTestUtils.setField(service, "self", service);
     }
 
     @Test
@@ -59,7 +60,7 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
         when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(new float[768]);
         when(chunkSearchRepository.findSimilarChunks(any(), eq(TherapyArea.SPEECH), anyInt()))
@@ -67,7 +68,7 @@ class AiCommentJobServiceTest {
         when(chatClient.generate(anyString(), anyString()))
                 .thenReturn(new GeminiChatClient.ChatResponse("좋은 질문입니다.", List.of()));
 
-        service.processJob(job);
+        service.processJob(1L);
 
         assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.SUCCEEDED);
         assertThat(job.getSourceMode()).isEqualTo(SourceMode.RAG);
@@ -83,7 +84,7 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
         when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn(new float[768]);
         when(chunkSearchRepository.findSimilarChunks(any(), any(), anyInt()))
@@ -91,7 +92,7 @@ class AiCommentJobServiceTest {
         when(chatClient.generate(anyString(), anyString()))
                 .thenReturn(new GeminiChatClient.ChatResponse("응원합니다.", List.of()));
 
-        service.processJob(job);
+        service.processJob(1L);
 
         assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.SUCCEEDED);
         assertThat(job.getSourceMode()).isEqualTo(SourceMode.FALLBACK);
@@ -107,9 +108,9 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
 
-        service.processJob(job);
+        service.processJob(1L);
 
         assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.CANCELLED);
     }
@@ -123,9 +124,9 @@ class AiCommentJobServiceTest {
         PostAiCommentJob job = PostAiCommentJob.create(post, author);
         ReflectionTestUtils.setField(job, "id", 1L);
 
-        when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
 
-        service.processJob(job);
+        service.processJob(1L);
 
         assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.CANCELLED);
     }
@@ -140,9 +141,9 @@ class AiCommentJobServiceTest {
         ReflectionTestUtils.setField(job, "id", 1L);
         job.markCancelled();
 
-        when(jobRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.findByIdWithPost(1L)).thenReturn(Optional.of(job));
 
-        service.processJob(job);
+        service.processJob(1L);
 
         assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.CANCELLED);
         verifyNoInteractions(embeddingClient, chatClient);

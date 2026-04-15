@@ -45,6 +45,9 @@ public class KnowledgeIngestionService {
         if (!properties.isEnabled()) return;
 
         List<KnowledgeDocument> dueDocuments = documentRepository.findDueDocuments(LocalDateTime.now(), MAX_POLL);
+        if (!dueDocuments.isEmpty()) {
+            log.info("Knowledge poll: found {} due document(s)", dueDocuments.size());
+        }
         for (KnowledgeDocument doc : dueDocuments) {
             try {
                 processDocument(doc);
@@ -67,6 +70,7 @@ public class KnowledgeIngestionService {
         if (document == null || document.getStatus() == DocumentStatus.READY || document.getStatus() == DocumentStatus.PROCESSING) return;
 
         document.markProcessing();
+        log.info("Knowledge ingestion started: docId={}, title={}", document.getId(), document.getTitle());
 
         try {
             DocumentExtractor extractor = extractors.stream()
@@ -116,6 +120,7 @@ public class KnowledgeIngestionService {
             }
 
             document.markReady();
+            log.info("Knowledge ingestion completed: docId={}, chunks={}", document.getId(), chunks.size());
         } catch (Exception e) {
             handleFailure(document, e);
         }

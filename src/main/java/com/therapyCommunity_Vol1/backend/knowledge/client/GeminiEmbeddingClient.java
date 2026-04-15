@@ -36,7 +36,8 @@ public class GeminiEmbeddingClient {
     }
 
     public float[] embed(String text) {
-        String url = String.format("/v1beta/models/%s:embedContent", properties.getEmbeddingModel());
+        String url = String.format("/v1beta/models/%s:embedContent?key=%s",
+                properties.getEmbeddingModel(), properties.getApiKey());
 
         Map<String, Object> body = Map.of(
                 "model", "models/" + properties.getEmbeddingModel(),
@@ -45,7 +46,6 @@ public class GeminiEmbeddingClient {
 
         String response = restClient.post()
                 .uri(url)
-                .header("x-goog-api-key", properties.getApiKey())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
@@ -59,7 +59,7 @@ public class GeminiEmbeddingClient {
     public float[] embed(String text, String apiKey, String model, String baseUrl, int timeoutSeconds) {
         RestClient client = getOrCreateAiCommentClient(baseUrl, timeoutSeconds);
 
-        String url = String.format("/v1beta/models/%s:embedContent", model);
+        String url = String.format("/v1beta/models/%s:embedContent?key=%s", model, apiKey);
 
         Map<String, Object> body = Map.of(
                 "model", "models/" + model,
@@ -68,7 +68,6 @@ public class GeminiEmbeddingClient {
 
         String response = client.post()
                 .uri(url)
-                .header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()

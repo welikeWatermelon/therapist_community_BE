@@ -40,7 +40,10 @@ public class GeminiChatClient {
     }
 
     public ChatResponse generate(String systemPrompt, String userPrompt) {
-        String url = String.format("/v1beta/models/%s:generateContent", properties.getChatModel());
+        // Gemini AI Studio REST API는 x-goog-api-key header 미지원 — query param만 동작
+        // TODO: Vertex AI 전환 시 OAuth2 bearer token으로 변경
+        String url = String.format("/v1beta/models/%s:generateContent?key=%s",
+                properties.getChatModel(), properties.getApiKey());
 
         Map<String, Object> body = Map.of(
                 "contents", List.of(
@@ -55,7 +58,6 @@ public class GeminiChatClient {
 
         String response = restClient.post()
                 .uri(url)
-                .header("x-goog-api-key", properties.getApiKey())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
@@ -67,7 +69,24 @@ public class GeminiChatClient {
                     .path("content").path("parts").get(0)
                     .path("text").asText();
 
-            return objectMapper.readValue(text, ChatResponse.class);
+            log.info("Gemini raw response text: {}", text.substring(0, Math.min(200, text.length())));
+
+            // Gemini가 grounds를 다양한 형식으로 반환할 수 있으므로 유연하게 파싱
+            JsonNode parsed = objectMapper.readTree(text);
+            String comment = parsed.path("comment").asText(null);
+
+            List<ChatResponse.Ground> grounds = List.of();
+            try {
+                JsonNode groundsNode = parsed.path("grounds");
+                if (groundsNode.isArray() && !groundsNode.isEmpty() && groundsNode.get(0).isObject()) {
+                    grounds = objectMapper.convertValue(groundsNode,
+                            objectMapper.getTypeFactory().constructCollectionType(List.class, ChatResponse.Ground.class));
+                }
+            } catch (Exception ignored) {
+                // grounds 파싱 실패해도 comment만 있으면 OK
+            }
+
+            return new ChatResponse(comment, grounds);
         } catch (Exception e) {
             throw new RuntimeException("Gemini chat response parsing failed", e);
         }

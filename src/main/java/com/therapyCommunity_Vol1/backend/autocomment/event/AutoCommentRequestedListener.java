@@ -22,11 +22,8 @@ public class AutoCommentRequestedListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(AutoCommentRequestedEvent event) {
         try {
-            PostAiCommentJob job = jobRepository.findById(event.getJobId())
-                    .orElse(null);
-            if (job == null) return;
-
-            jobService.processJob(job);
+            log.info("AI comment event received: jobId={}", event.getJobId());
+            jobService.processJob(event.getJobId());
         } catch (Exception e) {
             log.error("AI comment event failed: jobId={}", event.getJobId(), e);
         }
