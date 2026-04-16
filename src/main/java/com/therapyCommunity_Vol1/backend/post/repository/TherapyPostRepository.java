@@ -94,13 +94,21 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // 커서 피드 — 전체 (THERAPIST/ADMIN)
+    // 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND (:cursorCreatedAt IS NULL OR
-                   p.createdAt < :cursorCreatedAt OR
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedLatest(Pageable pageable);
+
+    // 커서 피드 — 전체, 다음 페이지 (커서 있음)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND (p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
@@ -110,14 +118,26 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // 커서 피드 — visibility 필터 (USER → PUBLIC)
+    // 커서 피드 — visibility, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility = :visibility
-              AND (:cursorCreatedAt IS NULL OR
-                   p.createdAt < :cursorCreatedAt OR
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedLatestByVisibility(
+            @Param("visibility") Visibility visibility,
+            Pageable pageable
+    );
+
+    // 커서 피드 — visibility, 다음 페이지 (커서 있음)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility = :visibility
+              AND (p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
@@ -128,13 +148,21 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // 인기순 커서 피드 — 전체 (THERAPIST/ADMIN)
+    // 인기순 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND (:cursorScore IS NULL OR
-                   p.popularityScore < :cursorScore OR
+            ORDER BY p.popularityScore DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedPopular(Pageable pageable);
+
+    // 인기순 커서 피드 — 전체, 다음 페이지 (커서 있음)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND (p.popularityScore < :cursorScore OR
                    (p.popularityScore = :cursorScore AND p.id < :cursorId))
             ORDER BY p.popularityScore DESC, p.id DESC
             """)
@@ -144,14 +172,26 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // 인기순 커서 피드 — visibility 필터 (USER → PUBLIC)
+    // 인기순 커서 피드 — visibility, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility = :visibility
-              AND (:cursorScore IS NULL OR
-                   p.popularityScore < :cursorScore OR
+            ORDER BY p.popularityScore DESC, p.id DESC
+            """)
+    List<TherapyPost> findFeedPopularByVisibility(
+            @Param("visibility") Visibility visibility,
+            Pageable pageable
+    );
+
+    // 인기순 커서 피드 — visibility, 다음 페이지 (커서 있음)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility = :visibility
+              AND (p.popularityScore < :cursorScore OR
                    (p.popularityScore = :cursorScore AND p.id < :cursorId))
             ORDER BY p.popularityScore DESC, p.id DESC
             """)
