@@ -14,6 +14,7 @@ import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerification
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,6 +42,7 @@ class AuthServiceTest {
     NicknameGenerator nicknameGenerator;
     UserAgreementRepository userAgreementRepository;
     LoginAttemptService loginAttemptService;
+    ProfileImageUrlAssembler profileImageUrlAssembler;
 
     AuthService authService;
 
@@ -53,6 +55,7 @@ class AuthServiceTest {
         nicknameGenerator = mock(NicknameGenerator.class);
         userAgreementRepository = mock(UserAgreementRepository.class);
         loginAttemptService = mock(LoginAttemptService.class);
+        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080");
 
         authService = new AuthService(
                 userRepository,
@@ -61,7 +64,8 @@ class AuthServiceTest {
                 therapistVerificationService,
                 nicknameGenerator,
                 userAgreementRepository,
-                loginAttemptService
+                loginAttemptService,
+                profileImageUrlAssembler
         );
     }
 

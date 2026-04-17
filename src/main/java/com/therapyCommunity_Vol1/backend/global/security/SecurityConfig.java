@@ -57,7 +57,7 @@ public class SecurityConfig {
                             "/actuator/health",
                             "/swagger-ui/**",
                             "/v3/api-docs/**",
-                            "/api/v1/me/profile-image/profile-images/**"
+                            "/api/v1/me/profile-image/**"
                     ).permitAll()
                     // 알림 API — 로그인한 사용자 모두
                     .requestMatchers("/api/v1/notifications/**").authenticated()
