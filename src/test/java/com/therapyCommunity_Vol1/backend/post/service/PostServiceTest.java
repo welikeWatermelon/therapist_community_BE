@@ -464,7 +464,7 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
@@ -492,7 +492,7 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
@@ -518,13 +518,13 @@ class PostServiceTest {
 
     @Test
     void 피드_USER는_PUBLIC_ONLY_쿼리_사용() {
-        when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), any(Pageable.class)))
                 .thenReturn(List.of());
 
         postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
 
-        verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedLatest(any(), any(), any(Pageable.class));
+        verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedLatest(any(Pageable.class));
     }
 
     @Test
@@ -543,7 +543,7 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedPopular(isNull(), isNull(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedPopular(any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
@@ -557,12 +557,12 @@ class PostServiceTest {
 
     @Test
     void 인기순_피드_USER는_PUBLIC_ONLY_쿼리_사용() {
-        when(therapyPostRepository.findFeedPopularByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedPopularByVisibility(eq(Visibility.PUBLIC), any(Pageable.class)))
                 .thenReturn(List.of());
 
         postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
 
-        verify(therapyPostRepository).findFeedPopularByVisibility(eq(Visibility.PUBLIC), isNull(), isNull(), any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedPopular(any(), any(), any(Pageable.class));
+        verify(therapyPostRepository).findFeedPopularByVisibility(eq(Visibility.PUBLIC), any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedPopular(any(Pageable.class));
     }
 }

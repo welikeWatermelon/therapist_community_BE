@@ -145,17 +145,20 @@ public class PostService {
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
             int size, String cursor, boolean publicOnly) {
         PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
 
-        List<TherapyPost> posts = publicOnly
-                ? therapyPostRepository.findFeedLatestByVisibility(
-                        Visibility.PUBLIC,
-                        postCursor != null ? postCursor.createdAt() : null,
-                        postCursor != null ? postCursor.id() : null,
-                        PageRequest.of(0, size + 1))
-                : therapyPostRepository.findFeedLatest(
-                        postCursor != null ? postCursor.createdAt() : null,
-                        postCursor != null ? postCursor.id() : null,
-                        PageRequest.of(0, size + 1));
+        List<TherapyPost> posts;
+        if (postCursor == null) {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedLatestByVisibility(Visibility.PUBLIC, limit)
+                    : therapyPostRepository.findFeedLatest(limit);
+        } else {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedLatestByVisibility(
+                            Visibility.PUBLIC, postCursor.createdAt(), postCursor.id(), limit)
+                    : therapyPostRepository.findFeedLatest(
+                            postCursor.createdAt(), postCursor.id(), limit);
+        }
 
         List<TherapyPostSummaryResponse> dtos = posts.stream()
                 .map(post -> TherapyPostSummaryResponse.from(post, false))
@@ -168,17 +171,20 @@ public class PostService {
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
             int size, String cursor, boolean publicOnly) {
         PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
 
-        List<TherapyPost> posts = publicOnly
-                ? therapyPostRepository.findFeedPopularByVisibility(
-                        Visibility.PUBLIC,
-                        popCursor != null ? popCursor.score() : null,
-                        popCursor != null ? popCursor.id() : null,
-                        PageRequest.of(0, size + 1))
-                : therapyPostRepository.findFeedPopular(
-                        popCursor != null ? popCursor.score() : null,
-                        popCursor != null ? popCursor.id() : null,
-                        PageRequest.of(0, size + 1));
+        List<TherapyPost> posts;
+        if (popCursor == null) {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedPopularByVisibility(Visibility.PUBLIC, limit)
+                    : therapyPostRepository.findFeedPopular(limit);
+        } else {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedPopularByVisibility(
+                            Visibility.PUBLIC, popCursor.score(), popCursor.id(), limit)
+                    : therapyPostRepository.findFeedPopular(
+                            popCursor.score(), popCursor.id(), limit);
+        }
 
         boolean hasNext = posts.size() > size;
         List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
