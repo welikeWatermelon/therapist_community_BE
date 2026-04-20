@@ -48,8 +48,6 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @Column(name = "title_choseong", length = 200)
-    private String titleChoseong;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false, length = 20)
