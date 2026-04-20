@@ -32,11 +32,13 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     Page<TherapyPost> findByDeletedAtIsNullAndVisibility(Visibility visibility, Pageable pageable);
 
     // 텍스트 검색 (searchText LIKE — GIN trigram 인덱스 idx_therapy_posts_search_text_trgm 활용)
+    // LOWER() 제거: GIN trigram 인덱스는 bare LIKE만 가속, LOWER() 래핑 시 Seq Scan.
+    // 한글 위주 서비스라 대소문자 구분 문제 없음. 영문 edge case는 /search ILIKE가 커버.
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND LOWER(p.searchText) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+              AND p.searchText LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
             """)
@@ -61,13 +63,13 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // visibility 필터 포함 — 텍스트 검색 (searchText LIKE)
+    // visibility 필터 포함 — 텍스트 검색 (searchText LIKE, LOWER 제거로 GIN 인덱스 활용)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility = :visibility
-              AND LOWER(p.searchText) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'
+              AND p.searchText LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
             """)

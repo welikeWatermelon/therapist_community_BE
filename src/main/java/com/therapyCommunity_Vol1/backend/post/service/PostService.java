@@ -165,7 +165,7 @@ public class PostService {
         entityManager.createNativeQuery("SET LOCAL pg_trgm.word_similarity_threshold = 0.1")
                 .executeUpdate();
 
-        // similarity/% 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
+        // word_similarity/<% 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
         String rawKeyword = condition.getKeyword().trim();
         String escapedKeyword = condition.getEscapedKeyword().trim();
         String area = condition.getTherapyArea() != null ? condition.getTherapyArea().name() : null;
