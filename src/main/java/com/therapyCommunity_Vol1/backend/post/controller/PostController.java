@@ -117,6 +117,14 @@ public class PostController {
             @RequestParam(required = false) Long lastId,
             @RequestParam(defaultValue = "10") int size
     ) {
+        // 검색어 검증: 공백 제거 후 2~100자
+        if (keyword == null || keyword.isBlank() || keyword.trim().length() < 2 || keyword.trim().length() > 100) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        // size 범위 검증: 1~50
+        if (size < 1 || size > 50) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
         // 커서는 (lastScore, lastId) 가 항상 쌍으로 와야 한다. 한쪽만 오면 클라이언트 버그 → 400.
         if ((lastScore == null) != (lastId == null)) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
