@@ -74,4 +74,20 @@ public class PostImageController {
                 )
                 .body(storedFile.getResource());
     }
+
+    @Operation(summary = "이미지 삭제", description = "작성자 또는 관리자만 삭제 가능")
+    @DeleteMapping("/{imageId}")
+    public ResponseEntity<Void> deleteImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @PathVariable Long imageId
+    ) {
+        postImageService.deleteImage(
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
+                postId,
+                imageId
+        );
+        return ResponseEntity.noContent().build();
+    }
 }

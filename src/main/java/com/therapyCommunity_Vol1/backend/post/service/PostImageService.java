@@ -75,4 +75,41 @@ public class PostImageService {
         );
     }
 
+    @Transactional
+    public void deleteImage(
+            Long currentUserId,
+            UserRole currentUserRole,
+            Long postId,
+            Long imageId
+    ) {
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
+
+        TherapyPostImage image = therapyPostImageRepository.findById(imageId)
+                .filter(i -> i.getPost().getId().equals(postId))
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        String storedPath = image.getStoredPath();
+        therapyPostImageRepository.delete(image);
+        therapyPostImageRepository.flush();
+
+        reassignDisplayOrder(postId);
+
+        try {
+            fileStorageService.delete(storedPath);
+        } catch (Exception e) {
+            log.warn("Failed to delete image file from storage. postId={}, imageId={}, storedPath={}", postId, imageId, storedPath, e);
+        }
+    }
+
+    private void reassignDisplayOrder(Long postId) {
+        List<TherapyPostImage> remaining = therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(postId);
+        for (int i = 0; i < remaining.size(); i++) {
+            TherapyPostImage img = remaining.get(i);
+            if (img.getDisplayOrder() != i) {
+                img.updateDisplayOrder(i);
+            }
+        }
+    }
+
 }
