@@ -142,11 +142,11 @@ public class PostService {
     ) {
         // 치료사 아닌 애들이 들오면 true
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
-        // pg_trgm % 연산자의 임계값을 트랜잭션 스코프로 0.03 으로 낮춘다.
+        // pg_trgm <% 연산자(word_similarity)의 임계값을 트랜잭션 스코프로 0.1로 설정.
+        // word_similarity는 keyword가 search_text 내 부분 단어와 유사한지 평가하므로
+        // 기존 similarity(0.03)보다 높은 임계값에서도 recall 유지됨.
         // 트랜잭션 종료 시 자동으로 원복된다.
-        // 전역으로 관리해도 되나, 해당 검색에서만 쓰이고, 딱히 트레이드 오프가 없을 것 같음. 그래서 그냥 둠
-        // 수정할때도 여기서 수정하는게 편리하다고 판단
-        entityManager.createNativeQuery("SET LOCAL pg_trgm.similarity_threshold = 0.03")
+        entityManager.createNativeQuery("SET LOCAL pg_trgm.word_similarity_threshold = 0.1")
                 .executeUpdate();
 
         // similarity/% 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
