@@ -1,8 +1,9 @@
 package com.therapyCommunity_Vol1.backend.user.dto;
 
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -14,23 +15,31 @@ public record CurrentUserResponse(
         String profileImageUrl,
         String role,
         boolean canAccessCommunity,
+        String communityAccessLevel,
         TherapistVerificationSummary therapistVerification
 ) {
 
-    public static CurrentUserResponse from(User user, Optional<TherapistVerification> verification) {
+    public static CurrentUserResponse from(
+            User user,
+            Optional<TherapistVerificationStatusDto> verification,
+            ProfileImageUrlAssembler profileImageUrlAssembler
+    ) {
+        String accessLevel = communityAccessLevel(user);
         return new CurrentUserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getProfileImageUrl(),
+                profileImageUrlAssembler.toFullUrl(user.getProfileImageUrl()),
                 user.getRole().getCode(),
-                canAccessCommunity(user),
+                "FULL".equals(accessLevel),
+                accessLevel,
                 TherapistVerificationSummary.from(verification)
         );
     }
 
-    private static boolean canAccessCommunity(User user) {
-        return user.getRole() == UserRole.THERAPIST || user.getRole() == UserRole.ADMIN;
+    private static String communityAccessLevel(User user) {
+        return (user.getRole() == UserRole.THERAPIST || user.getRole() == UserRole.ADMIN)
+                ? "FULL" : "PUBLIC_ONLY";
     }
 
     public record TherapistVerificationSummary(
@@ -41,17 +50,17 @@ public record CurrentUserResponse(
     ) {
         private static final String NOT_REQUESTED = "NOT_REQUESTED";
 
-        public static TherapistVerificationSummary from(Optional<TherapistVerification> verification) {
+        public static TherapistVerificationSummary from(Optional<TherapistVerificationStatusDto> verification) {
             if (verification.isEmpty()) {
                 return new TherapistVerificationSummary(NOT_REQUESTED, null, null, null);
             }
 
-            TherapistVerification therapistVerification = verification.get();
+            TherapistVerificationStatusDto dto = verification.get();
             return new TherapistVerificationSummary(
-                    therapistVerification.getStatus().getCode(),
-                    therapistVerification.getCreatedAt(),
-                    therapistVerification.getReviewedAt(),
-                    therapistVerification.getRejectReason()
+                    dto.status(),
+                    dto.requestedAt(),
+                    dto.reviewedAt(),
+                    dto.rejectionReason()
             );
         }
     }

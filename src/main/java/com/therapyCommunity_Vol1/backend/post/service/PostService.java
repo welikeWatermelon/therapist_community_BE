@@ -1,12 +1,15 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
+import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -34,12 +37,23 @@ public class PostService {
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final PostViewCountService postViewCountService;
+
+    @Transactional
+    public void recalculatePopularityScore(Long postId) {
+        therapyPostRepository.recalculatePopularityScore(postId);
+    }
 
     @Transactional
     public TherapyPostDetailResponse createPost(
             Long userId,
+            UserRole currentUserRole,
             CreateTherapyPostRequest request
     ) {
+        if (request.getVisibility() == Visibility.PRIVATE) {
+            visibilityPolicy.checkCanWritePrivate(currentUserRole);
+        }
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         TherapyPost post = TherapyPost.create(
@@ -57,9 +71,10 @@ public class PostService {
             int page,
             int size,
             PostSortType sortType,
-            PostSearchCondition condition
+            PostSearchCondition condition,
+            UserRole currentUserRole
     ) {
-        Page<TherapyPost> result = findPosts(page, size, sortType, condition);
+        Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
 
         List<TherapyPostSummaryResponse> posts = result.getContent()
                 .stream()
@@ -69,24 +84,29 @@ public class PostService {
         return PagedResponse.from(result, posts);
     }
 
-    private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType, PostSearchCondition condition) {
+    private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType,
+                                         PostSearchCondition condition, UserRole role) {
         Pageable pageable = PageRequest.of(page, size, toSort(sortType));
+        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
 
         if (condition.isEmpty()) {
-            return therapyPostRepository.findByDeletedAtIsNull(pageable);
+            return publicOnly
+                    ? therapyPostRepository.findByDeletedAtIsNullAndVisibility(Visibility.PUBLIC, pageable)
+                    : therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
-            return therapyPostRepository.searchByKeyword(
-                    condition.getEscapedKeyword().trim(),
-                    condition.getTherapyArea(),
-                    condition.getPostType(),
-                    pageable
-            );
+            return publicOnly
+                    ? therapyPostRepository.searchByKeywordAndVisibility(
+                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            condition.getPostType(), Visibility.PUBLIC, pageable)
+                    : therapyPostRepository.searchByKeyword(
+                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            condition.getPostType(), pageable);
         } else {
-            return therapyPostRepository.searchByFilter(
-                    condition.getTherapyArea(),
-                    condition.getPostType(),
-                    pageable
-            );
+            return publicOnly
+                    ? therapyPostRepository.searchByFilterAndVisibility(
+                            condition.getTherapyArea(), condition.getPostType(), Visibility.PUBLIC, pageable)
+                    : therapyPostRepository.searchByFilter(
+                            condition.getTherapyArea(), condition.getPostType(), pageable);
         }
     }
 
@@ -99,6 +119,88 @@ public class PostService {
                 .toList();
 
         return PagedResponse.from(result, posts);
+    }
+
+    private static final int FEED_MAX_SIZE = 50;
+
+    /**
+     * 커서 기반 피드 조회 (무한스크롤용)
+     *
+     * @param size     요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
+     * @param cursor   이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
+     * @param role     USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     * @param sortType LATEST(최신순) 또는 POPULAR(인기순)
+     */
+    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(
+            int size, String cursor, UserRole role, FeedSortType sortType) {
+        size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
+        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
+
+        return switch (sortType) {
+            case LATEST -> fetchLatestFeed(size, cursor, publicOnly);
+            case POPULAR -> fetchPopularFeed(size, cursor, publicOnly);
+        };
+    }
+
+    private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
+            int size, String cursor, boolean publicOnly) {
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
+
+        List<TherapyPost> posts;
+        if (postCursor == null) {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedLatestByVisibility(Visibility.PUBLIC, limit)
+                    : therapyPostRepository.findFeedLatest(limit);
+        } else {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedLatestByVisibility(
+                            Visibility.PUBLIC, postCursor.createdAt(), postCursor.id(), limit)
+                    : therapyPostRepository.findFeedLatest(
+                            postCursor.createdAt(), postCursor.id(), limit);
+        }
+
+        List<TherapyPostSummaryResponse> dtos = posts.stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        return CursorPagedResponse.of(dtos, size, item ->
+                new PostCursor(item.getCreatedAt(), item.getId()).encode());
+    }
+
+    private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
+            int size, String cursor, boolean publicOnly) {
+        PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
+
+        List<TherapyPost> posts;
+        if (popCursor == null) {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedPopularByVisibility(Visibility.PUBLIC, limit)
+                    : therapyPostRepository.findFeedPopular(limit);
+        } else {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedPopularByVisibility(
+                            Visibility.PUBLIC, popCursor.score(), popCursor.id(), limit)
+                    : therapyPostRepository.findFeedPopular(
+                            popCursor.score(), popCursor.id(), limit);
+        }
+
+        boolean hasNext = posts.size() > size;
+        List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
+
+        List<TherapyPostSummaryResponse> dtos = trimmed.stream()
+                .map(post -> TherapyPostSummaryResponse.from(post, false))
+                .toList();
+
+        String nextCursor = hasNext
+                ? new PopularCursor(
+                        trimmed.get(trimmed.size() - 1).getPopularityScore(),
+                        trimmed.get(trimmed.size() - 1).getId()
+                ).encode()
+                : null;
+
+        return new CursorPagedResponse<>(dtos, nextCursor, hasNext, size);
     }
 
     private Sort toSort(PostSortType sortType) {
@@ -122,9 +224,11 @@ public class PostService {
             boolean isScrapped
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        validateVisibility(post, currentUserId, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
-        post.increaseViewCount();
+        if (postViewCountService.isFirstView(postId, currentUserId)) {
+            post.increaseViewCount();
+        }
 
         List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
                 .findByPostIdOrderByCreatedAtAsc(postId)
@@ -143,7 +247,12 @@ public class PostService {
             UpdateTherapyPostRequest request
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
+
+        if (request.getVisibility() == Visibility.PRIVATE) {
+            visibilityPolicy.checkCanWritePrivate(currentUserRole);
+        }
 
         post.update(
                 request.getContent(),
@@ -160,20 +269,10 @@ public class PostService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
-    }
-
-
-    private void validateVisibility(TherapyPost post, Long currentUserId, UserRole currentUserRole) {
-        if (post.getVisibility() == Visibility.PRIVATE) {
-            boolean isAdmin = currentUserRole == UserRole.ADMIN;
-            boolean isAuthor = post.getAuthor().getId().equals(currentUserId);
-            if (!isAdmin && !isAuthor) {
-                throw new CustomException(ErrorCode.POST_NOT_FOUND);
-            }
-        }
     }
 
 }

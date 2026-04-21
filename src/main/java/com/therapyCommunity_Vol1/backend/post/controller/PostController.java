@@ -1,8 +1,10 @@
 package com.therapyCommunity_Vol1.backend.post.controller;
 
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
+import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
@@ -13,6 +15,7 @@ import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UpdateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,9 +45,30 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateTherapyPostRequest request
     ) {
-        TherapyPostDetailResponse response = postService.createPost(userDetails.getUserId(), request);
+        TherapyPostDetailResponse response = postService.createPost(userDetails.getUserId(), userDetails.getUserRole(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "게시글 피드 (무한스크롤)", description = "커서 기반 페이지네이션. sort: LATEST(최신순), POPULAR(인기순)")
+    @GetMapping("/feed")
+    public ResponseEntity<ApiResponse<CursorPagedResponse<TherapyPostSummaryResponse>>> getPostsFeed(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "LATEST") FeedSortType sort
+    ) {
+        UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getPostsFeed(size, cursor, userRole, sort);
+
+        Long userId = userDetails != null ? userDetails.getUserId() : null;
+        List<Long> postIds = response.getItems().stream()
+                .map(TherapyPostSummaryResponse::getId).toList();
+        Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
+        response.getItems().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @Operation(summary = "게시글 목록/검색", description = "keyword(초성/텍스트), therapyArea, postType 필터. sortType: LATEST, MOST_VIEWED")
@@ -60,7 +84,8 @@ public class PostController {
     ) {
         PostSearchCondition condition = new PostSearchCondition(keyword, therapyArea, postType);
         Long userId = userDetails != null ? userDetails.getUserId() : null;
-        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(page, size, sortType, condition);
+        UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
+        PagedResponse<TherapyPostSummaryResponse> response = postService.getPosts(page, size, sortType, condition, userRole);
 
         List<Long> postIds = response.getItems().stream()
                 .map(TherapyPostSummaryResponse::getId).toList();

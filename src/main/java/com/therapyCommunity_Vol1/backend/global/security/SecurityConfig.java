@@ -57,21 +57,17 @@ public class SecurityConfig {
                             "/actuator/health",
                             "/swagger-ui/**",
                             "/v3/api-docs/**",
-                            "/api/v1/me/profile-image/profile-images/**"
+                            "/api/v1/me/profile-image/**"
                     ).permitAll()
                     // 알림 API — 로그인한 사용자 모두
                     .requestMatchers("/api/v1/notifications/**").authenticated()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                    // 치료사 전용
-                    .requestMatchers(
-                            "/api/v1/posts/**",
-                            "/api/v1/comments/**",
-                            "/api/v1/me/downloads",
-                            "/api/v1/me/downloads/**",
-                            "/api/v1/me/scraps",
-                            "/api/v1/me/scraps/**"
-                    ).hasAnyRole("THERAPIST","ADMIN")
+                    // 커뮤니티 — USER 포함 (서비스에서 PUBLIC/PRIVATE 체크)
+                    .requestMatchers("/api/v1/posts/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers("/api/v1/comments/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers("/api/v1/me/scraps", "/api/v1/me/scraps/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
+                    .requestMatchers("/api/v1/me/downloads", "/api/v1/me/downloads/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
 
                     //나머지는 로그인 필요
                     .anyRequest().authenticated()

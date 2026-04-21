@@ -12,7 +12,7 @@ import com.therapyCommunity_Vol1.backend.global.cache.LoginAttemptService;
 import com.therapyCommunity_Vol1.backend.auth.support.NicknameGenerator;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -40,6 +40,7 @@ public class AuthService {
     private final NicknameGenerator nicknameGenerator;
     private final UserAgreementRepository userAgreementRepository;
     private final LoginAttemptService loginAttemptService;
+    private final com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler;
 
     @Transactional
     public SignupResult signup(SignupRequest request, String userAgent, String ipAddress) {
@@ -107,15 +108,16 @@ public class AuthService {
         TokenService.IssuedToken issuedRefreshToken =
                 tokenService.issueRefreshToken(user, UUID.randomUUID(), userAgent, ipAddress);
 
-        Optional<TherapistVerification> verification =
-                therapistVerificationService.findByUserId(user.getId());
+        Optional<TherapistVerificationStatusDto> verification =
+                therapistVerificationService.findVerificationStatusByUserId(user.getId());
 
         return new LoginResult(
                 LoginResponse.of(
                         user,
                         verification,
                         accessToken,
-                        accessTokenExpiresInSec
+                        accessTokenExpiresInSec,
+                        profileImageUrlAssembler
                 ),
                 issuedRefreshToken.rawToken(),
                 issuedRefreshToken.expiresInSec()

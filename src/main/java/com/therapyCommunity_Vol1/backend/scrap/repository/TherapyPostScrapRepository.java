@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -23,4 +25,7 @@ public interface TherapyPostScrapRepository extends JpaRepository<TherapyPostScr
 
     @Query("SELECT s.post.id FROM TherapyPostScrap s WHERE s.user.id = :userId AND s.post.id IN :postIds")
     Set<Long> findScrappedPostIdsByUserIdAndPostIdIn(@Param("userId") Long userId, @Param("postIds") List<Long> postIds);
+
+    @EntityGraph(attributePaths = {"post", "post.author"})
+    Page<TherapyPostScrap> findByUserIdAndPost_DeletedAtIsNullAndPost_Visibility(Long userId, Visibility visibility, Pageable pageable);
 }

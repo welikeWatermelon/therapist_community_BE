@@ -123,7 +123,7 @@ class PostAttachmentControllerTest {
                 "guide.pdf"
         );
 
-        given(postAttachmentService.downloadAttachment(1L, 10L, 100L)).willReturn(storedFile);
+        given(postAttachmentService.downloadAttachment(1L, UserRole.THERAPIST, 10L, 100L)).willReturn(storedFile);
 
         mockMvc.perform(get("/api/v1/posts/{postId}/attachments/{attachmentId}/download", 10L, 100L))
                 .andExpect(status().isOk())
@@ -131,6 +131,6 @@ class PostAttachmentControllerTest {
                 .andExpect(content().contentType("application/pdf"))
                 .andExpect(content().bytes("pdf-data".getBytes()));
 
-        verify(postAttachmentService).downloadAttachment(1L, 10L, 100L);
+        verify(postAttachmentService).downloadAttachment(1L, UserRole.THERAPIST, 10L, 100L);
     }
 }
