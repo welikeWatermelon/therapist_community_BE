@@ -14,6 +14,8 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -180,6 +182,62 @@ class PostImageServiceTest {
 
         verify(therapyPostImageRepository).delete(target);
         verify(fileStorageService).delete("images/b.jpg");
+    }
+
+    @Test
+    void 트랜잭션_커밋_전에는_파일_삭제가_실행되지_않는다() {
+        Long userId = 1L;
+        User author = user(userId, UserRole.THERAPIST);
+        TherapyPost post = post(10L, author);
+        TherapyPostImage target = image(100L, post, "images/b.jpg", 0);
+
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
+        when(therapyPostImageRepository.findById(100L)).thenReturn(Optional.of(target));
+        when(therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(10L))
+                .thenReturn(List.of());
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            postImageService.deleteImage(userId, UserRole.THERAPIST, 10L, 100L);
+
+            // 커밋 전 — DB 삭제는 실행됐지만 스토리지 삭제는 아직 예약만 된 상태
+            verify(therapyPostImageRepository).delete(target);
+            verify(fileStorageService, never()).delete(anyString());
+
+            // 커밋 트리거 → 이제서야 파일 삭제
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+            verify(fileStorageService).delete("images/b.jpg");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void 트랜잭션_롤백_시_파일_삭제가_실행되지_않는다() {
+        Long userId = 1L;
+        User author = user(userId, UserRole.THERAPIST);
+        TherapyPost post = post(10L, author);
+        TherapyPostImage target = image(100L, post, "images/b.jpg", 0);
+
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
+        when(therapyPostImageRepository.findById(100L)).thenReturn(Optional.of(target));
+        when(therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(10L))
+                .thenReturn(List.of());
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            postImageService.deleteImage(userId, UserRole.THERAPIST, 10L, 100L);
+
+            // 롤백 시뮬레이션 — afterCommit은 호출되지 않고 afterCompletion(ROLLED_BACK)만 호출
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+            verify(fileStorageService, never()).delete(anyString());
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     private User user(Long id, UserRole role) {
