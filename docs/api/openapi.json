@@ -1202,9 +1202,9 @@
                     "reactionType": {
                         "type": "string",
                         "enum": [
-                            "EMPATHY",
-                            "APPRECIATE",
-                            "HELPFUL"
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
                         ]
                     }
                 },
@@ -1230,24 +1230,24 @@
                         "type": "integer",
                         "format": "int64"
                     },
-                    "empathyCount": {
+                    "likeCount": {
                         "type": "integer",
                         "format": "int64"
                     },
-                    "appreciateCount": {
+                    "curiousCount": {
                         "type": "integer",
                         "format": "int64"
                     },
-                    "helpfulCount": {
+                    "usefulCount": {
                         "type": "integer",
                         "format": "int64"
                     },
                     "myReactionType": {
                         "type": "string",
                         "enum": [
-                            "EMPATHY",
-                            "APPRECIATE",
-                            "HELPFUL"
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
                         ]
                     }
                 }

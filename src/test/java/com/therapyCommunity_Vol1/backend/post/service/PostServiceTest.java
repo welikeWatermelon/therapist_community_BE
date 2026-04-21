@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -9,6 +10,7 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -31,6 +33,8 @@ class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private TherapyPostReactionRepository therapyPostReactionRepository;
+    private TherapyPostCommentRepository therapyPostCommentRepository;
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
@@ -42,6 +46,8 @@ class PostServiceTest {
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
+        therapyPostReactionRepository = mock(TherapyPostReactionRepository.class);
+        therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
@@ -51,9 +57,21 @@ class PostServiceTest {
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
         when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
+        when(therapyPostReactionRepository.countByPostIdInAndReactionType(anyList(), any()))
+                .thenReturn(List.of());
+        when(therapyPostCommentRepository.countActiveByPostIdIn(anyList()))
+                .thenReturn(List.of());
+        when(therapyPostReactionRepository.countGroupedByPostId(anyLong()))
+                .thenReturn(List.of());
+        when(therapyPostReactionRepository.findByPostIdAndUserId(anyLong(), anyLong()))
+                .thenReturn(Optional.empty());
+        when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(anyLong()))
+                .thenReturn(0L);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
+                therapyPostReactionRepository,
+                therapyPostCommentRepository,
                 activePostFinder,
                 userRepository,
                 resourceAccessValidator,

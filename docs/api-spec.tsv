@@ -29,8 +29,8 @@ DELETE /api/v1/posts/{postId}	Authorization: Bearer {accessToken}	204 No Content
 POST /api/v1/posts/{postId}/images	multipart/form-data: file (jpg/png/webp, 5MB)	"201: { ""success"": true, ""data"": { ""id"": 1, ""imageUrl"": ""/api/v1/posts/16/images/1"", ""originalFilename"": ""photo.jpg"", ""displayOrder"": 0, ""createdAt"": ""2026-04-04T15:00:00"" } }"
 GET /api/v1/posts/{postId}/images	Authorization: Bearer {accessToken}	"200: { ""success"": true, ""data"": [{ ""id"": 1, ""imageUrl"": ""/api/v1/posts/16/images/1"", ""originalFilename"": ""photo.jpg"", ""displayOrder"": 0, ""createdAt"": ""2026-04-04T15:00:00"" }] }"
 GET /api/v1/posts/{postId}/images/{imageId}	Authorization: Bearer {accessToken}	200: 이미지 바이너리 (Content-Type: image/jpeg, Content-Disposition: inline)
-GET /api/v1/posts/{postId}/reaction	Authorization: Bearer {accessToken}	"200: { ""success"": true, ""data"": { ""postId"": 1, ""myReaction"": ""EMPATHY"", ""empathyCount"": 5, ""appreciateCount"": 3, ""helpfulCount"": 2 } }"
-PUT /api/v1/posts/{postId}/reaction	"{ ""reactionType"": ""EMPATHY"" }"	"200: { ""success"": true, ""data"": { ""postId"": 1, ""myReaction"": ""EMPATHY"", ""empathyCount"": 6, ""appreciateCount"": 3, ""helpfulCount"": 2 } }"
+GET /api/v1/posts/{postId}/reaction	Authorization: Bearer {accessToken}	"200: { ""success"": true, ""data"": { ""postId"": 1, ""myReaction"": ""LIKE"", ""likeCount"": 5, ""curiousCount"": 3, ""usefulCount"": 2 } }"
+PUT /api/v1/posts/{postId}/reaction	"{ ""reactionType"": ""LIKE"" }"	"200: { ""success"": true, ""data"": { ""postId"": 1, ""myReaction"": ""LIKE"", ""likeCount"": 6, ""curiousCount"": 3, ""usefulCount"": 2 } }"
 GET /api/v1/posts/{postId}/scrap	Authorization: Bearer {accessToken}	"200: { ""success"": true, ""data"": { ""postId"": 1, ""scrapped"": true } }"
 POST /api/v1/posts/{postId}/scrap	Authorization: Bearer {accessToken}	"200: { ""success"": true, ""data"": { ""postId"": 1, ""scrapped"": true } }"
 DELETE /api/v1/posts/{postId}/scrap	Authorization: Bearer {accessToken}	"200: { ""success"": true, ""data"": { ""postId"": 1, ""scrapped"": false } }"
