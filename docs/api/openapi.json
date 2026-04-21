@@ -1248,7 +1248,35 @@
                             "LIKE",
                             "CURIOUS",
                             "USEFUL"
-                        ]
+                        ],
+                        "nullable": true
+                    },
+                    "reactionCounts": {
+                        "type": "object",
+                        "description": "반응 타입별 count. 0인 타입도 키 존재.",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "topReactionType": {
+                        "type": "string",
+                        "enum": [
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
+                        ],
+                        "nullable": true,
+                        "description": "대표 반응. count 최대, 동률 시 displayOrder 우선. 모두 0이면 null"
+                    },
+                    "topReactionCount": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "topReactionColorToken": {
+                        "type": "string",
+                        "nullable": true
                     }
                 }
             },
@@ -1481,9 +1509,6 @@
                         "type": "integer",
                         "format": "int64"
                     },
-                    "title": {
-                        "type": "string"
-                    },
                     "content": {
                         "type": "string"
                     },
@@ -1511,21 +1536,38 @@
                             "PLAY"
                         ]
                     },
-                    "ageGroup": {
+                    "visibility": {
                         "type": "string",
                         "enum": [
-                            "UNSPECIFIED",
-                            "AGE_0_2",
-                            "AGE_3_5",
-                            "AGE_6_12",
-                            "AGE_13_18",
-                            "AGE_19_64",
-                            "AGE_65_PLUS"
+                            "PUBLIC",
+                            "PRIVATE"
                         ]
                     },
                     "viewCount": {
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "commentCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "reactionCounts": {
+                        "type": "object",
+                        "description": "반응 타입별 count. 3종 키 모두 존재 (0일 때도 포함)",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "myReactionType": {
+                        "type": "string",
+                        "enum": [
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
+                        ],
+                        "nullable": true,
+                        "description": "로그인 사용자의 현재 반응. 없으면 null"
                     },
                     "createdAt": {
                         "type": "string",
@@ -1539,6 +1581,9 @@
                         "type": "boolean"
                     },
                     "canDelete": {
+                        "type": "boolean"
+                    },
+                    "isScrapped": {
                         "type": "boolean"
                     },
                     "attachments": {
@@ -1983,9 +2028,6 @@
                             "RESOURCE"
                         ]
                     },
-                    "title": {
-                        "type": "string"
-                    },
                     "contentPreview": {
                         "type": "string"
                     },
@@ -2002,25 +2044,33 @@
                             "PLAY"
                         ]
                     },
-                    "ageGroup": {
+                    "visibility": {
                         "type": "string",
                         "enum": [
-                            "UNSPECIFIED",
-                            "AGE_0_2",
-                            "AGE_3_5",
-                            "AGE_6_12",
-                            "AGE_13_18",
-                            "AGE_19_64",
-                            "AGE_65_PLUS"
+                            "PUBLIC",
+                            "PRIVATE"
                         ]
                     },
                     "viewCount": {
                         "type": "integer",
                         "format": "int64"
                     },
+                    "likeCount": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "LIKE 타입만 카운트 (궁금해요/유용해요는 detail에서만)"
+                    },
+                    "commentCount": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "활성 댓글 수 (soft-delete 제외)"
+                    },
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "isScrapped": {
+                        "type": "boolean"
                     }
                 }
             },
