@@ -1711,15 +1711,44 @@
             },
             "SignupRequest": {
                 "type": "object",
+                "required": ["email", "password", "agreements"],
                 "properties": {
                     "email": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "email",
+                        "description": "이메일"
                     },
                     "password": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 8,
+                        "description": "비밀번호 (최소 8자)"
                     },
-                    "nickname": {
-                        "type": "string"
+                    "agreements": {
+                        "type": "array",
+                        "minItems": 1,
+                        "description": "약관 동의 목록. SERVICE_TERMS / PRIVACY_POLICY는 agreed=true로 반드시 포함해야 함. MARKETING은 선택 (빠지거나 false 모두 허용). 닉네임은 서버가 자동 생성하므로 요청에 포함하지 않음.",
+                        "items": {
+                            "$ref": "#/components/schemas/AgreementRequest"
+                        }
+                    }
+                }
+            },
+            "AgreementRequest": {
+                "type": "object",
+                "required": ["type", "version"],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["SERVICE_TERMS", "PRIVACY_POLICY", "MARKETING"],
+                        "description": "약관 타입. SERVICE_TERMS, PRIVACY_POLICY는 필수 동의 대상"
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "약관 버전 (예: v1.0)"
+                    },
+                    "agreed": {
+                        "type": "boolean",
+                        "description": "동의 여부. 필수 타입(SERVICE_TERMS, PRIVACY_POLICY)은 반드시 true여야 함"
                     }
                 }
             },
@@ -1736,6 +1765,7 @@
             },
             "SignupResponse": {
                 "type": "object",
+                "description": "회원가입 성공 응답. refreshToken은 Set-Cookie(HttpOnly)로 별도 전달됨.",
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -1743,6 +1773,19 @@
                     },
                     "email": {
                         "type": "string"
+                    },
+                    "nickname": {
+                        "type": "string",
+                        "description": "서버 자동 생성 닉네임 (예: 판다#4829)"
+                    },
+                    "accessToken": {
+                        "type": "string",
+                        "description": "JWT Access Token (HS256, 30분)"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["USER", "THERAPIST", "ADMIN"],
+                        "description": "초기 역할 — 가입 직후엔 USER"
                     }
                 }
             },
