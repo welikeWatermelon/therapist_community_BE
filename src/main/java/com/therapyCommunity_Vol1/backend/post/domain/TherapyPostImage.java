@@ -57,4 +57,8 @@ public class TherapyPostImage {
         image.createdAt = LocalDateTime.now();
         return image;
     }
+
+    public void updateDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
+    }
 }
