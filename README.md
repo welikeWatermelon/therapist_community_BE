@@ -174,7 +174,7 @@ com.therapyCommunity_Vol1.backend
 - 게시글 공개범위에 따른 접근 제어
 
 ### 반응 (Reaction)
-- **게시글 반응** 3종: 공감(EMPATHY), 감사(APPRECIATE), 유익(HELPFUL)
+- **게시글 반응** 3종: 좋아요(LIKE), 궁금해요(CURIOUS), 유용해요(USEFUL)
   - 각 반응별 색상 토큰, 표시 순서 정의
   - 토글 방식 (없음 -> 생성, 동일 -> 삭제, 다른 타입 -> 변경)
   - GROUP BY 쿼리로 전체 반응 통계 한번에 조회

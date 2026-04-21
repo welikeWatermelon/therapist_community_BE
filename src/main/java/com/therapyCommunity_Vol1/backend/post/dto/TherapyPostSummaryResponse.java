@@ -18,6 +18,8 @@ public class TherapyPostSummaryResponse {
     private TherapyArea therapyArea;
     private Visibility visibility;
     private Long viewCount;
+    private Long likeCount;
+    private Long commentCount;
     private LocalDateTime createdAt;
     private boolean isScrapped;
 
@@ -29,6 +31,8 @@ public class TherapyPostSummaryResponse {
             TherapyArea therapyArea,
             Visibility visibility,
             Long viewCount,
+            Long likeCount,
+            Long commentCount,
             LocalDateTime createdAt,
             boolean isScrapped
     ) {
@@ -39,6 +43,8 @@ public class TherapyPostSummaryResponse {
         this.therapyArea = therapyArea;
         this.visibility = visibility;
         this.viewCount = viewCount;
+        this.likeCount = likeCount;
+        this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.isScrapped = isScrapped;
     }
@@ -46,6 +52,15 @@ public class TherapyPostSummaryResponse {
     private static final String PRIVATE_CONTENT_MESSAGE = "비공개 글입니다";
 
     public static TherapyPostSummaryResponse from(TherapyPost post, boolean isScrapped) {
+        return from(post, 0L, 0L, isScrapped);
+    }
+
+    public static TherapyPostSummaryResponse from(
+            TherapyPost post,
+            Long likeCount,
+            Long commentCount,
+            boolean isScrapped
+    ) {
         String preview = post.getVisibility() == Visibility.PRIVATE
                 ? PRIVATE_CONTENT_MESSAGE
                 : makePreview(post.getContent());
@@ -57,6 +72,8 @@ public class TherapyPostSummaryResponse {
                 post.getTherapyArea(),
                 post.getVisibility(),
                 post.getViewCount(),
+                likeCount,
+                commentCount,
                 post.getCreatedAt(),
                 isScrapped
         );

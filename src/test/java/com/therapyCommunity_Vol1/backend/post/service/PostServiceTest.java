@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -9,6 +10,9 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -31,6 +35,8 @@ class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private TherapyPostReactionRepository therapyPostReactionRepository;
+    private TherapyPostCommentRepository therapyPostCommentRepository;
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
@@ -42,6 +48,8 @@ class PostServiceTest {
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
+        therapyPostReactionRepository = mock(TherapyPostReactionRepository.class);
+        therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
@@ -51,9 +59,21 @@ class PostServiceTest {
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
         when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
+        when(therapyPostReactionRepository.countByPostIdInAndReactionType(anyList(), any()))
+                .thenReturn(List.of());
+        when(therapyPostCommentRepository.countActiveByPostIdIn(anyList()))
+                .thenReturn(List.of());
+        when(therapyPostReactionRepository.countGroupedByPostId(anyLong()))
+                .thenReturn(List.of());
+        when(therapyPostReactionRepository.findByPostIdAndUserId(anyLong(), anyLong()))
+                .thenReturn(Optional.empty());
+        when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(anyLong()))
+                .thenReturn(0L);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
+                therapyPostReactionRepository,
+                therapyPostCommentRepository,
                 activePostFinder,
                 userRepository,
                 resourceAccessValidator,
@@ -139,6 +159,11 @@ class PostServiceTest {
 
         when(therapyPostRepository.findByDeletedAtIsNull(any(Pageable.class)))
                 .thenReturn(page);
+        when(therapyPostReactionRepository.countByPostIdInAndReactionType(
+                eq(List.of(1L)), eq(PostReactionType.LIKE)))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, 5L}));
+        when(therapyPostCommentRepository.countActiveByPostIdIn(eq(List.of(1L))))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
 
         // when
         PostSearchCondition condition = new PostSearchCondition(null, null, null);
@@ -146,7 +171,10 @@ class PostServiceTest {
 
         // then
         assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getItems().get(0).getAuthorNickname()).isEqualTo("tester");
+        TherapyPostSummaryResponse item = response.getItems().get(0);
+        assertThat(item.getAuthorNickname()).isEqualTo("tester");
+        assertThat(item.getLikeCount()).isEqualTo(5L);
+        assertThat(item.getCommentCount()).isEqualTo(3L);
         assertThat(response.getTotalElements()).isEqualTo(1);
         assertThat(response.isHasNext()).isFalse();
     }
@@ -177,6 +205,16 @@ class PostServiceTest {
         when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
+        when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(1L))
+                .thenReturn(7L);
+        when(therapyPostReactionRepository.countGroupedByPostId(1L))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{PostReactionType.LIKE, 4L},
+                        new Object[]{PostReactionType.CURIOUS, 2L}
+                ));
+        TherapyPostReaction myReaction = TherapyPostReaction.create(post, author, PostReactionType.LIKE);
+        when(therapyPostReactionRepository.findByPostIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(myReaction));
 
         // when
         TherapyPostDetailResponse response = postService.getPostDetail(
@@ -193,6 +231,12 @@ class PostServiceTest {
         assertThat(response.getContent()).isEqualTo("<p>본문</p>");
         assertThat(response.isCanEdit()).isTrue();
         assertThat(response.isCanDelete()).isTrue();
+        assertThat(response.getCommentCount()).isEqualTo(7L);
+        assertThat(response.getReactionCounts())
+                .containsEntry(PostReactionType.LIKE, 4L)
+                .containsEntry(PostReactionType.CURIOUS, 2L)
+                .containsEntry(PostReactionType.USEFUL, 0L);
+        assertThat(response.getMyReactionType()).isEqualTo(PostReactionType.LIKE);
     }
 
     @Test

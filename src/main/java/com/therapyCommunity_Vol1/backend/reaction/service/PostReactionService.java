@@ -110,10 +110,10 @@ public class PostReactionService {
 
         return new PostReactionStatusResponse(
                 postId,
-                // Legacy 필드 (하위 호환)
-                reactionCounts.getOrDefault(PostReactionType.EMPATHY, 0L),
-                reactionCounts.getOrDefault(PostReactionType.APPRECIATE, 0L),
-                reactionCounts.getOrDefault(PostReactionType.HELPFUL, 0L),
+                // 타입별 개별 필드
+                reactionCounts.getOrDefault(PostReactionType.LIKE, 0L),
+                reactionCounts.getOrDefault(PostReactionType.CURIOUS, 0L),
+                reactionCounts.getOrDefault(PostReactionType.USEFUL, 0L),
                 myReactionType,
                 // 확장 필드
                 reactionCounts,

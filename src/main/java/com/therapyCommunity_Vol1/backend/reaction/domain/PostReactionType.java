@@ -18,9 +18,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum PostReactionType {
 
-    EMPATHY("공감", "primary", 0),
-    APPRECIATE("잘 봤어요", "success", 1),
-    HELPFUL("유익", "info", 2);
+    LIKE("좋아요", "primary", 0),
+    CURIOUS("궁금해요", "success", 1),
+    USEFUL("유용해요", "info", 2);
 
     private final String label;
     private final String colorToken;
