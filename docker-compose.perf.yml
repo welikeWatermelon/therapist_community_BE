@@ -1,0 +1,31 @@
+# 성능 측정용 오버라이드.
+# PostgreSQL auto_explain 확장으로 slow query의 EXPLAIN ANALYZE를 자동 로그에 기록.
+#
+# 사용:
+#   docker compose -f docker-compose.yml -f docker-compose.perf.yml up -d db
+#
+# 로그 확인:
+#   docker logs builders-db 2>&1 | grep -A 30 "duration:"
+#
+# 기존 docker-compose.yml / docker-compose.override.yml 은 건드리지 않음 — perf 측정시에만 덮어쓰는 용도.
+
+services:
+  db:
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=auto_explain
+      - -c
+      - auto_explain.log_min_duration=50ms
+      - -c
+      - auto_explain.log_analyze=true
+      - -c
+      - auto_explain.log_buffers=true
+      - -c
+      - auto_explain.log_timing=true
+      - -c
+      - auto_explain.log_nested_statements=true
+      - -c
+      - auto_explain.log_format=text
+      - -c
+      - log_statement=none            # 모든 쿼리 로그는 과도하므로 auto_explain만
