@@ -4,6 +4,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
@@ -20,7 +21,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.util.List;
 import java.util.Optional;
 
+import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
+import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -31,6 +36,7 @@ class PostReactionServiceTest {
     private ActivePostFinder activePostFinder;
     private UserRepository userRepository;
     private ApplicationEventPublisher eventPublisher;
+    private PostVisibilityAccessPolicy visibilityPolicy;
     private PostReactionService postReactionService;
 
     private User user;
@@ -43,8 +49,9 @@ class PostReactionServiceTest {
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
+        visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postReactionService = new PostReactionService(
-                postReactionRepository, postService, activePostFinder, userRepository, eventPublisher
+                postReactionRepository, postService, activePostFinder, userRepository, eventPublisher, visibilityPolicy
         );
 
         user = User.builder()
@@ -66,7 +73,7 @@ class PostReactionServiceTest {
                 .thenReturn(List.<Object[]>of(new Object[]{PostReactionType.LIKE, 1L}));
 
         PostReactionStatusResponse response = postReactionService.toggleReaction(
-                1L, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
+                1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
         );
 
         verify(postReactionRepository).save(any(TherapyPostReaction.class));
@@ -85,7 +92,7 @@ class PostReactionServiceTest {
         when(postReactionRepository.countGroupedByPostId(10L)).thenReturn(List.of());
 
         PostReactionStatusResponse response = postReactionService.toggleReaction(
-                1L, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
+                1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
         );
 
         verify(postReactionRepository).delete(existing);
@@ -105,7 +112,7 @@ class PostReactionServiceTest {
                 .thenReturn(List.<Object[]>of(new Object[]{PostReactionType.USEFUL, 1L}));
 
         PostReactionStatusResponse response = postReactionService.toggleReaction(
-                1L, 10L, new TogglePostReactionRequest(PostReactionType.USEFUL)
+                1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.USEFUL)
         );
 
         assertThat(existing.getReactionType()).isEqualTo(PostReactionType.USEFUL);
@@ -123,7 +130,7 @@ class PostReactionServiceTest {
                 new Object[]{PostReactionType.USEFUL, 2L}
         ));
 
-        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, 10L);
+        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, UserRole.THERAPIST, 10L);
 
         assertThat(response.getLikeCount()).isEqualTo(5L);
         assertThat(response.getCuriousCount()).isEqualTo(3L);
@@ -141,7 +148,7 @@ class PostReactionServiceTest {
                 new Object[]{PostReactionType.USEFUL, 1L}
         ));
 
-        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, 10L);
+        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, UserRole.THERAPIST, 10L);
 
         assertThat(response.getTopReactionType()).isEqualTo(PostReactionType.CURIOUS);
         assertThat(response.getTopReactionCount()).isEqualTo(5L);
@@ -158,7 +165,7 @@ class PostReactionServiceTest {
                 new Object[]{PostReactionType.USEFUL, 3L}
         ));
 
-        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, 10L);
+        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, UserRole.THERAPIST, 10L);
 
         assertThat(response.getTopReactionType()).isEqualTo(PostReactionType.LIKE);
         assertThat(response.getTopReactionCount()).isEqualTo(3L);
@@ -171,7 +178,7 @@ class PostReactionServiceTest {
         when(postReactionRepository.findByPostIdAndUserId(10L, 1L)).thenReturn(Optional.empty());
         when(postReactionRepository.countGroupedByPostId(10L)).thenReturn(List.of());
 
-        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, 10L);
+        PostReactionStatusResponse response = postReactionService.getReactionStatus(1L, UserRole.THERAPIST, 10L);
 
         assertThat(response.getTopReactionType()).isNull();
         assertThat(response.getTopReactionCount()).isNull();
@@ -179,5 +186,40 @@ class PostReactionServiceTest {
         assertThat(response.getLikeCount()).isEqualTo(0L);
         assertThat(response.getCuriousCount()).isEqualTo(0L);
         assertThat(response.getUsefulCount()).isEqualTo(0L);
+    }
+
+    /** USER는 PRIVATE 게시글의 반응을 토글할 수 없다 */
+    @Test
+    void USER는_PRIVATE_게시글에_반응_토글_불가() {
+        TherapyPost privatePost = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PRIVATE, user);
+        when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
+        doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
+                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+
+        assertThatThrownBy(() -> postReactionService.toggleReaction(
+                1L, UserRole.USER, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
+        ))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+
+        verify(postReactionRepository, never()).save(any(TherapyPostReaction.class));
+        verify(postReactionRepository, never()).delete(any(TherapyPostReaction.class));
+    }
+
+    /** USER는 PRIVATE 게시글의 반응 상태를 조회할 수 없다 */
+    @Test
+    void USER는_PRIVATE_게시글의_반응_상태_조회_불가() {
+        TherapyPost privatePost = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PRIVATE, user);
+        when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
+        doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
+                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+
+        assertThatThrownBy(() -> postReactionService.getReactionStatus(1L, UserRole.USER, 10L))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+
+        verify(postReactionRepository, never()).countGroupedByPostId(anyLong());
     }
 }

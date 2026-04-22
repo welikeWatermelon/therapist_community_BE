@@ -31,6 +31,7 @@ public class PostImageService {
     private final TherapyPostImageRepository therapyPostImageRepository;
     private final FileStorageService fileStorageService;
     private final ResourceAccessValidator resourceAccessValidator;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     @Transactional
     public PostImageResponse uploadImage(
@@ -40,6 +41,7 @@ public class PostImageService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storeProfileImage(file);
@@ -58,14 +60,20 @@ public class PostImageService {
         return PostImageResponse.from(saved);
     }
 
-    public List<PostImageResponse> getImages(Long postId) {
+    public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole) {
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
+
         return therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(postId)
                 .stream()
                 .map(PostImageResponse::from)
                 .toList();
     }
 
-    public StoredFileResource loadImage(Long postId, Long imageId) {
+    public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole) {
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
+
         TherapyPostImage image = therapyPostImageRepository.findById(imageId)
                 .filter(i -> i.getPost().getId().equals(postId))
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
@@ -85,6 +93,7 @@ public class PostImageService {
             Long imageId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         TherapyPostImage image = therapyPostImageRepository.findById(imageId)

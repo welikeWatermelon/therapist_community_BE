@@ -50,19 +50,21 @@ public class PostImageController {
     @Operation(summary = "이미지 목록 조회")
     @GetMapping
     public ResponseEntity<ApiResponse<List<PostImageResponse>>> getImages(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId
     ) {
-        List<PostImageResponse> response = postImageService.getImages(postId);
+        List<PostImageResponse> response = postImageService.getImages(postId, userDetails.getUserRole());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @Operation(summary = "이미지 다운로드")
     @GetMapping("/{imageId}")
     public ResponseEntity<Resource> downloadImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId,
             @PathVariable Long imageId
     ) {
-        StoredFileResource storedFile = postImageService.loadImage(postId, imageId);
+        StoredFileResource storedFile = postImageService.loadImage(postId, imageId, userDetails.getUserRole());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(storedFile.getContentType()))
                 .header(
