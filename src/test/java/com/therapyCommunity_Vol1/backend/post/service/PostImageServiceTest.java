@@ -38,6 +38,7 @@ class PostImageServiceTest {
     private TherapyPostImageRepository therapyPostImageRepository;
     private FileStorageService fileStorageService;
     private ResourceAccessValidator resourceAccessValidator;
+    private PostVisibilityAccessPolicy visibilityPolicy;
     private PostImageService postImageService;
 
     @BeforeEach
@@ -46,12 +47,14 @@ class PostImageServiceTest {
         therapyPostImageRepository = mock(TherapyPostImageRepository.class);
         fileStorageService = mock(FileStorageService.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
+        visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
 
         postImageService = new PostImageService(
                 activePostFinder,
                 therapyPostImageRepository,
                 fileStorageService,
-                resourceAccessValidator
+                resourceAccessValidator,
+                visibilityPolicy
         );
     }
 
@@ -238,6 +241,78 @@ class PostImageServiceTest {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    @Test
+    void USER는_PRIVATE_게시글의_이미지_목록을_조회할_수_없다() {
+        User author = user(1L, UserRole.THERAPIST);
+        TherapyPost privatePost = privatePost(10L, author);
+
+        when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
+        doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
+                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+
+        assertThatThrownBy(() -> postImageService.getImages(10L, UserRole.USER))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+    }
+
+    @Test
+    void USER는_PRIVATE_게시글의_이미지를_다운로드할_수_없다() {
+        User author = user(1L, UserRole.THERAPIST);
+        TherapyPost privatePost = privatePost(10L, author);
+
+        when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
+        doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
+                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+
+        assertThatThrownBy(() -> postImageService.loadImage(10L, 100L, UserRole.USER))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+
+        verify(therapyPostImageRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void USER는_PRIVATE_게시글의_이미지_업로드_삭제를_할_수_없다() {
+        User author = user(1L, UserRole.THERAPIST);
+        TherapyPost privatePost = privatePost(10L, author);
+
+        when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
+        doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
+                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+
+        // upload
+        org.springframework.mock.web.MockMultipartFile file =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "file", "a.jpg", "image/jpeg", "bytes".getBytes());
+        assertThatThrownBy(() -> postImageService.uploadImage(99L, UserRole.USER, 10L, file))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+
+        // delete
+        assertThatThrownBy(() -> postImageService.deleteImage(99L, UserRole.USER, 10L, 100L))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
+
+        verify(fileStorageService, never()).storeProfileImage(any());
+        verify(fileStorageService, never()).delete(anyString());
+    }
+
+    private TherapyPost privatePost(Long id, User author) {
+        TherapyPost post = TherapyPost.create(
+                "<p>본문</p>",
+                TherapyArea.SPEECH,
+                Visibility.PRIVATE,
+                author
+        );
+        ReflectionTestUtils.setField(post, "id", id);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.of(2026, 4, 22, 9, 0));
+        return post;
     }
 
     private User user(Long id, UserRole role) {

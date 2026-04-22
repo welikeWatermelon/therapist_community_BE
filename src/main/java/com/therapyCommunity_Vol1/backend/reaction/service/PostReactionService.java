@@ -7,12 +7,14 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
+import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
 import com.therapyCommunity_Vol1.backend.reaction.dto.TogglePostReactionRequest;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -35,6 +37,7 @@ public class PostReactionService {
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PostVisibilityAccessPolicy visibilityPolicy;
 
     /**
      * 반응 토글 (생성/삭제/변경).
@@ -46,6 +49,7 @@ public class PostReactionService {
     @Transactional
     public PostReactionStatusResponse toggleReaction(
             Long currentUserId,
+            UserRole currentUserRole,
             Long postId,
             TogglePostReactionRequest request
     ) {
@@ -53,6 +57,7 @@ public class PostReactionService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         postReactionRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresentOrElse(existing -> {
@@ -81,7 +86,7 @@ public class PostReactionService {
 
         postService.recalculatePopularityScore(postId);
 
-        return getReactionStatus(currentUserId, postId);
+        return getReactionStatus(currentUserId, currentUserRole, postId);
     }
 
     /**
@@ -92,9 +97,11 @@ public class PostReactionService {
      */
     public PostReactionStatusResponse getReactionStatus(
             Long currentUserId,
+            UserRole currentUserRole,
             Long postId
     ) {
-        activePostFinder.findOrThrow(postId);
+        TherapyPost post = activePostFinder.findOrThrow(postId);
+        visibilityPolicy.checkAccess(post, currentUserRole);
 
         // 내 반응 타입 조회
         PostReactionType myReactionType = postReactionRepository
