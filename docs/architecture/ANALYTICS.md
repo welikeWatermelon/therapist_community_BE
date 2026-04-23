@@ -130,7 +130,7 @@ com.therapyCommunity_Vol1.backend.analytics/
 |-------|------|------|
 | **1. 이벤트 수집** | ✅ 완료 | V28 + 엔티티 + 파이프라인 + 5개 도메인 훅 |
 | **2. 집계 배치** | ✅ 완료 | V29 + `@Scheduled` 롤업 → `post_hourly_stats` |
-| **3. 도메인 지표** | 대기 | 치료사 전문성 z-score + Laplace smoothing, 자료 장터화 스코어, `therapist_expertise_daily` |
+| **3. 도메인 지표** | ✅ 완료 (MVP) | V30 + 전문성 z-score 배치. 자료 장터화 스코어는 Phase 4로 |
 | **4. 매칭 API** | 대기 | 어드민 통계 · 치료사 추천 엔드포인트 |
 | **5. 대시보드** | 대기 | 프론트 관리 화면 (별도 트랙) |
 
@@ -202,6 +202,96 @@ post_hourly_stats 집계 완료: 18 hour 처리, 커서 2026-04-22T15:00 → 202
 ```
 
 18개 hour 중 데이터 있는 2개만 실제 row 생성 (빈 hour는 INSERT 대상이 없어 skip). unique 카운트/reaction 타입별 분리/FILTER 조건 모두 정확히 반영.
+
+## Phase 3 — 치료사 전문성 지표
+
+### 공식
+
+치료사 `u`의 직근 `window_days`(기본 30)일 활동을 5개 요인으로 집계:
+
+```
+raw_score(u) = w_posts     × z(log(1 + posts_count))
+             + w_useful    × z(log(1 + useful_received))
+             + w_curious   × z(log(1 + curious_received))
+             + w_downloads × z(log(1 + downloads_received))
+             + w_ratio     × z(useful_ratio_smoothed)
+
+useful_ratio_smoothed = (useful + α) / (total_reactions + α + β)  -- α=1, β=9
+
+z(x) = (x - mean(x)) / stddev(x)     -- 전체 활동 치료사 모집단
+rank_percentile(u) = PERCENT_RANK() OVER (ORDER BY raw_score) × 100
+```
+
+초기 가중치: `w_posts=1.0`, `w_useful=2.0`, `w_curious=0.5`, `w_downloads=1.5`, `w_ratio=1.0`. Phase 4 A/B 튜닝 예정.
+
+### 왜 이 변환 체인인가
+
+| 단계 | 이유 |
+|------|------|
+| `log(1+x)` | 반응/다운로드는 long-tail Poisson 분포. 로그 변환으로 정규성 근사 → z-score 해석 가능. `+1`은 `log(0)` 방지. |
+| Laplace smoothing | `useful_ratio = useful / total`만 쓰면 cold start 유저(total=1, useful=1)가 100%로 최상위. Beta(1,9) prior로 (1+1)/(1+10)=0.1818로 희석. 데이터 많은 유저는 prior 영향 자연 희석. |
+| z-score 표준화 | `posts_count`(0~수십)와 `useful_ratio`(0~1)는 스케일 다름. 그냥 더하면 큰 값 요인이 지배. 각 요인을 평균 0, 표준편차 1로 표준화한 뒤 가중합. |
+| PERCENT_RANK | raw_score는 모집단 특성에 따라 절대값이 의미 없음 (오늘은 평균 0 ± 3, 내일은 0 ± 5). 백분위로 "상위 N%"를 안정적으로 표현. |
+
+### 데이터 흐름
+
+```
+매일 00:15 @Scheduled
+    │
+    ▼
+AnalyticsScheduler.runTherapistExpertiseAggregation
+    │
+    ▼
+TherapistExpertiseAggregationService.aggregatePendingDays
+    │
+    ├─ 1. 커서 조회 (PESSIMISTIC_WRITE)
+    ├─ 2. [cursor+1, 어제] 사이 미처리 날짜를 순회
+    │     └─ recomputeDate(asOfDate):
+    │         ├─ DELETE FROM therapist_expertise_daily WHERE as_of_date = :d
+    │         └─ INSERT ... SELECT ... CTE 체인 (raw → log → z → weighted → percentile)
+    ├─ 3. 커서 전진 + COMMIT
+    └─ 4. 1회 최대 7일 처리 (back-pressure)
+```
+
+### 왜 CTE 체인을 한 쿼리로
+
+- DB 왕복 1회 — 3137명 × 5 윈도우함수 × PERCENT_RANK는 Postgres가 한 쿼리 안에서 최적화 (해시/소팅 재사용)
+- Java에서 각 단계를 돌면 3137 × 5 = 15,000번 왕복 + 중간 결과 메모리 보유
+- SQL은 declarative — 개별 함수형 변환처럼 CTE 각 단계가 이름 있는 의미 단위로 읽힘
+
+### 스키마 설계 의도 (why 중간값 보존)
+
+`therapist_expertise_daily`는 raw 카운트 + log 변환값 + z-score + 최종 score + 백분위를 모두 저장.
+
+| 시나리오 | 보존된 중간값이 주는 이점 |
+|----------|---------------------------|
+| "왜 이 사용자 3등?" | log_useful 값을 보여주면 "평균 대비 2.3 stddev 위라 가중치 × 2배 먹힘" 설명 가능 |
+| "가중치만 바꿔볼래" | z-score는 그대로 두고 raw_score만 재계산 — 비용 1/10 |
+| "윈도우를 60일로 늘려볼래" | raw_counts부터 전체 재계산 필요. 하지만 이전 결과는 `window_days=30` 태그로 보존돼 비교 가능 |
+| "공식에 버그가 있었어" | raw + log 그대로라 z-score부터 재계산만 하면 됨 |
+
+### 보류 (Phase 4+)
+
+- `response_speed_score`: 댓글-대댓글 응답 속도. 별도 타임라인 집계 필요 → 후순위
+- `deleted_ratio`: 삭제율 자체가 품질 시그널이지만 현재 데이터에 deleted_at 비율이 낮아 변별력 약함
+- `winsorizing`: 시드 실험에서 z=30 같은 극단치 관찰. 실 운영 데이터 분포 보고 필요성 판단
+- **자료 장터화 스코어**: `author_expertise_percentile` 의존성이 이 테이블에 있으니 Phase 4에서 공식 결정 후 추가
+
+### 동작 확인 (실측)
+
+4명의 치료사에 차등 시드 (user 1=고수, 2=중수, 3=중수 하, 4=신규) + 나머지 ~1700명은 post만 있고 반응 없음:
+
+| user | posts | useful | dl | ratio_smoothed | z_useful | raw_score | percentile |
+|------|-------|--------|-----|---------------|----------|-----------|------------|
+| 1    | 0     | 250    | 150 | 0.7493        | 30.86    | 152.4     | 100.00     |
+| 2    | 0     | 45     | 24  | 0.5823        | 21.37    | 103.7     | 99.94      |
+| 3    | 0     | 20     | 8   | 0.5250        | 16.98    | 79.0      | 99.88      |
+| 4    | 0     | 1      | 0   | 0.1667        | 3.83     | 7.2       | 99.83      |
+| ...  | 5     | 0      | 0   | 0.1000 (prior)| -0.04    | 3.4       | 99.48      |
+
+- user 4의 `ratio_smoothed = (1+1)/(2+10) = 0.1667` — cold start 희석 정상 작동
+- 활동 0 치료사의 `ratio = (0+1)/(0+10) = 0.1` — prior 값(Beta 평균) 수렴
+- 랭킹은 quality signal 순서대로 일관성 유지
 
 ## 동작 확인 (E2E)
 
