@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
@@ -49,6 +52,7 @@ public class PostService {
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
+    private final UserEventPublisher userEventPublisher;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -227,9 +231,25 @@ public class PostService {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
 
-        if (postViewCountService.isFirstView(postId, currentUserId)) {
+        boolean firstView = postViewCountService.isFirstView(postId, currentUserId);
+        if (firstView) {
             post.increaseViewCount();
         }
+
+        // 집계 시점에 dedup/window 처리할 수 있도록 매 조회마다 raw 발행.
+        // isFirstView 플래그는 view_count와의 정합성 재구성을 위해 보존.
+        userEventPublisher.publish(
+                currentUserId,
+                UserEventType.POST_VIEW,
+                EventTargetType.POST,
+                postId,
+                Map.of(
+                        "isFirstView", firstView,
+                        "postType", post.getPostType().name(),
+                        "therapyArea", post.getTherapyArea().name(),
+                        "visibility", post.getVisibility().name()
+                )
+        );
 
         List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
                 .findByPostIdOrderByCreatedAtAsc(postId)
