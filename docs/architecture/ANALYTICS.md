@@ -129,10 +129,79 @@ com.therapyCommunity_Vol1.backend.analytics/
 | Phase | 상태 | 내용 |
 |-------|------|------|
 | **1. 이벤트 수집** | ✅ 완료 | V28 + 엔티티 + 파이프라인 + 5개 도메인 훅 |
-| **2. 집계 배치** | 대기 | `@Scheduled` → `post_hourly_stats`, `therapist_expertise_daily` 롤업 |
-| **3. 도메인 지표** | 대기 | 치료사 전문성 z-score + Laplace smoothing, 자료 장터화 스코어 |
+| **2. 집계 배치** | ✅ 완료 | V29 + `@Scheduled` 롤업 → `post_hourly_stats` |
+| **3. 도메인 지표** | 대기 | 치료사 전문성 z-score + Laplace smoothing, 자료 장터화 스코어, `therapist_expertise_daily` |
 | **4. 매칭 API** | 대기 | 어드민 통계 · 치료사 추천 엔드포인트 |
 | **5. 대시보드** | 대기 | 프론트 관리 화면 (별도 트랙) |
+
+## Phase 2 — 집계 배치 상세
+
+### 데이터 흐름
+
+```
+매 시 5분 @Scheduled
+    │
+    ▼
+AnalyticsScheduler.runPostHourlyAggregation
+    │
+    ▼
+PostHourlyAggregationService.aggregatePendingHours
+    │
+    ├─ 1. AggregationProgress 커서 조회 (PESSIMISTIC_WRITE 락)
+    ├─ 2. 집계 상한 계산: now() - 1h, hour 단위 절삭
+    ├─ 3. [cursor, 상한) 사이 hour들을 순회 (최대 24개)
+    │     ├─ DELETE FROM post_hourly_stats WHERE hour = H
+    │     └─ INSERT INTO post_hourly_stats SELECT ... FROM user_events ...
+    │                                      GROUP BY target_id, date_trunc('hour', occurred_at)
+    └─ 4. 커서 전진 + COMMIT
+```
+
+### 핵심 설계
+
+- **멱등성**: 각 hour를 `DELETE → INSERT`로 완전 재작성. 크래시 후 재가동이든 수동 백필이든 같은 결과.
+- **멀티 인스턴스 안전**: 커서 조회에 `PESSIMISTIC_WRITE`. 한 인스턴스가 배치 중이면 다른 인스턴스는 트랜잭션 블로킹 → 중복 처리 방지.
+- **지연 이벤트 수용**: `LATENCY_BUFFER = 60min`. 현재 시각보다 1시간 이전 hour만 집계 → 이벤트가 몇 분 늦게 도착해도 안전.
+- **back-pressure**: `MAX_HOURS_PER_RUN = 24`. 첫 가동 시 밀린 hour가 많아도 한 번에 24시간만 처리, 트랜잭션 길이 제한.
+- **FILTER 절 단일 쿼리**: PostgreSQL의 `COUNT(*) FILTER (WHERE ...)`로 10종 카운트(view/react 3종/scrap/comment/download + unique_viewers/unique_downloaders)를 1 pass로 산출.
+- **JSONB 조건**: `metadata->>'reactionType'`로 reaction 타입별 분리. Phase 3에서 추가 metadata 필드가 생겨도 쿼리만 추가하면 끝.
+
+### 왜 UPSERT가 아닌 DELETE+INSERT
+
+| 전략 | DELETE+INSERT | UPSERT (ON CONFLICT) |
+|------|---------------|----------------------|
+| 같은 hour에 새 카운트가 0이 된 경우 | 0으로 정확히 갱신 | 이전 값이 남음 → 부정확 |
+| 대상 post가 사라진 경우 | 해당 row 삭제됨 | 이전 row가 남음 → stale |
+| 쿼리 구조 | 명시적 2단계 | 1단계지만 컬럼 UPDATE 절 반복 |
+| 멱등성 | 완전 재계산 → 자명 | 부분 업데이트 → 주의 필요 |
+
+이벤트 로그는 immutable이라 재계산이 항상 정답. DELETE+INSERT가 더 간단하고 안전.
+
+### 설정 오버라이드
+
+```yaml
+# application-local.yaml 등
+analytics:
+  post-hourly:
+    cron: "*/10 * * * * *"  # 로컬 테스트용 10초마다 트리거
+```
+
+기본값: `0 5 * * * *` (매 시 5분).
+
+### 동작 확인 (실측)
+
+시드 이벤트 13건 (2026-04-22 15:00 hour 11건 + 16:00 hour 2건) → 커서를 15:00로 되돌리고 스케줄러 실행:
+
+```
+post_hourly_stats 집계 완료: 18 hour 처리, 커서 2026-04-22T15:00 → 2026-04-23T09:00
+
+ post_id | hour                | view_cnt | uniq_v | LIKE | USEFUL | scrap | dl | uniq_dl
+---------+---------------------+----------+--------+------+--------+-------+----+---------
+ 100     | 2026-04-22 15:00:00 | 3        | 2      | 1    | 1      | 1     | 3  | 2
+ 200     | 2026-04-22 15:00:00 | 1        | 1      | 0    | 0      | 0     | 0  | 0
+ 100     | 2026-04-22 16:00:00 | 1        | 1      | 0    | 0      | 0     | 0  | 0
+```
+
+18개 hour 중 데이터 있는 2개만 실제 row 생성 (빈 hour는 INSERT 대상이 없어 skip). unique 카운트/reaction 타입별 분리/FILTER 조건 모두 정확히 반영.
 
 ## 동작 확인 (E2E)
 
