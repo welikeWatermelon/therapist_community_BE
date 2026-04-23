@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.analytics.scheduler;
 
 import com.therapyCommunity_Vol1.backend.analytics.service.PostHourlyAggregationService;
+import com.therapyCommunity_Vol1.backend.analytics.service.TherapistExpertiseAggregationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 public class AnalyticsScheduler {
 
     private final PostHourlyAggregationService postHourlyAggregationService;
+    private final TherapistExpertiseAggregationService therapistExpertiseAggregationService;
 
     /** 기본: 매 시 정각 5분에 실행 (직전 hour의 이벤트가 대부분 도착했을 시점). */
     @Scheduled(cron = "${analytics.post-hourly.cron:0 5 * * * *}")
@@ -28,6 +30,22 @@ public class AnalyticsScheduler {
             }
         } catch (Exception e) {
             log.error("AnalyticsScheduler: post_hourly_stats 집계 실패", e);
+        }
+    }
+
+    /**
+     * 기본: 매일 00:15 실행.
+     * post_hourly_stats보다 늦게 트리거해 전날 마지막 hour 집계가 끝난 뒤 돌도록.
+     */
+    @Scheduled(cron = "${analytics.therapist-expertise.cron:0 15 0 * * *}")
+    public void runTherapistExpertiseAggregation() {
+        try {
+            int processed = therapistExpertiseAggregationService.aggregatePendingDays();
+            if (processed > 0) {
+                log.info("AnalyticsScheduler: therapist_expertise_daily {} days 집계", processed);
+            }
+        } catch (Exception e) {
+            log.error("AnalyticsScheduler: therapist_expertise_daily 집계 실패", e);
         }
     }
 }
