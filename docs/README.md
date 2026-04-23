@@ -8,6 +8,8 @@
 - [FILE_STRUCTURE.md](./architecture/FILE_STRUCTURE.md): 전체 패키지 트리, 폴더 역할, 네이밍 패턴
 - [DECISIONS.md](./architecture/DECISIONS.md): 도메인별 설계 결정 이유
 - [CONVENTIONS.md](./architecture/CONVENTIONS.md): 패키지 규칙, 소프트 삭제, 응답/예외 형식, 트랜잭션 규칙
+- [NOTIFICATION.md](./architecture/NOTIFICATION.md): SSE 알림 시스템 (AFTER_COMMIT + @Async 파이프라인)
+- [ANALYTICS.md](./architecture/ANALYTICS.md): 사용자 이벤트 수집 레이어 (user_events, Phase 1)
 
 ## api/ — API 관련
 
