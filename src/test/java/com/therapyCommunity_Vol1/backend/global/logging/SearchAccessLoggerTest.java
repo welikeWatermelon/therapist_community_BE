@@ -49,10 +49,6 @@ class SearchAccessLoggerTest {
         CustomUserDetails userDetails = mock(CustomUserDetails.class);
         when(userDetails.getUserId()).thenReturn(1L);
 
-        Object[] args = {userDetails, "감각통합", TherapyArea.SENSORY_INTEGRATION, PostType.COMMUNITY,
-                null, null, 10};
-        when(joinPoint.getArgs()).thenReturn(args);
-
         List<TherapyPostSummaryResponse> items = List.of(
                 mock(TherapyPostSummaryResponse.class),
                 mock(TherapyPostSummaryResponse.class)
@@ -64,7 +60,9 @@ class SearchAccessLoggerTest {
         when(joinPoint.proceed()).thenReturn(responseEntity);
 
         // when
-        Object result = searchAccessLogger.logSearchAccess(joinPoint);
+        Object result = searchAccessLogger.logSearchAccess(
+                joinPoint, userDetails, "감각통합",
+                TherapyArea.SENSORY_INTEGRATION, PostType.COMMUNITY, null, null);
 
         // then
         assertThat(result).isEqualTo(responseEntity);
@@ -89,12 +87,11 @@ class SearchAccessLoggerTest {
     @Test
     void 예외_발생_시_error_필드가_포함된_로그가_기록된다() throws Throwable {
         // given
-        Object[] args = {null, "테스트", null, null, null, null, 10};
-        when(joinPoint.getArgs()).thenReturn(args);
         when(joinPoint.proceed()).thenThrow(new RuntimeException("DB connection failed"));
 
         // when & then
-        assertThatThrownBy(() -> searchAccessLogger.logSearchAccess(joinPoint))
+        assertThatThrownBy(() -> searchAccessLogger.logSearchAccess(
+                joinPoint, null, "테스트", null, null, null, null))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("DB connection failed");
 
@@ -113,9 +110,6 @@ class SearchAccessLoggerTest {
     @Test
     void null_파라미터_처리_시_정상_로그가_기록된다() throws Throwable {
         // given: therapyArea, postType, userDetails 모두 null
-        Object[] args = {null, "검색어", null, null, null, null, 10};
-        when(joinPoint.getArgs()).thenReturn(args);
-
         SearchCursorResponse searchResponse = new SearchCursorResponse(
                 List.of(), new SearchCursorResponse.SearchCursorMeta(false, null, null));
         ApiResponse<SearchCursorResponse> apiResponse = ApiResponse.success(searchResponse);
@@ -123,7 +117,8 @@ class SearchAccessLoggerTest {
         when(joinPoint.proceed()).thenReturn(responseEntity);
 
         // when
-        searchAccessLogger.logSearchAccess(joinPoint);
+        searchAccessLogger.logSearchAccess(
+                joinPoint, null, "검색어", null, null, null, null);
 
         // then
         assertThat(listAppender.list).hasSize(1);
@@ -145,10 +140,6 @@ class SearchAccessLoggerTest {
         CustomUserDetails userDetails = mock(CustomUserDetails.class);
         when(userDetails.getUserId()).thenReturn(99L);
 
-        Object[] args = {userDetails, "물리치료", TherapyArea.PHYSICAL, null,
-                new BigDecimal("0.45000000"), 42L, 20};
-        when(joinPoint.getArgs()).thenReturn(args);
-
         List<TherapyPostSummaryResponse> items = List.of(
                 mock(TherapyPostSummaryResponse.class),
                 mock(TherapyPostSummaryResponse.class),
@@ -163,7 +154,9 @@ class SearchAccessLoggerTest {
         when(joinPoint.proceed()).thenReturn(responseEntity);
 
         // when
-        searchAccessLogger.logSearchAccess(joinPoint);
+        searchAccessLogger.logSearchAccess(
+                joinPoint, userDetails, "물리치료",
+                TherapyArea.PHYSICAL, null, new BigDecimal("0.45000000"), 42L);
 
         // then
         String logMessage = listAppender.list.get(0).getFormattedMessage();
