@@ -35,26 +35,26 @@ public class SearchAccessLogger {
         this.objectMapper = objectMapper;
     }
 
-    @Around("execution(* com.therapyCommunity_Vol1.backend.post.controller.PostController.searchPosts(..))")
-    public Object logSearchAccess(ProceedingJoinPoint joinPoint) throws Throwable {
-        Object[] args = joinPoint.getArgs();
-
-        CustomUserDetails userDetails = (CustomUserDetails) args[0];
-        String keyword = (String) args[1];
-        TherapyArea therapyArea = (TherapyArea) args[2];
-        PostType postType = (PostType) args[3];
-        BigDecimal lastScore = (BigDecimal) args[4];
-        Long lastId = (Long) args[5];
+    @Around("execution(* com.therapyCommunity_Vol1.backend.post.controller.PostController.searchPosts(..)) && args(userDetails, keyword, therapyArea, postType, lastScore, lastId, ..)")
+    public Object logSearchAccess(
+            ProceedingJoinPoint joinPoint,
+            CustomUserDetails userDetails,
+            String keyword,
+            TherapyArea therapyArea,
+            PostType postType,
+            BigDecimal lastScore,
+            Long lastId
+    ) throws Throwable {
 
         String requestId = UUID.randomUUID().toString();
-        StopWatch stopWatch = new StopWatch();
+        StopWatch stopWatch = new StopWatch(); // 시간 측정
         stopWatch.start();
 
         try {
-            Object result = joinPoint.proceed();
+            Object result = joinPoint.proceed(); // 원본 메서드 실행
             stopWatch.stop();
 
-            int resultCount = extractResultCount(result);
+            int resultCount = extractResultCount(result); // 결과 개수 추출
 
             SearchAccessLog accessLog = SearchAccessLog.builder()
                     .timestamp(ISO_FORMATTER.format(Instant.now()))
