@@ -119,6 +119,52 @@ class PostSearchValidationTest {
     }
 
     @Test
+    void 커서_lastScore만_전달_400() throws Exception {
+        mockMvc.perform(get("/api/v1/posts/search")
+                        .param("keyword", "감각통합")
+                        .param("lastScore", "0.5"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 커서_lastId만_전달_400() throws Exception {
+        mockMvc.perform(get("/api/v1/posts/search")
+                        .param("keyword", "감각통합")
+                        .param("lastId", "10"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 키워드_100자_경계값_200() throws Exception {
+        String keyword100 = "가".repeat(100);
+        SearchCursorResponse response = new SearchCursorResponse(
+                List.of(), new SearchCursorResponse.SearchCursorMeta(false, null, null));
+        given(postService.searchPostsByRelevance(any(), any(), any(), any(int.class), any()))
+                .willReturn(response);
+        given(scrapService.getScrappedPostIds(any(), anyList()))
+                .willReturn(Set.of());
+
+        mockMvc.perform(get("/api/v1/posts/search")
+                        .param("keyword", keyword100))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void size_1_경계값_200() throws Exception {
+        SearchCursorResponse response = new SearchCursorResponse(
+                List.of(), new SearchCursorResponse.SearchCursorMeta(false, null, null));
+        given(postService.searchPostsByRelevance(any(), any(), any(), any(int.class), any()))
+                .willReturn(response);
+        given(scrapService.getScrappedPostIds(any(), anyList()))
+                .willReturn(Set.of());
+
+        mockMvc.perform(get("/api/v1/posts/search")
+                        .param("keyword", "감각통합")
+                        .param("size", "1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void 정상_케이스_200() throws Exception {
         SearchCursorResponse response = new SearchCursorResponse(
                 List.of(), new SearchCursorResponse.SearchCursorMeta(false, null, null));
