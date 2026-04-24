@@ -137,7 +137,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     //   `ILIKE` 양쪽을 OR 로 묶는다. 둘 다 idx_therapy_posts_search_text_trgm GIN 인덱스를
     //   사용해 BitmapOr 로 후보를 좁힌다. 임계값은 호출자가
     //   SET LOCAL pg_trgm.word_similarity_threshold 로 미리 지정한다 (현재 0.1).
-    // - <% vs %: search_text가 title+content+area 결합이라 길므로, 짧은 keyword와의
+    // - <% vs %: search_text가 content(100자)+therapyArea 결합이라 keyword 대비 길므로, 짧은 keyword와의
     //   전체 문자열 similarity(%)는 극도로 낮아짐. word_similarity(<%)는 keyword가
     //   search_text 내 부분 단어와 유사한지를 평가하므로 더 적합함.
     // - 점수 컬럼: word_similarity() 결과(real/float4) 를 numeric(10,8) 로 캐스트해 노출한다.
@@ -172,22 +172,24 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     );
 
     // (b) visibility 필터 없음 — 다음 페이지 (커서 조건 추가)
+    // word_similarity()를 서브쿼리에서 1회만 계산하고, 외부에서 커서 필터링
     @Query(
             value = """
-                    SELECT p.id, CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) AS score
-                    FROM therapy_posts p
-                    WHERE p.deleted_at IS NULL
-                      AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
-                      AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
-                      AND (
-                            :keyword <% p.search_text
-                         OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
-                      )
-                      AND (
-                            CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) < :lastScore
-                         OR (CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) = :lastScore AND p.id < :lastId)
-                      )
-                    ORDER BY score DESC, p.id DESC
+                    SELECT sub.id, sub.score
+                    FROM (
+                        SELECT p.id, CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) AS score
+                        FROM therapy_posts p
+                        WHERE p.deleted_at IS NULL
+                          AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+                          AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+                          AND (
+                                :keyword <% p.search_text
+                             OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
+                          )
+                    ) sub
+                    WHERE sub.score < :lastScore
+                       OR (sub.score = :lastScore AND sub.id < :lastId)
+                    ORDER BY sub.score DESC, sub.id DESC
                     LIMIT :limit
                     """,
             nativeQuery = true
@@ -230,23 +232,25 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     );
 
     // (d) visibility 필터 있음 — 다음 페이지
+    // word_similarity()를 서브쿼리에서 1회만 계산하고, 외부에서 커서 필터링
     @Query(
             value = """
-                    SELECT p.id, CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) AS score
-                    FROM therapy_posts p
-                    WHERE p.deleted_at IS NULL
-                      AND p.visibility = CAST(:visibility AS text)
-                      AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
-                      AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
-                      AND (
-                            :keyword <% p.search_text
-                         OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
-                      )
-                      AND (
-                            CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) < :lastScore
-                         OR (CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) = :lastScore AND p.id < :lastId)
-                      )
-                    ORDER BY score DESC, p.id DESC
+                    SELECT sub.id, sub.score
+                    FROM (
+                        SELECT p.id, CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) AS score
+                        FROM therapy_posts p
+                        WHERE p.deleted_at IS NULL
+                          AND p.visibility = CAST(:visibility AS text)
+                          AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+                          AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+                          AND (
+                                :keyword <% p.search_text
+                             OR p.search_text ILIKE '%' || :escapedKeyword || '%' ESCAPE '\\'
+                          )
+                    ) sub
+                    WHERE sub.score < :lastScore
+                       OR (sub.score = :lastScore AND sub.id < :lastId)
+                    ORDER BY sub.score DESC, sub.id DESC
                     LIMIT :limit
                     """,
             nativeQuery = true
