@@ -50,6 +50,12 @@ src/main/resources/application-local.yml
 src/main/resources/application-local.yaml
 src/main/resources/data-local.sql
 
+# Runtime logs
+logs/
+
+# 로컬 진단 문서
+docs/유사도기반검색진단.md
+
 #CLAUDE
 CLAUDE.md
 .claude/
