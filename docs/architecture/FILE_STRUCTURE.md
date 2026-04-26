@@ -95,7 +95,7 @@ src/main/java/com/therapyCommunity_Vol1/backend/
 │   ├── domain/
 │   │   ├── TherapyPostReaction.java                 # Entity — unique(post, user), reactionType
 │   │   ├── TherapyPostCommentReaction.java          # Entity — unique(comment, user), reactionType
-│   │   ├── PostReactionType.java                    # Enum: EMPATHY, APPRECIATE, HELPFUL
+│   │   ├── PostReactionType.java                    # Enum: LIKE, CURIOUS, USEFUL
 │   │   └── CommentReactionType.java                 # Enum: LIKE, DISLIKE
 │   ├── dto/
 │   │   ├── PostReactionStatusResponse.java

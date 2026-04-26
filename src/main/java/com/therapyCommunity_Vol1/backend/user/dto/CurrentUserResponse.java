@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.user.dto;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -18,13 +19,17 @@ public record CurrentUserResponse(
         TherapistVerificationSummary therapistVerification
 ) {
 
-    public static CurrentUserResponse from(User user, Optional<TherapistVerificationStatusDto> verification) {
+    public static CurrentUserResponse from(
+            User user,
+            Optional<TherapistVerificationStatusDto> verification,
+            ProfileImageUrlAssembler profileImageUrlAssembler
+    ) {
         String accessLevel = communityAccessLevel(user);
         return new CurrentUserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getProfileImageUrl(),
+                profileImageUrlAssembler.toFullUrl(user.getProfileImageUrl()),
                 user.getRole().getCode(),
                 "FULL".equals(accessLevel),
                 accessLevel,

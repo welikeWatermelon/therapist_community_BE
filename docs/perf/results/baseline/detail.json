@@ -1,0 +1,148 @@
+{
+    "metrics": {
+        "data_received": {
+            "count": 6807001,
+            "rate": 112364.28923101933
+        },
+        "vus_max": {
+            "value": 40,
+            "min": 40,
+            "max": 40
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 1.146,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.005402328070644904,
+            "min": 0
+        },
+        "http_req_duration": {
+            "avg": 69.65968102756251,
+            "min": 10.443,
+            "med": 30.293,
+            "max": 540.381,
+            "p(90)": 196.1565,
+            "p(95)": 279.97369999999984,
+            "thresholds": {
+                "p(99)<800": false,
+                "p(95)<400": false
+            }
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 211.02,
+            "p(95)": 287.613,
+            "avg": 73.67939993691873,
+            "min": 16.197,
+            "med": 31.436,
+            "max": 540.381
+        },
+        "http_reqs": {
+            "count": 7474,
+            "rate": 123.37455183459477
+        },
+        "http_req_failed": {
+            "passes": 1133,
+            "fails": 6341,
+            "thresholds": {
+                "rate<0.01": true
+            },
+            "value": 0.1515921862456516
+        },
+        "iterations": {
+            "count": 7474,
+            "rate": 123.37455183459477
+        },
+        "vus": {
+            "min": 40,
+            "max": 40,
+            "value": 40
+        },
+        "http_req_sending": {
+            "p(90)": 0.02,
+            "p(95)": 0.025,
+            "avg": 0.01303184372491335,
+            "min": 0.002,
+            "med": 0.011,
+            "max": 0.301
+        },
+        "http_req_receiving": {
+            "med": 0.136,
+            "max": 3.12,
+            "p(90)": 0.276,
+            "p(95)": 0.344,
+            "avg": 0.16433636606903995,
+            "min": 0.014
+        },
+        "iteration_duration": {
+            "avg": 322.64324254776545,
+            "min": 17.983958,
+            "med": 320.9351045,
+            "max": 970.100292,
+            "p(90)": 521.9732625,
+            "p(95)": 598.0783874999997
+        },
+        "http_req_blocked": {
+            "med": 0.003,
+            "max": 2.402,
+            "p(90)": 0.006,
+            "p(95)": 0.007,
+            "avg": 0.01370417447150087,
+            "min": 0
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "http_req_waiting": {
+            "max": 540.273,
+            "p(90)": 195.93140000000002,
+            "p(95)": 279.70329999999984,
+            "avg": 69.48231281776827,
+            "min": 10.317,
+            "med": 30.137500000000003
+        },
+        "checks": {
+            "passes": 22422,
+            "fails": 0,
+            "value": 1
+        },
+        "data_sent": {
+            "count": 1934772,
+            "rate": 31937.600803066976
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "status 200 or 403": {
+                    "name": "status 200 or 403",
+                    "path": "::status 200 or 403",
+                    "id": "d96a10ff96b4a0a1cfad77ef04255fe7",
+                    "passes": 7474,
+                    "fails": 0
+                },
+                "has commentCount when 200": {
+                    "passes": 7474,
+                    "fails": 0,
+                    "name": "has commentCount when 200",
+                    "path": "::has commentCount when 200",
+                    "id": "7ceb216590dfa03c8ad399c2b3b17c8c"
+                },
+                "has reactionCounts map when 200": {
+                    "path": "::has reactionCounts map when 200",
+                    "id": "4b67b876312f41ff6ba8f2ba3b4ca609",
+                    "passes": 7474,
+                    "fails": 0,
+                    "name": "has reactionCounts map when 200"
+                }
+            }
+    }
+}

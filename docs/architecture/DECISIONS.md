@@ -31,7 +31,7 @@
 **Decision**: Reactions (`reaction/` package) are extracted into their own domain rather than being nested under `post/` or `comment/`.
 
 **Why**:
-- **Two distinct targets**: Reactions apply to both posts and comments, with different reaction types for each (post: EMPATHY/APPRECIATE/HELPFUL; comment: LIKE/DISLIKE). Nesting under either domain would create an awkward fit.
+- **Two distinct targets**: Reactions apply to both posts and comments, with different reaction types for each (post: LIKE/CURIOUS/USEFUL; comment: LIKE/DISLIKE). Nesting under either domain would create an awkward fit.
 - **Independent CRUD lifecycle**: Reaction toggle (add/change/remove) is its own operation, not part of post or comment creation/update.
 - **Separate entities**: `TherapyPostReaction` and `TherapyPostCommentReaction` each have unique constraints `(target_id, user_id)` and their own repository query patterns (count by type, find user's reaction).
 - **Clean controller mapping**: `PostReactionController` handles `/api/v1/posts/{id}/reaction`, `CommentReactionController` handles `/api/v1/comments/{id}/reaction` — each with GET (status) and PUT (toggle).

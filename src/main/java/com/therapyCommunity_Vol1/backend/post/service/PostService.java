@@ -1,8 +1,11 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -11,6 +14,9 @@ import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -24,8 +30,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -38,10 +49,18 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private final TherapyPostReactionRepository therapyPostReactionRepository;
+    private final TherapyPostCommentRepository therapyPostCommentRepository;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final PostViewCountService postViewCountService;
+
+    @Transactional
+    public void recalculatePopularityScore(Long postId) {
+        therapyPostRepository.recalculatePopularityScore(postId);
+    }
 
     // RELEVANCE 검색에서 SET LOCAL pg_trgm.similarity_threshold 를 실행하기 위한 EntityManager.
     // @RequiredArgsConstructor 가 생성자에 포함하지 않도록 final 을 붙이지 않는다.
@@ -79,10 +98,7 @@ public class PostService {
     ) {
         Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
 
-        List<TherapyPostSummaryResponse> posts = result.getContent()
-                .stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
 
         return PagedResponse.from(result, posts);
     }
@@ -246,9 +262,7 @@ public class PostService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
 
-        List<TherapyPostSummaryResponse> posts = result.getContent().stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
 
         return PagedResponse.from(result, posts);
     }
@@ -256,41 +270,79 @@ public class PostService {
     private static final int FEED_MAX_SIZE = 50;
 
     /**
-     * 커서 기반 피드 조회 (LATEST 고정, 무한스크롤용)
+     * 커서 기반 피드 조회 (무한스크롤용)
      *
-     * @param size   요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
-     * @param cursor 이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
-     * @param role   USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     * @param size     요청 페이지 크기 (1~50, 컨트롤러 기본값 20)
+     * @param cursor   이전 페이지 마지막 항목의 Base64 커서. null이면 첫 페이지
+     * @param role     USER는 PUBLIC만, THERAPIST/ADMIN은 전체 조회
+     * @param sortType LATEST(최신순) 또는 POPULAR(인기순)
      */
-    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(int size, String cursor, UserRole role) {
-        // size 범위 보정: 최소 1, 최대 50
+    public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(
+            int size, String cursor, UserRole role, FeedSortType sortType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
-
-        // 커서 디코딩: null이면 첫 페이지, 값이 있으면 해당 위치부터
-        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
-
-        // role에 따라 PUBLIC_ONLY / 전체 쿼리 분기
         boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
 
-        // size+1개 조회: 초과분이 있으면 다음 페이지 존재
-        List<TherapyPost> posts = publicOnly
-                ? therapyPostRepository.findFeedLatestByVisibility(
-                        Visibility.PUBLIC,
-                        postCursor != null ? postCursor.createdAt() : null,
-                        postCursor != null ? postCursor.id() : null,
-                        PageRequest.of(0, size + 1))
-                : therapyPostRepository.findFeedLatest(
-                        postCursor != null ? postCursor.createdAt() : null,
-                        postCursor != null ? postCursor.id() : null,
-                        PageRequest.of(0, size + 1));
+        return switch (sortType) {
+            case LATEST -> fetchLatestFeed(size, cursor, publicOnly);
+            case POPULAR -> fetchPopularFeed(size, cursor, publicOnly);
+        };
+    }
 
-        List<TherapyPostSummaryResponse> dtos = posts.stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+    private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
+            int size, String cursor, boolean publicOnly) {
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
 
-        // CursorPagedResponse.of()가 size+1 → trim + hasNext/nextCursor 계산
+        List<TherapyPost> posts;
+        if (postCursor == null) {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedLatestByVisibility(Visibility.PUBLIC, limit)
+                    : therapyPostRepository.findFeedLatest(limit);
+        } else {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedLatestByVisibility(
+                            Visibility.PUBLIC, postCursor.createdAt(), postCursor.id(), limit)
+                    : therapyPostRepository.findFeedLatest(
+                            postCursor.createdAt(), postCursor.id(), limit);
+        }
+
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts);
+
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
+    }
+
+    private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
+            int size, String cursor, boolean publicOnly) {
+        PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
+
+        List<TherapyPost> posts;
+        if (popCursor == null) {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedPopularByVisibility(Visibility.PUBLIC, limit)
+                    : therapyPostRepository.findFeedPopular(limit);
+        } else {
+            posts = publicOnly
+                    ? therapyPostRepository.findFeedPopularByVisibility(
+                            Visibility.PUBLIC, popCursor.score(), popCursor.id(), limit)
+                    : therapyPostRepository.findFeedPopular(
+                            popCursor.score(), popCursor.id(), limit);
+        }
+
+        boolean hasNext = posts.size() > size;
+        List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
+
+        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed);
+
+        String nextCursor = hasNext
+                ? new PopularCursor(
+                        trimmed.get(trimmed.size() - 1).getPopularityScore(),
+                        trimmed.get(trimmed.size() - 1).getId()
+                ).encode()
+                : null;
+
+        return new CursorPagedResponse<>(dtos, nextCursor, hasNext, size);
     }
 
     private Sort toSort(PostSortType sortType) {
@@ -318,7 +370,9 @@ public class PostService {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
 
-        post.increaseViewCount();
+        if (postViewCountService.isFirstView(postId, currentUserId)) {
+            post.increaseViewCount();
+        }
 
         List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
                 .findByPostIdOrderByCreatedAtAsc(postId)
@@ -326,7 +380,23 @@ public class PostService {
                 .map(PostAttachmentResponse::from)
                 .toList();
 
-        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
+        long commentCount = therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(postId);
+        Map<PostReactionType, Long> reactionCounts = buildReactionCountMap(postId);
+        PostReactionType myReactionType = therapyPostReactionRepository
+                .findByPostIdAndUserId(postId, currentUserId)
+                .map(TherapyPostReaction::getReactionType)
+                .orElse(null);
+
+        return TherapyPostDetailResponse.from(
+                post,
+                attachments,
+                commentCount,
+                reactionCounts,
+                myReactionType,
+                currentUserId,
+                currentUserRole,
+                isScrapped
+        );
     }
 
     @Transactional
@@ -365,4 +435,45 @@ public class PostService {
         post.softDelete();
     }
 
+    // ── Summary DTO 변환 헬퍼 ──────────────────────────────
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts) {
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        List<Long> postIds = posts.stream().map(TherapyPost::getId).toList();
+
+        Map<Long, Long> likeCounts = toCountMap(
+                therapyPostReactionRepository.countByPostIdInAndReactionType(postIds, PostReactionType.LIKE)
+        );
+        Map<Long, Long> commentCounts = toCountMap(
+                therapyPostCommentRepository.countActiveByPostIdIn(postIds)
+        );
+
+        return posts.stream()
+                .map(post -> TherapyPostSummaryResponse.from(
+                        post,
+                        likeCounts.getOrDefault(post.getId(), 0L),
+                        commentCounts.getOrDefault(post.getId(), 0L),
+                        false
+                ))
+                .toList();
+    }
+
+    private Map<Long, Long> toCountMap(List<Object[]> rows) {
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    private Map<PostReactionType, Long> buildReactionCountMap(Long postId) {
+        Map<PostReactionType, Long> counts = new EnumMap<>(PostReactionType.class);
+        Arrays.stream(PostReactionType.values()).forEach(t -> counts.put(t, 0L));
+        therapyPostReactionRepository.countGroupedByPostId(postId).forEach(row -> {
+            counts.put((PostReactionType) row[0], (Long) row[1]);
+        });
+        return counts;
+    }
 }

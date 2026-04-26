@@ -26,4 +26,17 @@ public interface TherapyPostReactionRepository extends JpaRepository<TherapyPost
     @Query("SELECT r.reactionType, COUNT(r) FROM TherapyPostReaction r " +
             "WHERE r.post.id = :postId GROUP BY r.reactionType")
     List<Object[]> countGroupedByPostId(@Param("postId") Long postId);
+
+    /**
+     * 여러 게시글에 대한 특정 반응 타입 count를 1회 GROUP BY 쿼리로 조회.
+     * 반환: List<Object[]> — 각 원소는 [Long(postId), Long(count)]
+     * 결과에 없는 postId는 count 0으로 간주 (서비스에서 보정).
+     */
+    @Query("SELECT r.post.id, COUNT(r) FROM TherapyPostReaction r " +
+            "WHERE r.post.id IN :postIds AND r.reactionType = :reactionType " +
+            "GROUP BY r.post.id")
+    List<Object[]> countByPostIdInAndReactionType(
+            @Param("postIds") List<Long> postIds,
+            @Param("reactionType") PostReactionType reactionType
+    );
 }

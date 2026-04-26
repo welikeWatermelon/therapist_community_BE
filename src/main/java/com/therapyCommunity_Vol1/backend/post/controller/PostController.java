@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
+import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
@@ -53,16 +54,17 @@ public class PostController {
                 .body(ApiResponse.success(response));
     }
 
-    @Operation(summary = "게시글 피드 (무한스크롤)", description = "LATEST 고정, 커서 기반 페이지네이션. size + cursor만 사용")
+    @Operation(summary = "게시글 피드 (무한스크롤)", description = "커서 기반 페이지네이션. sort: LATEST(최신순), POPULAR(인기순)")
     @GetMapping("/feed")
     public ResponseEntity<ApiResponse<CursorPagedResponse<TherapyPostSummaryResponse>>> getPostsFeed(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String cursor
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "LATEST") FeedSortType sort
     ) {
         UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
         CursorPagedResponse<TherapyPostSummaryResponse> response =
-                postService.getPostsFeed(size, cursor, userRole);
+                postService.getPostsFeed(size, cursor, userRole, sort);
 
         Long userId = userDetails != null ? userDetails.getUserId() : null;
         List<Long> postIds = response.getItems().stream()

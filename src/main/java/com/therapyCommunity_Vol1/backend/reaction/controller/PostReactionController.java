@@ -29,6 +29,7 @@ public class PostReactionController {
     ) {
         PostReactionStatusResponse response = postReactionService.getReactionStatus(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId
         );
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -43,6 +44,7 @@ public class PostReactionController {
     ) {
         PostReactionStatusResponse response = postReactionService.toggleReaction(
                 userDetails.getUserId(),
+                userDetails.getUserRole(),
                 postId,
                 request
         );

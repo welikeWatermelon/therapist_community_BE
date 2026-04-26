@@ -7,6 +7,7 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
+import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
@@ -35,6 +36,7 @@ import java.util.Set;
 public class ScrapService {
 
     private final TherapyPostScrapRepository scrapRepository;
+    private final PostService postService;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -60,6 +62,7 @@ public class ScrapService {
         if (!alreadyExists) {
             TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
             scrapRepository.save(scrap);
+            postService.recalculatePopularityScore(postId);
 
             eventPublisher.publishEvent(NotificationEvent.builder()
                     .senderId(currentUserId)
@@ -79,7 +82,10 @@ public class ScrapService {
         visibilityPolicy.checkAccess(post, currentUserRole);
 
         scrapRepository.findByPostIdAndUserId(postId, currentUserId)
-                .ifPresent(scrapRepository::delete);
+                .ifPresent(scrap -> {
+                    scrapRepository.delete(scrap);
+                    postService.recalculatePopularityScore(postId);
+                });
         return new ScrapStatusResponse(postId, false);
     }
 

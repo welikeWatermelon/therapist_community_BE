@@ -91,21 +91,21 @@ ON CONFLICT (id) DO NOTHING;
 -- === 게시글 반응 ===
 INSERT INTO therapy_post_reactions (id, post_id, user_id, reaction_type, created_at, updated_at)
 VALUES
-    (9001, 9001, 9003, 'EMPATHY',     NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days'),
-    (9002, 9001, 9004, 'HELPFUL',     NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
-    (9003, 9003, 9003, 'HELPFUL',     NOW() - INTERVAL '26 days', NOW() - INTERVAL '26 days'),
-    (9004, 9005, 9003, 'APPRECIATE',  NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
-    (9005, 9005, 9004, 'EMPATHY',     NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
-    (9006, 9010, 9003, 'HELPFUL',     NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
-    (9007, 9010, 9004, 'APPRECIATE',  NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
-    (9008, 9010, 9001, 'EMPATHY',     NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
-    (9009, 9015, 9003, 'EMPATHY',     NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
-    (9010, 9015, 9004, 'HELPFUL',     NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
-    (9011, 9022, 9002, 'APPRECIATE',  NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
-    (9012, 9022, 9004, 'HELPFUL',     NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
-    (9013, 9029, 9002, 'EMPATHY',     NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
-    (9014, 9029, 9003, 'EMPATHY',     NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours'),
-    (9015, 9030, 9002, 'EMPATHY',     NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours')
+    (9001, 9001, 9003, 'LIKE',     NOW() - INTERVAL '28 days', NOW() - INTERVAL '28 days'),
+    (9002, 9001, 9004, 'USEFUL',     NOW() - INTERVAL '27 days', NOW() - INTERVAL '27 days'),
+    (9003, 9003, 9003, 'USEFUL',     NOW() - INTERVAL '26 days', NOW() - INTERVAL '26 days'),
+    (9004, 9005, 9003, 'CURIOUS',  NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9005, 9005, 9004, 'LIKE',     NOW() - INTERVAL '24 days', NOW() - INTERVAL '24 days'),
+    (9006, 9010, 9003, 'USEFUL',     NOW() - INTERVAL '19 days', NOW() - INTERVAL '19 days'),
+    (9007, 9010, 9004, 'CURIOUS',  NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9008, 9010, 9001, 'LIKE',     NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days'),
+    (9009, 9015, 9003, 'LIKE',     NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
+    (9010, 9015, 9004, 'USEFUL',     NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days'),
+    (9011, 9022, 9002, 'CURIOUS',  NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
+    (9012, 9022, 9004, 'USEFUL',     NOW() - INTERVAL '7 days',  NOW() - INTERVAL '7 days'),
+    (9013, 9029, 9002, 'LIKE',     NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours'),
+    (9014, 9029, 9003, 'LIKE',     NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours'),
+    (9015, 9030, 9002, 'LIKE',     NOW() - INTERVAL '6 hours',  NOW() - INTERVAL '6 hours')
 ON CONFLICT (id) DO NOTHING;
 
 -- === 댓글 반응 ===
