@@ -55,6 +55,7 @@ logs/
 
 # 로컬 진단 문서
 docs/유사도기반검색진단.md
+docs/vector/
 
 #CLAUDE
 CLAUDE.md
