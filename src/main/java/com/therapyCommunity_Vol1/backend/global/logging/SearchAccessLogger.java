@@ -51,7 +51,7 @@ public class SearchAccessLogger {
         stopWatch.start();
 
         try {
-            Object result = joinPoint.proceed(); // 원본 메서드 실행
+            Object result = joinPoint.proceed(); // 원본 메서드 실행 (searchPost()실행)
             stopWatch.stop();
 
             int resultCount = extractResultCount(result); // 결과 개수 추출
