@@ -9,6 +9,11 @@ spring:
       ddl-auto: none
   flyway:
     enabled: false
+  ai:
+    openai:
+      api-key: test-key
+  autoconfigure:
+    exclude: org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
 
 jwt:
   access-secret: test-access-secret-key-for-jwt-1234567890
