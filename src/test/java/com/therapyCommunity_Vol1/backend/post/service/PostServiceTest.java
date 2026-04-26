@@ -42,6 +42,8 @@ class PostServiceTest {
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
+    private com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy searchStrategy;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
     private PostService postService;
 
     @BeforeEach
@@ -55,6 +57,8 @@ class PostServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
+        searchStrategy = mock(com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy.class);
+        eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
@@ -78,7 +82,9 @@ class PostServiceTest {
                 userRepository,
                 resourceAccessValidator,
                 visibilityPolicy,
-                postViewCountService
+                postViewCountService,
+                searchStrategy,
+                eventPublisher
         );
     }
 
