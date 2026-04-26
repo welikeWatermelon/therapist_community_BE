@@ -22,6 +22,7 @@ configurations {
 
 repositories {
 	mavenCentral()
+	maven { url 'https://repo.spring.io/milestone' }
 }
 
 dependencies {
@@ -32,6 +33,14 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Spring AI — OpenAI 임베딩 (pgvector 검색 전략용)
+	implementation platform('org.springframework.ai:spring-ai-bom:1.0.0')
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
+	// Retry — 임베딩 API 호출 재시도
+	implementation 'org.springframework.retry:spring-retry'
+	implementation 'org.springframework:spring-aspects'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
