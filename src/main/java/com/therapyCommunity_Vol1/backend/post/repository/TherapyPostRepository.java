@@ -358,4 +358,143 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids")
     List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids);
+
+    // ── pgvector 임베딩 ──────────────────────────────
+
+    @Modifying
+    @Query(value = "UPDATE therapy_posts SET content_embedding = CAST(:embedding AS vector), embedding_failed_at = NULL WHERE id = :postId",
+            nativeQuery = true)
+    void updateContentEmbedding(@Param("postId") Long postId, @Param("embedding") String embedding);
+
+    @Modifying
+    @Query(value = "UPDATE therapy_posts SET embedding_failed_at = NOW() WHERE id = :postId",
+            nativeQuery = true)
+    void markEmbeddingFailed(@Param("postId") Long postId);
+
+    @Query(value = "SELECT p.id, p.search_text FROM therapy_posts p " +
+            "WHERE p.content_embedding IS NULL AND p.deleted_at IS NULL " +
+            "AND p.embedding_failed_at IS NULL " +
+            "ORDER BY p.id LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findIdsWithoutEmbedding(@Param("limit") int limit);
+
+    // 임베딩 상태별 통계 (admin 대시보드용)
+    @Query(value = """
+            SELECT
+              COUNT(*) FILTER (WHERE content_embedding IS NOT NULL) AS done,
+              COUNT(*) FILTER (WHERE content_embedding IS NULL AND embedding_failed_at IS NOT NULL) AS failed,
+              COUNT(*) FILTER (WHERE content_embedding IS NULL AND embedding_failed_at IS NULL) AS pending,
+              COUNT(*) AS total
+            FROM therapy_posts WHERE deleted_at IS NULL
+            """, nativeQuery = true)
+    Object[] countEmbeddingStats();
+
+    // ── pgvector 검색 (코사인 유사도) ──────────────────────────────
+
+    // HNSW 인덱스 활용을 위해 ORDER BY 에 raw <=> 연산자를 직접 사용한다.
+    // distance ASC = score DESC 이므로 결과 순서는 동일하다.
+    // pgvector 의 iterative index scan 이 WHERE 조건을 평가하면서 인덱스 순서대로 스캔한다.
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchFirstPage(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("minScore") BigDecimal minScore,
+            @Param("limit") int limit
+    );
+
+    // NextPage: 서브쿼리 제거 + ORDER BY raw <=> 로 HNSW 인덱스 활용.
+    // 커서 비교는 numeric(10,8) CAST 를 유지해 정밀도 손실 없이 동등 비교한다.
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+              AND (
+                CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) < :lastScore
+                OR (
+                  CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) = :lastScore
+                  AND p.id < :lastId
+                )
+              )
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchNextPage(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("minScore") BigDecimal minScore,
+            @Param("lastScore") BigDecimal lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility = CAST(:visibility AS text)
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchFirstPageAndVisibility(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("minScore") BigDecimal minScore,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility = CAST(:visibility AS text)
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+              AND (
+                CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) < :lastScore
+                OR (
+                  CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) = :lastScore
+                  AND p.id < :lastId
+                )
+              )
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchNextPageAndVisibility(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("minScore") BigDecimal minScore,
+            @Param("lastScore") BigDecimal lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
 }
