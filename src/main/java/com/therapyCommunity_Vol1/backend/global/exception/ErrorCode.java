@@ -45,7 +45,9 @@ public enum ErrorCode {
     ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429", "로그인 시도가 너무 많습니다. 30분 후 다시 시도해주세요."),
 
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_404", "알림을 찾을 수 없습니다."),
-    SSE_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE_500", "SSE 연결 중 오류가 발생했습니다.");
+    SSE_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE_500", "SSE 연결 중 오류가 발생했습니다."),
+
+    INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "POST_400_SORT", "이 엔드포인트에서 지원하지 않는 정렬 방식입니다.");
 
     private final HttpStatus status;
     private final String code;

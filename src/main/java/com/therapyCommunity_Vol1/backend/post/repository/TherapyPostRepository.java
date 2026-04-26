@@ -360,7 +360,8 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     );
 
     // ID 리스트로 author 까지 fetch (RELEVANCE 두 단계 fetch 의 두 번째 단계)
+    // 1단계 native query 와 스냅샷이 다를 수 있으므로(READ COMMITTED) deletedAt·visibility 재검증
     @EntityGraph(attributePaths = "author")
-    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids")
-    List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids);
+    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL AND (:visibility IS NULL OR p.visibility = :visibility)")
+    List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids, @Param("visibility") Visibility visibility);
 }

@@ -96,6 +96,9 @@ public class PostService {
             PostSearchCondition condition,
             UserRole currentUserRole
     ) {
+        if (sortType == PostSortType.RELEVANCE) {
+            throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
+        }
         Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
 
         List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
@@ -116,12 +119,13 @@ public class PostService {
                     ? therapyPostRepository.findByDeletedAtIsNullAndVisibility(Visibility.PUBLIC, pageable)
                     : therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
+            String lowerKeyword = condition.getEscapedKeyword().trim().toLowerCase();
             return publicOnly
                     ? therapyPostRepository.searchByKeywordAndVisibility(
-                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            lowerKeyword, condition.getTherapyArea(),
                             condition.getPostType(), Visibility.PUBLIC, pageable)
                     : therapyPostRepository.searchByKeyword(
-                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            lowerKeyword, condition.getTherapyArea(),
                             condition.getPostType(), pageable);
         } else {
             return publicOnly
@@ -166,8 +170,9 @@ public class PostService {
                 .executeUpdate();
 
         // word_similarity/<% 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
-        String rawKeyword = condition.getKeyword().trim();
-        String escapedKeyword = condition.getEscapedKeyword().trim();
+        // searchText가 소문자로 저장되므로 keyword도 소문자 변환
+        String rawKeyword = condition.getKeyword().trim().toLowerCase();
+        String escapedKeyword = condition.getEscapedKeyword().trim().toLowerCase();
         String area = condition.getTherapyArea() != null ? condition.getTherapyArea().name() : null;
         String type = condition.getPostType() != null ? condition.getPostType().name() : null;
 
@@ -232,7 +237,8 @@ public class PostService {
         // HashMap의 구조로 PostId를 바로 찾을 수 있기 때문임.
         // Post안의 id로 접근하려면 모든 자료를 다 뒤지면서 비교해야함. (O(N))
         // 근데 HashMap은 O(1)으로 Key를 바로 찾아버림
-        Map<Long, TherapyPost> byId = therapyPostRepository.findAllByIdInWithAuthor(ids).stream()
+        Visibility visibility = publicOnly ? Visibility.PUBLIC : null;
+        Map<Long, TherapyPost> byId = therapyPostRepository.findAllByIdInWithAuthor(ids, visibility).stream()
                 .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
 
         // byId(정렬되지않은 데이터)들을 native 결과의 ID 순서(ids)대로 정렬
@@ -351,12 +357,12 @@ public class PostService {
                     Sort.Order.desc("viewCount"),
                     Sort.Order.desc("id")
             );
-            // RELEVANCE 는 keyword 가 있을 때만 native 분기로 처리되므로,
-            // keyword 없는 RELEVANCE 호출은 LATEST 와 동일하게 폴백
-            case LATEST, RELEVANCE -> Sort.by(
+            case LATEST -> Sort.by(
                     Sort.Order.desc("createdAt"),
                     Sort.Order.desc("id")
             );
+            // RELEVANCE 는 getPosts() 진입 시 이미 차단되므로 여기 도달 불가
+            case RELEVANCE -> throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
         };
     }
 
