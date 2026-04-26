@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.analytics.scheduler;
 
 import com.therapyCommunity_Vol1.backend.analytics.service.PostHourlyAggregationService;
 import com.therapyCommunity_Vol1.backend.analytics.service.TherapistExpertiseAggregationService;
+import com.therapyCommunity_Vol1.backend.analytics.service.UserEventPartitionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,6 +20,7 @@ public class AnalyticsScheduler {
 
     private final PostHourlyAggregationService postHourlyAggregationService;
     private final TherapistExpertiseAggregationService therapistExpertiseAggregationService;
+    private final UserEventPartitionService userEventPartitionService;
 
     /** 기본: 매 시 정각 5분에 실행 (직전 hour의 이벤트가 대부분 도착했을 시점). */
     @Scheduled(cron = "${analytics.post-hourly.cron:0 5 * * * *}")
@@ -46,6 +48,22 @@ public class AnalyticsScheduler {
             }
         } catch (Exception e) {
             log.error("AnalyticsScheduler: therapist_expertise_daily 집계 실패", e);
+        }
+    }
+
+    /**
+     * 기본: 매월 1일 01:00 실행.
+     * user_events 월별 파티션이 도래 전에 미리 생성되도록.
+     * 파티션 누락 시 INSERT가 실패해 이벤트 유실로 직결되므로, 본 배치는 운영 안정성에 직접 영향.
+     * 한 번 누락돼도 LOOKAHEAD_MONTHS 만큼 buffer 가짐.
+     */
+    @Scheduled(cron = "${analytics.user-event-partition.cron:0 0 1 1 * *}")
+    public void runUserEventPartitionMaintenance() {
+        try {
+            int created = userEventPartitionService.ensurePartitions();
+            log.info("AnalyticsScheduler: user_events 파티션 보장 완료 (신규 {}개)", created);
+        } catch (Exception e) {
+            log.error("AnalyticsScheduler: user_events 파티션 생성 실패", e);
         }
     }
 }
