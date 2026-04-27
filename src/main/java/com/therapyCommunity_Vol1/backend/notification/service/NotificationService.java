@@ -87,21 +87,35 @@ public class NotificationService {
                 ? userRepository.findById(event.getSenderId()).orElse(null)
                 : null;
 
+        String senderNickname;
+        if (sender != null) {
+            senderNickname = sender.getDisplayNickname();
+        } else if (event.getSenderId() != null) {
+            senderNickname = "알 수 없는 사용자";
+        } else {
+            senderNickname = null;
+        }
+        String content = event.getType().formatMessage(senderNickname, event.getExtraParams());
+
         for (Long receiverId : receiverIds) {
             User receiver = userRepository.findById(receiverId).orElse(null);
             if (receiver == null) continue;
 
             Notification notification = Notification.create(
                     receiver, sender,
-                    event.getType(), event.getReferenceId(), event.getContent()
+                    event.getType(), event.getReferenceId(), content
             );
             notificationRepository.save(notification);
 
-            NotificationResponse response = NotificationResponse.from(notification);
-            String eventId = notification.getId() + "_" + System.currentTimeMillis();
-
-            sseEmitterRepository.cacheEvent(receiverId, eventId, response);
-            sendToUser(receiverId, eventId, response);
+            try {
+                NotificationResponse response = NotificationResponse.from(notification);
+                String eventId = notification.getId() + "_" + System.currentTimeMillis();
+                sseEmitterRepository.cacheEvent(receiverId, eventId, response);
+                sendToUser(receiverId, eventId, response);
+            } catch (Exception e) {
+                log.error("알림 SSE 전송 실패: receiverId={}, notificationId={}, type={}",
+                        receiverId, notification.getId(), event.getType(), e);
+            }
         }
     }
 
