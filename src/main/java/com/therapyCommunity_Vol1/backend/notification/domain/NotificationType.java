@@ -15,7 +15,8 @@ public enum NotificationType {
     NEW_SCRAP("%s님이 회원님의 게시글을 스크랩했습니다."),
     VERIFICATION_SUBMITTED("%s님이 치료사 인증을 신청했습니다."),
     VERIFICATION_APPROVED("치료사 인증이 승인되었습니다."),
-    VERIFICATION_REJECTED("치료사 인증이 거절되었습니다.");
+    VERIFICATION_REJECTED("치료사 인증이 거절되었습니다."),
+    NEW_MESSAGE("%s님이 메시지를 보냈습니다.");
 
     private final String messageTemplate;
 
