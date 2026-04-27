@@ -4,12 +4,16 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @AllArgsConstructor
@@ -23,6 +27,9 @@ public class TherapyPostDetailResponse {
     private TherapyArea therapyArea;
     private Visibility visibility;
     private Long viewCount;
+    private Long commentCount;
+    private Map<PostReactionType, Long> reactionCounts;
+    private PostReactionType myReactionType;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private boolean canEdit;
@@ -30,19 +37,31 @@ public class TherapyPostDetailResponse {
     private boolean isScrapped;
     private List<PostAttachmentResponse> attachments;
 
-    // 생성/수정 응답 (스크랩 정보 없음)
+    // 생성/수정 응답 (스크랩·카운트·리액션 없음)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             Long currentUserId,
             UserRole currentUserRole
     ) {
-        return from(post, List.of(), currentUserId, currentUserRole, false);
+        return from(
+                post,
+                List.of(),
+                0L,
+                emptyReactionCounts(),
+                null,
+                currentUserId,
+                currentUserRole,
+                false
+        );
     }
 
-    // 상세 조회 (스크랩 정보 포함)
+    // 상세 조회 (스크랩·카운트·리액션 포함)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             List<PostAttachmentResponse> attachments,
+            Long commentCount,
+            Map<PostReactionType, Long> reactionCounts,
+            PostReactionType myReactionType,
             Long currentUserId,
             UserRole currentUserRole,
             boolean isScrapped
@@ -57,6 +76,9 @@ public class TherapyPostDetailResponse {
                 post.getTherapyArea(),
                 post.getVisibility(),
                 post.getViewCount(),
+                commentCount,
+                reactionCounts,
+                myReactionType,
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 canManage,
@@ -64,6 +86,12 @@ public class TherapyPostDetailResponse {
                 isScrapped,
                 attachments
         );
+    }
+
+    private static Map<PostReactionType, Long> emptyReactionCounts() {
+        Map<PostReactionType, Long> counts = new EnumMap<>(PostReactionType.class);
+        Arrays.stream(PostReactionType.values()).forEach(t -> counts.put(t, 0L));
+        return counts;
     }
 
     // 관리자이거나, 내 글이면 수정/삭제 가능

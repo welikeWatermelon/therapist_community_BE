@@ -436,14 +436,14 @@
   "success": true,
   "data": {
     "postId": 1,
-    "empathyCount": 5,
-    "appreciateCount": 3,
-    "helpfulCount": 2,
-    "myReactionType": "EMPATHY"
+    "likeCount": 5,
+    "curiousCount": 3,
+    "usefulCount": 2,
+    "myReactionType": "LIKE"
   }
 }
 ```
-`myReactionType`: `EMPATHY` | `APPRECIATE` | `HELPFUL` | `null`
+`myReactionType`: `LIKE` | `CURIOUS` | `USEFUL` | `null`
 
 ---
 
@@ -454,7 +454,7 @@
 **요청:**
 ```json
 {
-  "reactionType": "EMPATHY"
+  "reactionType": "LIKE"
 }
 ```
 같은 타입 재요청 시 취소 (토글).

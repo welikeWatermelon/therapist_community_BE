@@ -50,19 +50,21 @@ public class PostImageController {
     @Operation(summary = "이미지 목록 조회")
     @GetMapping
     public ResponseEntity<ApiResponse<List<PostImageResponse>>> getImages(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId
     ) {
-        List<PostImageResponse> response = postImageService.getImages(postId);
+        List<PostImageResponse> response = postImageService.getImages(postId, userDetails.getUserRole());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @Operation(summary = "이미지 다운로드")
     @GetMapping("/{imageId}")
     public ResponseEntity<Resource> downloadImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId,
             @PathVariable Long imageId
     ) {
-        StoredFileResource storedFile = postImageService.loadImage(postId, imageId);
+        StoredFileResource storedFile = postImageService.loadImage(postId, imageId, userDetails.getUserRole());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(storedFile.getContentType()))
                 .header(
@@ -73,5 +75,21 @@ public class PostImageController {
                                 .toString()
                 )
                 .body(storedFile.getResource());
+    }
+
+    @Operation(summary = "이미지 삭제", description = "작성자 또는 관리자만 삭제 가능")
+    @DeleteMapping("/{imageId}")
+    public ResponseEntity<Void> deleteImage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @PathVariable Long imageId
+    ) {
+        postImageService.deleteImage(
+                userDetails.getUserId(),
+                userDetails.getUserRole(),
+                postId,
+                imageId
+        );
+        return ResponseEntity.noContent().build();
     }
 }

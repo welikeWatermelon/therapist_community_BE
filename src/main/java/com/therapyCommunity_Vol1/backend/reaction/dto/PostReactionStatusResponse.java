@@ -9,9 +9,8 @@ import java.util.Map;
 /**
  * 게시글 반응 상태 응답.
  *
- * Legacy 필드 (empathyCount, appreciateCount, helpfulCount):
- *   프론트 하위 호환을 위해 유지. 새 반응 타입 추가 시에도 이 필드는 그대로 두고,
- *   프론트는 reactionCounts map을 사용하도록 점진적으로 마이그레이션.
+ * 타입별 개별 필드 (likeCount, curiousCount, usefulCount):
+ *   프론트에서 3종을 개별 표시할 때 사용. 반응 타입 추가 시 함께 확장.
  *
  * 확장 필드:
  *   - reactionCounts: 모든 반응 타입의 count map (타입 추가 시 자동 포함)
@@ -23,10 +22,10 @@ public class PostReactionStatusResponse {
 
     private Long postId;
 
-    // --- Legacy 필드 (하위 호환) ---
-    private Long empathyCount;
-    private Long appreciateCount;
-    private Long helpfulCount;
+    // --- 타입별 개별 필드 ---
+    private Long likeCount;
+    private Long curiousCount;
+    private Long usefulCount;
     private PostReactionType myReactionType;
 
     // --- 확장 필드 ---

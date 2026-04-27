@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -13,6 +14,9 @@ import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -24,7 +28,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -34,6 +42,8 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
+    private final TherapyPostReactionRepository therapyPostReactionRepository;
+    private final TherapyPostCommentRepository therapyPostCommentRepository;
     private final ActivePostFinder activePostFinder;
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
@@ -76,10 +86,7 @@ public class PostService {
     ) {
         Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
 
-        List<TherapyPostSummaryResponse> posts = result.getContent()
-                .stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
 
         return PagedResponse.from(result, posts);
     }
@@ -114,9 +121,7 @@ public class PostService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
 
-        List<TherapyPostSummaryResponse> posts = result.getContent().stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
 
         return PagedResponse.from(result, posts);
     }
@@ -160,9 +165,7 @@ public class PostService {
                             postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = posts.stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
@@ -189,9 +192,7 @@ public class PostService {
         boolean hasNext = posts.size() > size;
         List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
 
-        List<TherapyPostSummaryResponse> dtos = trimmed.stream()
-                .map(post -> TherapyPostSummaryResponse.from(post, false))
-                .toList();
+        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed);
 
         String nextCursor = hasNext
                 ? new PopularCursor(
@@ -236,7 +237,23 @@ public class PostService {
                 .map(PostAttachmentResponse::from)
                 .toList();
 
-        return TherapyPostDetailResponse.from(post, attachments, currentUserId, currentUserRole, isScrapped);
+        long commentCount = therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(postId);
+        Map<PostReactionType, Long> reactionCounts = buildReactionCountMap(postId);
+        PostReactionType myReactionType = therapyPostReactionRepository
+                .findByPostIdAndUserId(postId, currentUserId)
+                .map(TherapyPostReaction::getReactionType)
+                .orElse(null);
+
+        return TherapyPostDetailResponse.from(
+                post,
+                attachments,
+                commentCount,
+                reactionCounts,
+                myReactionType,
+                currentUserId,
+                currentUserRole,
+                isScrapped
+        );
     }
 
     @Transactional
@@ -275,4 +292,45 @@ public class PostService {
         post.softDelete();
     }
 
+    // ── Summary DTO 변환 헬퍼 ──────────────────────────────
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts) {
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        List<Long> postIds = posts.stream().map(TherapyPost::getId).toList();
+
+        Map<Long, Long> likeCounts = toCountMap(
+                therapyPostReactionRepository.countByPostIdInAndReactionType(postIds, PostReactionType.LIKE)
+        );
+        Map<Long, Long> commentCounts = toCountMap(
+                therapyPostCommentRepository.countActiveByPostIdIn(postIds)
+        );
+
+        return posts.stream()
+                .map(post -> TherapyPostSummaryResponse.from(
+                        post,
+                        likeCounts.getOrDefault(post.getId(), 0L),
+                        commentCounts.getOrDefault(post.getId(), 0L),
+                        false
+                ))
+                .toList();
+    }
+
+    private Map<Long, Long> toCountMap(List<Object[]> rows) {
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    private Map<PostReactionType, Long> buildReactionCountMap(Long postId) {
+        Map<PostReactionType, Long> counts = new EnumMap<>(PostReactionType.class);
+        Arrays.stream(PostReactionType.values()).forEach(t -> counts.put(t, 0L));
+        therapyPostReactionRepository.countGroupedByPostId(postId).forEach(row -> {
+            counts.put((PostReactionType) row[0], (Long) row[1]);
+        });
+        return counts;
+    }
 }

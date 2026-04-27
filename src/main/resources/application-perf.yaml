@@ -1,0 +1,45 @@
+# 성능 측정용 프로파일. local 프로파일 위에 덮어씌워 사용합니다.
+#
+# 사용법:
+#   ./gradlew bootRun --args='--spring.profiles.active=local,perf'
+#
+# 켜는 것:
+# - Hibernate SQL 로그 + 바인딩 파라미터 TRACE
+# - Hibernate 통계 (쿼리 수, 캐시 hit 등)
+# - Actuator 관찰 지표 (health, metrics, prometheus 제외)
+# - HTTP 요청 latency 히스토그램 + SLO bucket
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.stat: DEBUG
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        generate_statistics: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      slo:
+        http.server.requests: 100ms, 200ms, 500ms, 1s, 2s
+
+# Note: PostgreSQL auto_explain은 DB 레벨 설정이라 docker-compose에서 셋업.
+# 자세한 내용은 docs/perf/observability.md 참조.
