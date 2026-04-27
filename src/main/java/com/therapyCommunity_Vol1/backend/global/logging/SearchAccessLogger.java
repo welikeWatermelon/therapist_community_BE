@@ -98,17 +98,23 @@ public class SearchAccessLogger {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private int extractResultCount(Object result) {
-        try {
-            ResponseEntity<ApiResponse<SearchCursorResponse>> response =
-                    (ResponseEntity<ApiResponse<SearchCursorResponse>>) result;
-            ApiResponse<SearchCursorResponse> body = response.getBody();
-            if (body != null && body.getData() != null) {
-                return body.getData().getData().size();
-            }
-        } catch (Exception ignored) {
+        if (!(result instanceof ResponseEntity<?> responseEntity)) {
+            log.warn("extractResultCount: 예상하지 못한 반환 타입 — {}", result.getClass().getName());
+            return 0;
         }
-        return 0;
+        Object rawBody = responseEntity.getBody();
+        if (!(rawBody instanceof ApiResponse<?> apiResponse)) {
+            log.warn("extractResultCount: ResponseEntity body가 ApiResponse가 아님 — {}",
+                    rawBody != null ? rawBody.getClass().getName() : "null");
+            return 0;
+        }
+        Object data = apiResponse.getData();
+        if (!(data instanceof SearchCursorResponse cursorResponse)) {
+            log.warn("extractResultCount: ApiResponse data가 SearchCursorResponse가 아님 — {}",
+                    data != null ? data.getClass().getName() : "null");
+            return 0;
+        }
+        return cursorResponse.getData().size();
     }
 }
