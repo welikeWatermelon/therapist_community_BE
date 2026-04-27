@@ -78,9 +78,8 @@ public class TherapyPost extends BaseEntity {
         this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.author = author;
         this.viewCount = 0L;
-        this.searchText = buildSearchText(this.content, this.therapyArea);
         this.popularityScore = java.time.Instant.now().getEpochSecond() / TIME_SCORE_DIVISOR;
-        this.searchText = buildSearchText(this.title, this.content, this.therapyArea, this.ageGroup);
+        this.searchText = buildSearchText(this.content, this.therapyArea);
     }
 
     public static TherapyPost create(
