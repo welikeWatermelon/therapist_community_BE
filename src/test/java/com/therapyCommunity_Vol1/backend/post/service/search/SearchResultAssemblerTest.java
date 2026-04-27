@@ -1,8 +1,11 @@
 package com.therapyCommunity_Vol1.backend.post.service.search;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -20,12 +24,22 @@ import static org.mockito.Mockito.when;
 class SearchResultAssemblerTest {
 
     private TherapyPostRepository therapyPostRepository;
+    private TherapyPostReactionRepository therapyPostReactionRepository;
+    private TherapyPostCommentRepository therapyPostCommentRepository;
     private SearchResultAssembler assembler;
 
     @BeforeEach
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
-        assembler = new SearchResultAssembler(therapyPostRepository);
+        therapyPostReactionRepository = mock(TherapyPostReactionRepository.class);
+        therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
+        assembler = new SearchResultAssembler(therapyPostRepository, therapyPostReactionRepository, therapyPostCommentRepository);
+
+        // 기본 count stub — 개별 테스트에서 오버라이드 가능
+        when(therapyPostReactionRepository.countByPostIdInAndReactionType(anyList(), any(PostReactionType.class)))
+                .thenReturn(List.of());
+        when(therapyPostCommentRepository.countActiveByPostIdIn(anyList()))
+                .thenReturn(List.of());
     }
 
     @Test

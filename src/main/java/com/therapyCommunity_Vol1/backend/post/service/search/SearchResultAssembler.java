@@ -1,13 +1,17 @@
 package com.therapyCommunity_Vol1.backend.post.service.search;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,6 +32,8 @@ import java.util.stream.Collectors;
 public class SearchResultAssembler {
 
     private final TherapyPostRepository therapyPostRepository;
+    private final TherapyPostReactionRepository therapyPostReactionRepository;
+    private final TherapyPostCommentRepository therapyPostCommentRepository;
 
     /**
      * @param rows native query 결과. 각 행은 [postId(Number), score(BigDecimal)].
@@ -52,11 +58,11 @@ public class SearchResultAssembler {
         Map<Long, TherapyPost> byId = therapyPostRepository.findAllByIdInWithAuthor(ids).stream()
                 .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
 
-        List<TherapyPostSummaryResponse> items = ids.stream()
+        List<TherapyPost> orderedPosts = ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
-                .map(p -> TherapyPostSummaryResponse.from(p, false))
                 .toList();
+        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts);
 
         BigDecimal nextScore = null;
         Long nextId = null;
@@ -94,15 +100,46 @@ public class SearchResultAssembler {
         Map<Long, TherapyPost> byId = therapyPostRepository.findAllByIdInWithAuthor(ids).stream()
                 .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
 
-        List<TherapyPostSummaryResponse> items = ids.stream()
+        List<TherapyPost> orderedPosts = ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
-                .map(p -> TherapyPostSummaryResponse.from(p, false))
                 .toList();
+        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts);
 
         return new SearchCursorResponse(
                 items,
                 new SearchCursorResponse.SearchCursorMeta(false, null, null)
         );
+    }
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts) {
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        List<Long> postIds = posts.stream().map(TherapyPost::getId).toList();
+
+        Map<Long, Long> likeCounts = toCountMap(
+                therapyPostReactionRepository.countByPostIdInAndReactionType(postIds, PostReactionType.LIKE)
+        );
+        Map<Long, Long> commentCounts = toCountMap(
+                therapyPostCommentRepository.countActiveByPostIdIn(postIds)
+        );
+
+        return posts.stream()
+                .map(post -> TherapyPostSummaryResponse.from(
+                        post,
+                        likeCounts.getOrDefault(post.getId(), 0L),
+                        commentCounts.getOrDefault(post.getId(), 0L),
+                        false
+                ))
+                .toList();
+    }
+
+    private Map<Long, Long> toCountMap(List<Object[]> rows) {
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
     }
 }

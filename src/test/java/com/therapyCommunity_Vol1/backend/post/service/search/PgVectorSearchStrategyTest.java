@@ -1,9 +1,12 @@
 package com.therapyCommunity_Vol1.backend.post.service.search;
 
+import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +33,13 @@ class PgVectorSearchStrategyTest {
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         embeddingService = mock(EmbeddingService.class);
-        assembler = new SearchResultAssembler(therapyPostRepository);
+        TherapyPostReactionRepository reactionRepo = mock(TherapyPostReactionRepository.class);
+        TherapyPostCommentRepository commentRepo = mock(TherapyPostCommentRepository.class);
+        when(reactionRepo.countByPostIdInAndReactionType(anyList(), any(PostReactionType.class)))
+                .thenReturn(List.of());
+        when(commentRepo.countActiveByPostIdIn(anyList()))
+                .thenReturn(List.of());
+        assembler = new SearchResultAssembler(therapyPostRepository, reactionRepo, commentRepo);
 
         strategy = new PgVectorSearchStrategy(
                 therapyPostRepository, embeddingService, assembler, new SimpleMeterRegistry());
