@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.List;
 
 @Repository
@@ -17,12 +18,13 @@ public class SseEmitterRepository {
 
     private final ConcurrentHashMap<Long, ConcurrentHashMap<String, SseEmitter>> emitters = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, ConcurrentLinkedQueue<CachedEvent>> eventCache = new ConcurrentHashMap<>();
+    private final AtomicLong emitterIdGenerator = new AtomicLong();
 
     private static final int MAX_CACHE_SIZE = 50;
     private static final int CACHE_TTL_MINUTES = 30;
 
     public String save(Long userId, SseEmitter emitter) {
-        String emitterId = userId + "_" + System.currentTimeMillis();
+        String emitterId = userId + "_" + emitterIdGenerator.incrementAndGet();
         emitters.computeIfAbsent(userId, k -> new ConcurrentHashMap<>())
                 .put(emitterId, emitter);
         return emitterId;
