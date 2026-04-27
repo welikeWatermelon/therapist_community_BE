@@ -21,7 +21,9 @@ public class NotificationEventListener {
         try {
             notificationService.createAndSend(event);
         } catch (Exception e) {
-            log.error("알림 처리 실패: type={}, senderId={}", event.getType(), event.getSenderId(), e);
+            log.error("알림 DB 저장 실패: type={}, senderId={}, receiverIds={}, referenceId={}",
+                    event.getType(), event.getSenderId(), event.getReceiverIds(),
+                    event.getReferenceId(), e);
         }
     }
 }
