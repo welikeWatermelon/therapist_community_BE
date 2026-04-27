@@ -151,6 +151,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
+    // RELEVANCE 검색 — pg_trgm <% (word_similarity) 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
     // 인기순 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
@@ -355,8 +356,14 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     );
 
     // ID 리스트로 author 까지 fetch (RELEVANCE 두 단계 fetch 의 두 번째 단계)
+    // 1단계 native query 와 스냅샷이 다를 수 있으므로(READ COMMITTED) deletedAt·visibility 재검증
     @EntityGraph(attributePaths = "author")
-    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids")
+    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL AND (:visibility IS NULL OR p.visibility = :visibility)")
+    List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids, @Param("visibility") Visibility visibility);
+
+    // Strategy 패턴의 SearchResultAssembler 에서 사용 — visibility 필터 없이 deletedAt 만 재검증
+    @EntityGraph(attributePaths = "author")
+    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL")
     List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids);
 
     // ── pgvector 임베딩 ──────────────────────────────

@@ -46,8 +46,9 @@ public class GinTrigramSearchStrategy implements PostSearchStrategy {
         entityManager.createNativeQuery("SET LOCAL pg_trgm.word_similarity_threshold = 0.1")
                 .executeUpdate();
 
-        String rawKeyword = condition.getKeyword().trim();
-        String escapedKeyword = condition.getEscapedKeyword().trim();
+        // searchText가 소문자로 저장되므로 keyword도 소문자 변환
+        String rawKeyword = condition.getKeyword().trim().toLowerCase();
+        String escapedKeyword = condition.getEscapedKeyword().trim().toLowerCase();
         String area = condition.getTherapyArea() != null ? condition.getTherapyArea().name() : null;
         String type = condition.getPostType() != null ? condition.getPostType().name() : null;
 

@@ -22,6 +22,8 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -60,6 +62,11 @@ public class PostService {
         therapyPostRepository.recalculatePopularityScore(postId);
     }
 
+    // RELEVANCE 검색에서 SET LOCAL pg_trgm.similarity_threshold 를 실행하기 위한 EntityManager.
+    // @RequiredArgsConstructor 가 생성자에 포함하지 않도록 final 을 붙이지 않는다.
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Transactional
     public TherapyPostDetailResponse createPost(
             Long userId,
@@ -94,6 +101,9 @@ public class PostService {
             PostSearchCondition condition,
             UserRole currentUserRole
     ) {
+        if (sortType == PostSortType.RELEVANCE) {
+            throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
+        }
         Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
 
         List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
@@ -114,12 +124,13 @@ public class PostService {
                     ? therapyPostRepository.findByDeletedAtIsNullAndVisibility(Visibility.PUBLIC, pageable)
                     : therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
+            String lowerKeyword = condition.getEscapedKeyword().trim().toLowerCase();
             return publicOnly
                     ? therapyPostRepository.searchByKeywordAndVisibility(
-                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            lowerKeyword, condition.getTherapyArea(),
                             condition.getPostType(), Visibility.PUBLIC, pageable)
                     : therapyPostRepository.searchByKeyword(
-                            condition.getEscapedKeyword().trim(), condition.getTherapyArea(),
+                            lowerKeyword, condition.getTherapyArea(),
                             condition.getPostType(), pageable);
         } else {
             return publicOnly
@@ -241,12 +252,12 @@ public class PostService {
                     Sort.Order.desc("viewCount"),
                     Sort.Order.desc("id")
             );
-            // RELEVANCE 는 keyword 가 있을 때만 native 분기로 처리되므로,
-            // keyword 없는 RELEVANCE 호출은 LATEST 와 동일하게 폴백
-            case LATEST, RELEVANCE -> Sort.by(
+            // RELEVANCE 는 getPosts() 진입 시 이미 차단되므로 여기 도달 불가
+            case LATEST -> Sort.by(
                     Sort.Order.desc("createdAt"),
                     Sort.Order.desc("id")
             );
+            case RELEVANCE -> throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
         };
     }
 

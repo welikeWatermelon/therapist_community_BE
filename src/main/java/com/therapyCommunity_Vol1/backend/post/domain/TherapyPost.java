@@ -114,7 +114,7 @@ public class TherapyPost extends BaseEntity {
                 ? ""
                 : content.substring(0, Math.min(100, content.length()));
         String a = therapyArea == null ? "" : therapyArea.getDescription();
-        return (c + " " + a).trim();
+        return (c + " " + a).trim().toLowerCase();
     }
 
     public void updatePostType(PostType postType) {
