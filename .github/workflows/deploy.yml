@@ -1,5 +1,8 @@
 name: "CI/CD — main to dev"
 
+permissions:
+  id-token: write
+  contents: read
 on:
   push:
     branches:
@@ -33,12 +36,11 @@ jobs:
       - name: Build JAR
         run: ./gradlew bootJar -x test
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::771338875653:role/GitHubActionsCommunityDeployRole
+          aws-region: ap-northeast-2
 
       - name: Login to Amazon ECR
         id: login-ecr
