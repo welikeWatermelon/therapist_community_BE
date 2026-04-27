@@ -80,13 +80,9 @@ public class TherapistVerificationService {
 
             // TODO: MVP 이후 활성화 — 치료사 인증 신청 시 모든 ADMIN에게 알림 발송
             // List<Long> adminIds = userRepository.findIdsByRole(UserRole.ADMIN);
-            // eventPublisher.publishEvent(NotificationEvent.builder()
-            //         .senderId(currentUserId)
-            //         .receiverIds(adminIds)
-            //         .type(NotificationType.VERIFICATION_SUBMITTED)
-            //         .referenceId(verification.getId())
-            //         .content(user.getNickname() + "님이 치료사 인증을 신청했습니다.")
-            //         .build());
+            // eventPublisher.publishEvent(NotificationEvent.of(
+            //         currentUserId, adminIds,
+            //         NotificationType.VERIFICATION_SUBMITTED, verification.getId()));
 
             return TherapistVerificationResponse.from(
                     verification,

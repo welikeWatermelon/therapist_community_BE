@@ -56,13 +56,10 @@ public class CommentReactionService {
                     );
                     commentReactionRepository.save(reaction);
 
-                    eventPublisher.publishEvent(NotificationEvent.builder()
-                            .senderId(currentUserId)
-                            .receiverIds(List.of(comment.getAuthor().getId()))
-                            .type(NotificationType.NEW_COMMENT_REACTION)
-                            .referenceId(commentId)
-                            .content(user.getNickname() + "님이 회원님의 댓글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
-                            .build());
+                    eventPublisher.publishEvent(NotificationEvent.of(
+                            currentUserId, comment.getAuthor().getId(),
+                            NotificationType.NEW_COMMENT_REACTION, commentId,
+                            request.getReactionType().getLabel()));
                 });
         return getReactionStatus(currentUserId, commentId);
     }

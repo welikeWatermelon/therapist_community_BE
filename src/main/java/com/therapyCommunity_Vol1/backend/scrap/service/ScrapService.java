@@ -64,13 +64,9 @@ public class ScrapService {
             scrapRepository.save(scrap);
             postService.recalculatePopularityScore(postId);
 
-            eventPublisher.publishEvent(NotificationEvent.builder()
-                    .senderId(currentUserId)
-                    .receiverIds(List.of(post.getAuthor().getId()))
-                    .type(NotificationType.NEW_SCRAP)
-                    .referenceId(postId)
-                    .content(user.getNickname() + "님이 회원님의 게시글을 스크랩했습니다.")
-                    .build());
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    currentUserId, post.getAuthor().getId(),
+                    NotificationType.NEW_SCRAP, postId));
         }
 
         return new ScrapStatusResponse(postId, true);
