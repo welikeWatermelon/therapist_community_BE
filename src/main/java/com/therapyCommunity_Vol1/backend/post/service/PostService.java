@@ -242,11 +242,11 @@ public class PostService {
                 .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
 
         // byId(정렬되지않은 데이터)들을 native 결과의 ID 순서(ids)대로 정렬
-        List<TherapyPostSummaryResponse> items = ids.stream()
+        List<TherapyPost> orderedPosts = ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
-                .map(p -> TherapyPostSummaryResponse.from(p, false))
                 .toList();
+        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts);
 
         // 다음 커서: 트림된 마지막 행의 (score, id). 마지막 페이지면 둘 다 null.
         // score 는 SQL 에서 numeric(10,8) 로 캐스트되어 BigDecimal 로 그대로 전달된다.
