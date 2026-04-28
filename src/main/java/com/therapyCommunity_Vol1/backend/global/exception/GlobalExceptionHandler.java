@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.global.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -47,6 +48,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(new ErrorResponse(ErrorCode.INVALID_INPUT, fieldErrors));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException e,
+            HttpServletRequest request
+    ) {
+        log.warn("ConstraintViolation: path={}, message={}", request.getRequestURI(), e.getMessage());
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(new ErrorResponse(ErrorCode.INVALID_INPUT));
     }
 
     @ExceptionHandler({

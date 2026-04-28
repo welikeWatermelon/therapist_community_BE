@@ -110,7 +110,7 @@ Token Refresh:
 | `user` | User profile and role management (USER, THERAPIST, ADMIN) |
 | `post` | Therapy posts (COMMUNITY/RESOURCE types) with soft delete and view counting |
 | `comment` | Threaded comments on posts (max depth 2) with soft delete |
-| `reaction` | Reactions on posts (EMPATHY, APPRECIATE, HELPFUL) and comments (LIKE, DISLIKE) |
+| `reaction` | Reactions on posts (LIKE, CURIOUS, USEFUL) and comments (LIKE, DISLIKE) |
 | `scrap` | Post bookmarking / saving for users |
 | `therapist` | Therapist license verification workflow (apply → review → approve/reject) |
 | `admin` | Admin operations — therapist verification management |

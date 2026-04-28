@@ -1202,9 +1202,9 @@
                     "reactionType": {
                         "type": "string",
                         "enum": [
-                            "EMPATHY",
-                            "APPRECIATE",
-                            "HELPFUL"
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
                         ]
                     }
                 },
@@ -1230,25 +1230,53 @@
                         "type": "integer",
                         "format": "int64"
                     },
-                    "empathyCount": {
+                    "likeCount": {
                         "type": "integer",
                         "format": "int64"
                     },
-                    "appreciateCount": {
+                    "curiousCount": {
                         "type": "integer",
                         "format": "int64"
                     },
-                    "helpfulCount": {
+                    "usefulCount": {
                         "type": "integer",
                         "format": "int64"
                     },
                     "myReactionType": {
                         "type": "string",
                         "enum": [
-                            "EMPATHY",
-                            "APPRECIATE",
-                            "HELPFUL"
-                        ]
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
+                        ],
+                        "nullable": true
+                    },
+                    "reactionCounts": {
+                        "type": "object",
+                        "description": "반응 타입별 count. 0인 타입도 키 존재.",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "topReactionType": {
+                        "type": "string",
+                        "enum": [
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
+                        ],
+                        "nullable": true,
+                        "description": "대표 반응. count 최대, 동률 시 displayOrder 우선. 모두 0이면 null"
+                    },
+                    "topReactionCount": {
+                        "type": "integer",
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "topReactionColorToken": {
+                        "type": "string",
+                        "nullable": true
                     }
                 }
             },
@@ -1481,9 +1509,6 @@
                         "type": "integer",
                         "format": "int64"
                     },
-                    "title": {
-                        "type": "string"
-                    },
                     "content": {
                         "type": "string"
                     },
@@ -1511,21 +1536,38 @@
                             "PLAY"
                         ]
                     },
-                    "ageGroup": {
+                    "visibility": {
                         "type": "string",
                         "enum": [
-                            "UNSPECIFIED",
-                            "AGE_0_2",
-                            "AGE_3_5",
-                            "AGE_6_12",
-                            "AGE_13_18",
-                            "AGE_19_64",
-                            "AGE_65_PLUS"
+                            "PUBLIC",
+                            "PRIVATE"
                         ]
                     },
                     "viewCount": {
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "commentCount": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "reactionCounts": {
+                        "type": "object",
+                        "description": "반응 타입별 count. 3종 키 모두 존재 (0일 때도 포함)",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    "myReactionType": {
+                        "type": "string",
+                        "enum": [
+                            "LIKE",
+                            "CURIOUS",
+                            "USEFUL"
+                        ],
+                        "nullable": true,
+                        "description": "로그인 사용자의 현재 반응. 없으면 null"
                     },
                     "createdAt": {
                         "type": "string",
@@ -1539,6 +1581,9 @@
                         "type": "boolean"
                     },
                     "canDelete": {
+                        "type": "boolean"
+                    },
+                    "isScrapped": {
                         "type": "boolean"
                     },
                     "attachments": {
@@ -1711,15 +1756,44 @@
             },
             "SignupRequest": {
                 "type": "object",
+                "required": ["email", "password", "agreements"],
                 "properties": {
                     "email": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "email",
+                        "description": "이메일"
                     },
                     "password": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 8,
+                        "description": "비밀번호 (최소 8자)"
                     },
-                    "nickname": {
-                        "type": "string"
+                    "agreements": {
+                        "type": "array",
+                        "minItems": 1,
+                        "description": "약관 동의 목록. SERVICE_TERMS / PRIVACY_POLICY는 agreed=true로 반드시 포함해야 함. MARKETING은 선택 (빠지거나 false 모두 허용). 닉네임은 서버가 자동 생성하므로 요청에 포함하지 않음.",
+                        "items": {
+                            "$ref": "#/components/schemas/AgreementRequest"
+                        }
+                    }
+                }
+            },
+            "AgreementRequest": {
+                "type": "object",
+                "required": ["type", "version"],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["SERVICE_TERMS", "PRIVACY_POLICY", "MARKETING"],
+                        "description": "약관 타입. SERVICE_TERMS, PRIVACY_POLICY는 필수 동의 대상"
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "약관 버전 (예: v1.0)"
+                    },
+                    "agreed": {
+                        "type": "boolean",
+                        "description": "동의 여부. 필수 타입(SERVICE_TERMS, PRIVACY_POLICY)은 반드시 true여야 함"
                     }
                 }
             },
@@ -1736,6 +1810,7 @@
             },
             "SignupResponse": {
                 "type": "object",
+                "description": "회원가입 성공 응답. refreshToken은 Set-Cookie(HttpOnly)로 별도 전달됨.",
                 "properties": {
                     "id": {
                         "type": "integer",
@@ -1743,6 +1818,19 @@
                     },
                     "email": {
                         "type": "string"
+                    },
+                    "nickname": {
+                        "type": "string",
+                        "description": "서버 자동 생성 닉네임 (예: 판다#4829)"
+                    },
+                    "accessToken": {
+                        "type": "string",
+                        "description": "JWT Access Token (HS256, 30분)"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["USER", "THERAPIST", "ADMIN"],
+                        "description": "초기 역할 — 가입 직후엔 USER"
                     }
                 }
             },
@@ -1983,9 +2071,6 @@
                             "RESOURCE"
                         ]
                     },
-                    "title": {
-                        "type": "string"
-                    },
                     "contentPreview": {
                         "type": "string"
                     },
@@ -2002,25 +2087,33 @@
                             "PLAY"
                         ]
                     },
-                    "ageGroup": {
+                    "visibility": {
                         "type": "string",
                         "enum": [
-                            "UNSPECIFIED",
-                            "AGE_0_2",
-                            "AGE_3_5",
-                            "AGE_6_12",
-                            "AGE_13_18",
-                            "AGE_19_64",
-                            "AGE_65_PLUS"
+                            "PUBLIC",
+                            "PRIVATE"
                         ]
                     },
                     "viewCount": {
                         "type": "integer",
                         "format": "int64"
                     },
+                    "likeCount": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "LIKE 타입만 카운트 (궁금해요/유용해요는 detail에서만)"
+                    },
+                    "commentCount": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "활성 댓글 수 (soft-delete 제외)"
+                    },
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "isScrapped": {
+                        "type": "boolean"
                     }
                 }
             },

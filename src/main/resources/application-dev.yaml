@@ -17,9 +17,9 @@ jwt:
   refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
   aws:
     enabled: false
-    region: ${APP_AWS_REGION}
+    region: ${APP_AWS_REGION:ap-northeast-2}
     s3:
-      bucket: ${APP_AWS_S3_BUCKET}
+      bucket: ${APP_AWS_S3_BUCKET:local-test-bucket}

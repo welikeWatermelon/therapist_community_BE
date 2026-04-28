@@ -1,10 +1,14 @@
 name: "CI/CD — main to dev"
 
+permissions:
+  id-token: write
+  contents: read
+
 on:
   push:
     branches:
       - main
-
+      - deploy
 concurrency:
   group: deploy-staging
   cancel-in-progress: true
@@ -33,12 +37,17 @@ jobs:
       - name: Build JAR
         run: ./gradlew bootJar -x test
 
-      - name: Configure AWS credentials
+      - name: Debug OIDC token sub
+        run: |
+          IDTOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo $IDTOKEN | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '.sub'
+
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::771338875653:role/GitHubActionsMelonneCommunityDeployRole
+          aws-region: ap-northeast-2
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -53,6 +62,7 @@ jobs:
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
       - name: Deploy to EC2 (zero-downtime)
+        if: github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -106,4 +116,53 @@ jobs:
               --restart unless-stopped \
               "$IMAGE"
 
+            echo "Zero-downtime deploy complete"
+  deploy-prod:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/deploy'
+    environment: production
+    steps:
+      - name: Deploy to EC2 prod (zero-downtime)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_PROD_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_PROD_SSH_KEY }}
+          script: |
+            set -e
+            IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest"
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+              docker login --username AWS --password-stdin \
+              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+            docker pull "$IMAGE"
+            docker rm -f builders-backend-new || true
+            docker run -d \
+              --name builders-backend-new \
+              --env-file /etc/backend/backend.env \
+              -p 8081:8080 \
+              "$IMAGE"
+            echo "Waiting for new container health check..."
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
+                echo "Health check passed on attempt $i"
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "Health check failed after 60s — rolling back"
+                docker rm -f builders-backend-new || true
+                exit 1
+              fi
+              sleep 5
+            done
+            docker stop builders-backend || true
+            docker rm builders-backend || true
+            docker stop builders-backend-new
+            docker rm builders-backend-new
+            docker run -d \
+              --name builders-backend \
+              --env-file /etc/backend/backend.env \
+              -p 8080:8080 \
+              --restart unless-stopped \
+              "$IMAGE"
             echo "Zero-downtime deploy complete"
