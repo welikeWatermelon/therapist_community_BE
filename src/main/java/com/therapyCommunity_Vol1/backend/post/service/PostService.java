@@ -3,12 +3,14 @@ package com.therapyCommunity_Vol1.backend.post.service;
 import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
 import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
 import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
+import com.therapyCommunity_Vol1.backend.post.event.PostCreatedEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -26,6 +28,7 @@ import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -60,6 +63,8 @@ public class PostService {
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
     private final UserEventPublisher userEventPublisher;
+    private final AiCommentStatusProvider aiCommentStatusProvider;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -90,7 +95,19 @@ public class PostService {
         );
         TherapyPost saved = therapyPostRepository.save(post);
 
-        return TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        // 자동 댓글 요청: 검증만 하고, job 생성은 autocomment 패키지의 리스너에서 처리
+        boolean requestAutoComment = Boolean.TRUE.equals(request.getRequestAutoComment());
+        if (requestAutoComment && request.getVisibility() == Visibility.PRIVATE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        // PostCreatedEvent 발행 — autocomment 리스너가 job 생성/이벤트 처리
+        eventPublisher.publishEvent(new PostCreatedEvent(saved.getId(), userId, requestAutoComment));
+
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(saved.getId());
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getPosts(
@@ -413,7 +430,7 @@ public class PostService {
                 .map(TherapyPostReaction::getReactionType)
                 .orElse(null);
 
-        return TherapyPostDetailResponse.from(
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(
                 post,
                 attachments,
                 commentCount,
@@ -423,6 +440,9 @@ public class PostService {
                 currentUserRole,
                 isScrapped
         );
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional
@@ -445,7 +465,10 @@ public class PostService {
                 request.getTherapyArea(),
                 request.getVisibility()
         );
-        return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional

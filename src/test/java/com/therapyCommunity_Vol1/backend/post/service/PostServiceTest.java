@@ -19,8 +19,10 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -48,6 +50,8 @@ class PostServiceTest {
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
     private UserEventPublisher userEventPublisher;
+    private AiCommentStatusProvider aiCommentStatusProvider;
+    private ApplicationEventPublisher eventPublisher;
     private PostService postService;
 
     @BeforeEach
@@ -61,6 +65,10 @@ class PostServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
+        aiCommentStatusProvider = mock(AiCommentStatusProvider.class);
+        when(aiCommentStatusProvider.getStatus(anyLong()))
+                .thenReturn(new AiCommentStatusProvider.AutoCommentStatus("NOT_REQUESTED", null));
+        eventPublisher = mock(ApplicationEventPublisher.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
@@ -86,7 +94,9 @@ class PostServiceTest {
                 resourceAccessValidator,
                 visibilityPolicy,
                 postViewCountService,
-                userEventPublisher
+                userEventPublisher,
+                aiCommentStatusProvider,
+                eventPublisher
         );
     }
 
@@ -99,7 +109,8 @@ class PostServiceTest {
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                Visibility.PUBLIC
+                Visibility.PUBLIC,
+                null
         );
 
         User author = User.builder()

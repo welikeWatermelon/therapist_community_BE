@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.comment.service;
 import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
 import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
 import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
+import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
@@ -42,6 +43,7 @@ public class CommentService {
     private final UserRepository userRepository;
     private final ResourceAccessValidator resourceAccessValidator;
     private final CommentThreadAssembler commentThreadAssembler;
+    private final AiCommentProperties aiCommentProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final UserEventPublisher userEventPublisher;
@@ -120,7 +122,7 @@ public class CommentService {
                 metadata
         );
 
-        return CommentResponse.from(saved, currentUserId, author.getRole());
+        return CommentResponse.from(saved, currentUserId, author.getRole(), aiCommentProperties.getAiUserEmail());
     }
 
     public List<CommentResponse> getComments(
@@ -150,7 +152,7 @@ public class CommentService {
 
         comment.update(request.getContent());
 
-        return CommentResponse.from(comment, currentUserId, currentUserRole);
+        return CommentResponse.from(comment, currentUserId, currentUserRole, aiCommentProperties.getAiUserEmail());
     }
 
     @Transactional

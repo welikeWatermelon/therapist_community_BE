@@ -36,6 +36,8 @@ public class TherapyPostDetailResponse {
     private boolean canDelete;
     private boolean isScrapped;
     private List<PostAttachmentResponse> attachments;
+    private String autoCommentStatus;
+    private String autoCommentSourceMode;
 
     // 생성/수정 응답 (스크랩·카운트·리액션 없음)
     public static TherapyPostDetailResponse from(
@@ -84,8 +86,15 @@ public class TherapyPostDetailResponse {
                 canManage,
                 canManage,
                 isScrapped,
-                attachments
+                attachments,
+                null,
+                null
         );
+    }
+
+    public void setAutoComment(String status, String sourceMode) {
+        this.autoCommentStatus = status;
+        this.autoCommentSourceMode = sourceMode;
     }
 
     private static Map<PostReactionType, Long> emptyReactionCounts() {

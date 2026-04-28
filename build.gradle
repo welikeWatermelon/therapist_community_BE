@@ -51,6 +51,15 @@ dependencies {
 
 	implementation platform("software.amazon.awssdk:bom:2.32.22")
 	implementation "software.amazon.awssdk:s3"
+
+	// RAG: pgvector + PDF extraction
+	implementation 'com.pgvector:pgvector:0.1.6'
+	implementation 'org.apache.pdfbox:pdfbox:3.0.4'
+
+	// Testcontainers (PostgreSQL integration tests)
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 }
 
 tasks.named('test') {

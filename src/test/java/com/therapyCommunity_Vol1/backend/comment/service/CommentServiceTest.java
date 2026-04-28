@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -40,6 +41,7 @@ class CommentServiceTest {
     private UserRepository userRepository;
     private ResourceAccessValidator resourceAccessValidator;
     private CommentThreadAssembler commentThreadAssembler;
+    private AiCommentProperties aiCommentProperties;
     private ApplicationEventPublisher eventPublisher;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private UserEventPublisher userEventPublisher;
@@ -51,11 +53,13 @@ class CommentServiceTest {
         activePostFinder = mock(ActivePostFinder.class);
         userRepository = mock(UserRepository.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
-        commentThreadAssembler = new CommentThreadAssembler();
+        aiCommentProperties = mock(AiCommentProperties.class);
+        when(aiCommentProperties.getAiUserEmail()).thenReturn("ai-comment@system.local");
+        commentThreadAssembler = new CommentThreadAssembler(aiCommentProperties);
         eventPublisher = mock(ApplicationEventPublisher.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         userEventPublisher = mock(UserEventPublisher.class);
-        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, eventPublisher, visibilityPolicy, userEventPublisher);
+        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, aiCommentProperties, eventPublisher, visibilityPolicy, userEventPublisher);
     }
 
     @Test
