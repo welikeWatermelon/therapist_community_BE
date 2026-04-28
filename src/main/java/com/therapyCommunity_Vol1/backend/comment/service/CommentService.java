@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.comment.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
@@ -26,7 +29,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +46,7 @@ public class CommentService {
     private final AiCommentProperties aiCommentProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final UserEventPublisher userEventPublisher;
 
     @Transactional
     public CommentResponse createComment(
@@ -101,6 +107,20 @@ public class CommentService {
                     .content(author.getNickname() + "님이 회원님의 댓글에 답글을 남겼습니다.")
                     .build());
         }
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("commentId", saved.getId());
+        metadata.put("isReply", request.getParentCommentId() != null);
+        if (request.getParentCommentId() != null) {
+            metadata.put("parentCommentId", request.getParentCommentId());
+        }
+        userEventPublisher.publish(
+                currentUserId,
+                UserEventType.COMMENT_CREATE,
+                EventTargetType.POST,
+                postId,
+                metadata
+        );
 
         return CommentResponse.from(saved, currentUserId, author.getRole(), aiCommentProperties.getAiUserEmail());
     }
