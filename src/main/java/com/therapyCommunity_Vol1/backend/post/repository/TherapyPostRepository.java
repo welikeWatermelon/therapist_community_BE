@@ -219,11 +219,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             """, nativeQuery = true)
     void recalculatePopularityScore(@Param("postId") Long postId);
 
-    // RELEVANCE 검색 — pg_trgm similarity + ILIKE fallback, 커서 기반 무한스크롤 전용.
-    // :keyword 는 raw (similarity 전용), :escapedKeyword 는 LIKE 메타문자 이스케이프된 값 (ILIKE 전용).
-    // 반환은 (id, score) 두 컬럼의 Object[] — Service 에서 다음 커서 계산에 score 가 필요해서 함께 노출.
-    // LIMIT 은 :limit 파라미터로 받아 hasNext 판별용 take+1 조회를 수행한다.
-    // RELEVANCE 검색 — pg_trgm % 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
+    // RELEVANCE 검색 — pg_trgm <% (word_similarity) 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
     //
     // 주요 설계:
     // - 매칭 술어: `:keyword <% search_text` (word_similarity 기반, gin_trgm_ops 지원) 와
@@ -364,4 +360,148 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL AND (:visibility IS NULL OR p.visibility = :visibility)")
     List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids, @Param("visibility") Visibility visibility);
+
+    // Strategy 패턴의 SearchResultAssembler 에서 사용 — visibility 필터 없이 deletedAt 만 재검증
+    @EntityGraph(attributePaths = "author")
+    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL")
+    List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids);
+
+    // ── pgvector 임베딩 ──────────────────────────────
+
+    @Modifying
+    @Query(value = "UPDATE therapy_posts SET content_embedding = CAST(:embedding AS vector), embedding_failed_at = NULL WHERE id = :postId",
+            nativeQuery = true)
+    void updateContentEmbedding(@Param("postId") Long postId, @Param("embedding") String embedding);
+
+    @Modifying
+    @Query(value = "UPDATE therapy_posts SET embedding_failed_at = NOW() WHERE id = :postId",
+            nativeQuery = true)
+    void markEmbeddingFailed(@Param("postId") Long postId);
+
+    @Query(value = "SELECT p.id, p.search_text FROM therapy_posts p " +
+            "WHERE p.content_embedding IS NULL AND p.deleted_at IS NULL " +
+            "AND p.embedding_failed_at IS NULL " +
+            "ORDER BY p.id LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findIdsWithoutEmbedding(@Param("limit") int limit);
+
+    // 임베딩 상태별 통계 (admin 대시보드용)
+    @Query(value = """
+            SELECT
+              COUNT(*) FILTER (WHERE content_embedding IS NOT NULL) AS done,
+              COUNT(*) FILTER (WHERE content_embedding IS NULL AND embedding_failed_at IS NOT NULL) AS failed,
+              COUNT(*) FILTER (WHERE content_embedding IS NULL AND embedding_failed_at IS NULL) AS pending,
+              COUNT(*) AS total
+            FROM therapy_posts WHERE deleted_at IS NULL
+            """, nativeQuery = true)
+    Object[] countEmbeddingStats();
+
+    // ── pgvector 검색 (코사인 유사도) ──────────────────────────────
+
+    // HNSW 인덱스 활용을 위해 ORDER BY 에 raw <=> 연산자를 직접 사용한다.
+    // distance ASC = score DESC 이므로 결과 순서는 동일하다.
+    // pgvector 의 iterative index scan 이 WHERE 조건을 평가하면서 인덱스 순서대로 스캔한다.
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchFirstPage(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("minScore") BigDecimal minScore,
+            @Param("limit") int limit
+    );
+
+    // NextPage: 서브쿼리 제거 + ORDER BY raw <=> 로 HNSW 인덱스 활용.
+    // 커서 비교는 numeric(10,8) CAST 를 유지해 정밀도 손실 없이 동등 비교한다.
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+              AND (
+                CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) < :lastScore
+                OR (
+                  CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) = :lastScore
+                  AND p.id < :lastId
+                )
+              )
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchNextPage(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("minScore") BigDecimal minScore,
+            @Param("lastScore") BigDecimal lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility = CAST(:visibility AS text)
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchFirstPageAndVisibility(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("minScore") BigDecimal minScore,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility = CAST(:visibility AS text)
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+              AND (
+                CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) < :lastScore
+                OR (
+                  CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) = :lastScore
+                  AND p.id < :lastId
+                )
+              )
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchNextPageAndVisibility(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("minScore") BigDecimal minScore,
+            @Param("lastScore") BigDecimal lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
 }

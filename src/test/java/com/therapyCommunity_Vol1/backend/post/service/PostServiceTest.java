@@ -49,6 +49,7 @@ class PostServiceTest {
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
+    private com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy searchStrategy;
     private UserEventPublisher userEventPublisher;
     private AiCommentStatusProvider aiCommentStatusProvider;
     private ApplicationEventPublisher eventPublisher;
@@ -65,6 +66,7 @@ class PostServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
+        searchStrategy = mock(com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy.class);
         aiCommentStatusProvider = mock(AiCommentStatusProvider.class);
         when(aiCommentStatusProvider.getStatus(anyLong()))
                 .thenReturn(new AiCommentStatusProvider.AutoCommentStatus("NOT_REQUESTED", null));
@@ -94,6 +96,7 @@ class PostServiceTest {
                 resourceAccessValidator,
                 visibilityPolicy,
                 postViewCountService,
+                searchStrategy,
                 userEventPublisher,
                 aiCommentStatusProvider,
                 eventPublisher

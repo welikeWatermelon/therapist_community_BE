@@ -5,6 +5,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
   flyway:
     repair-on-migrate: true
+    out-of-order: true
   jpa:
     hibernate:
       ddl-auto: none

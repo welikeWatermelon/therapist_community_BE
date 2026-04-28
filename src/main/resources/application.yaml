@@ -15,6 +15,12 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      embedding:
+        options:
+          model: text-embedding-3-small
 auth:
   cookie:
     refresh:
@@ -53,3 +59,9 @@ app:
     chat-model: ${AI_COMMENT_CHAT_MODEL:gemini-2.5-flash}
     embedding-model: ${AI_COMMENT_EMBEDDING_MODEL:gemini-embedding-001}
     ai-user-email: ${AI_COMMENT_USER_EMAIL:ai-comment@system.local}
+  search:
+    strategy: gin
+    embedding:
+      enabled: false
+    vector:
+      min-score: 0.3
