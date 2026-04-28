@@ -21,11 +21,23 @@ public class SearchStrategyValidation {
     @Value("${app.search.strategy}")
     private String strategy;
 
+    @Value("${app.search.embedding.enabled:false}")
+    private boolean embeddingEnabled;
+
+    @Value("${spring.ai.openai.api-key:}")
+    private String openaiApiKey;
+
     @PostConstruct
     public void validate() {
         if (!ALLOWED_STRATEGIES.contains(strategy)) {
             throw new IllegalStateException(
                     "잘못된 검색 전략: '%s'. 허용값: %s".formatted(strategy, ALLOWED_STRATEGIES));
+        }
+
+        if (("pgvector".equals(strategy) || embeddingEnabled)
+                && (openaiApiKey == null || openaiApiKey.isBlank())) {
+            throw new IllegalStateException(
+                    "pgvector 전략 또는 임베딩 활성화 시 OPENAI_API_KEY 환경변수가 필수입니다.");
         }
     }
 }
