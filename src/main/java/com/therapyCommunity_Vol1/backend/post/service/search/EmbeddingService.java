@@ -1,5 +1,7 @@
 package com.therapyCommunity_Vol1.backend.post.service.search;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,11 +15,7 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 
 @Slf4j
 @Service
@@ -46,39 +44,18 @@ public class EmbeddingService {
                 .register(meterRegistry);
     }
 
-    /** 검색 쿼리 임베딩 캐시 (동일 검색어 반복 호출 시 OpenAI API 절약) */
-    private final Map<String, float[]> queryEmbeddingCache = new ConcurrentHashMap<>();
-
-    private static final int MAX_CACHE_SIZE = 500;
-
-    private final ScheduledExecutorService cacheEvictor = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "embedding-cache-evictor");
-        t.setDaemon(true);
-        return t;
-    });
-
-    {
-        // 1시간마다 캐시 전체 클리어 (임베딩은 동일 텍스트면 항상 같으므로 TTL 만 관리)
-        cacheEvictor.scheduleAtFixedRate(queryEmbeddingCache::clear, 1, 1, TimeUnit.HOURS);
-    }
+    /** 검색 쿼리 임베딩 캐시 — Caffeine LRU + TTL (동일 검색어 반복 호출 시 OpenAI API 절약) */
+    private final Cache<String, float[]> queryEmbeddingCache = Caffeine.newBuilder()
+            .maximumSize(500)
+            .expireAfterWrite(Duration.ofHours(1))
+            .build();
 
     /**
      * 검색 쿼리를 임베딩 벡터로 변환한다. 동일 텍스트는 캐시에서 반환.
      * 검색 쿼리 전용 — 게시글 본문 임베딩에는 embedWithoutCache()를 사용할 것.
      */
     public float[] embed(String text) {
-        float[] cached = queryEmbeddingCache.get(text);
-        if (cached != null) {
-            return cached;
-        }
-
-        float[] embedding = embeddingModel.embed(text);
-
-        if (queryEmbeddingCache.size() < MAX_CACHE_SIZE) {
-            queryEmbeddingCache.put(text, embedding);
-        }
-
-        return embedding;
+        return queryEmbeddingCache.get(text, key -> embeddingModel.embed(key));
     }
 
     /**
