@@ -24,7 +24,9 @@ CREATE TABLE therapist_expertise_daily (
     log_curious              NUMERIC(10, 4),
     log_downloads            NUMERIC(10, 4),
 
-    -- Laplace smoothed useful ratio: (useful + 1) / (total + 10). Beta(1,10) prior.
+    -- Laplace smoothed useful ratio: (useful + α) / (total + α + β), α=1 β=9. Beta(1,9) prior.
+    -- Beta(1,9) 평균 = α/(α+β) = 1/10 = 0.1 → cold start 유저는 10%에서 출발.
+    -- (α+β=10은 분모 inflation 값이지 Beta 파라미터가 아님)
     useful_ratio_smoothed    NUMERIC(6, 4),
 
     -- z-score (전체 활동 치료사 모집단 기준)

@@ -237,9 +237,12 @@ class PostReactionServiceTest {
         );
     }
 
-    /** 타입 변경 시에도 POST_REACT 이벤트 발행 (여전히 positive signal) */
+    /**
+     * 타입 변경 시 analytics 이벤트 미발행 — 신규 positive signal이 아님.
+     * (동일 유저가 LIKE↔USEFUL 반복 토글로 지표를 부풀리는 어뷰징 차단)
+     */
     @Test
-    void 타입_변경시_POST_REACT_이벤트_발행() {
+    void 타입_변경시_analytics_이벤트_미발행() {
         TherapyPostReaction existing = TherapyPostReaction.create(post, user, PostReactionType.LIKE);
         when(postReactionRepository.findByPostIdAndUserId(10L, 1L))
                 .thenReturn(Optional.of(existing))
@@ -250,13 +253,8 @@ class PostReactionServiceTest {
                 1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.USEFUL)
         );
 
-        verify(userEventPublisher).publish(
-                eq(1L),
-                eq(UserEventType.POST_REACT),
-                eq(EventTargetType.POST),
-                eq(10L),
-                eq(Map.of("reactionType", "USEFUL"))
-        );
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong(), any());
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong());
     }
 
     /** 같은 반응 재클릭(삭제)에는 analytics 이벤트 미발행 (부정 시그널 미수집) */

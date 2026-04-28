@@ -69,9 +69,10 @@ public class PostReactionService {
                         // 같은 반응 → 삭제 (토글 off). 부정 시그널이므로 analytics 미수집.
                         postReactionRepository.delete(existing);
                     } else {
-                        // 다른 반응 → 타입 변경. 여전히 positive signal.
+                        // 다른 반응 → 타입 변경. 이미 활성 상태이므로 신규 positive signal이 아님.
+                        // 동일 유저가 LIKE↔USEFUL을 반복 토글할 경우 지표가 부풀려져, 어뷰징 가능성을
+                        // 차단하기 위해 analytics 미수집.
                         existing.changeReactionType(request.getReactionType());
-                        publishReactAnalytics(currentUserId, postId, request.getReactionType());
                     }
                 }, () -> {
                     // 반응 없음 → 새로 생성
