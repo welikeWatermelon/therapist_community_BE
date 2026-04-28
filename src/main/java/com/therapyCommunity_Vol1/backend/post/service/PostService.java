@@ -273,7 +273,10 @@ public class PostService {
                 request.getTherapyArea(),
                 request.getVisibility()
         );
-        return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional
