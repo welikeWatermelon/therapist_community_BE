@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
@@ -16,8 +19,10 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -29,6 +34,8 @@ import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 
 import static org.assertj.core.api.Assertions.*;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class PostServiceTest {
@@ -43,7 +50,9 @@ class PostServiceTest {
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
     private com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy searchStrategy;
-    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private UserEventPublisher userEventPublisher;
+    private AiCommentStatusProvider aiCommentStatusProvider;
+    private ApplicationEventPublisher eventPublisher;
     private PostService postService;
 
     @BeforeEach
@@ -58,7 +67,10 @@ class PostServiceTest {
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
         searchStrategy = mock(com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy.class);
-        eventPublisher = mock(org.springframework.context.ApplicationEventPublisher.class);
+        aiCommentStatusProvider = mock(AiCommentStatusProvider.class);
+        when(aiCommentStatusProvider.getStatus(anyLong()))
+                .thenReturn(new AiCommentStatusProvider.AutoCommentStatus("NOT_REQUESTED", null));
+        eventPublisher = mock(ApplicationEventPublisher.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
@@ -73,6 +85,7 @@ class PostServiceTest {
                 .thenReturn(Optional.empty());
         when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(anyLong()))
                 .thenReturn(0L);
+        userEventPublisher = mock(UserEventPublisher.class);
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
@@ -84,6 +97,8 @@ class PostServiceTest {
                 visibilityPolicy,
                 postViewCountService,
                 searchStrategy,
+                userEventPublisher,
+                aiCommentStatusProvider,
                 eventPublisher
         );
     }
@@ -97,7 +112,8 @@ class PostServiceTest {
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                Visibility.PUBLIC
+                Visibility.PUBLIC,
+                null
         );
 
         User author = User.builder()
@@ -243,6 +259,57 @@ class PostServiceTest {
                 .containsEntry(PostReactionType.CURIOUS, 2L)
                 .containsEntry(PostReactionType.USEFUL, 0L);
         assertThat(response.getMyReactionType()).isEqualTo(PostReactionType.LIKE);
+    }
+
+    @Test
+    void 게시글_상세조회시_POST_VIEW_이벤트_발행_isFirstView_true() {
+        User author = User.builder().id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(true);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L)).thenReturn(List.of());
+
+        postService.getPostDetail(1L, UserRole.THERAPIST, 1L, false);
+
+        verify(userEventPublisher).publish(
+                eq(1L),
+                eq(UserEventType.POST_VIEW),
+                eq(EventTargetType.POST),
+                eq(1L),
+                argThat(m -> Boolean.TRUE.equals(m.get("isFirstView"))
+                          && "SPEECH".equals(m.get("therapyArea"))
+                          && "PUBLIC".equals(m.get("visibility")))
+        );
+    }
+
+    @Test
+    void 게시글_상세조회_중복조회도_POST_VIEW_이벤트_발행_isFirstView_false() {
+        User author = User.builder().id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(false);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L)).thenReturn(List.of());
+
+        postService.getPostDetail(1L, UserRole.THERAPIST, 1L, false);
+
+        // view_count는 증가하지 않지만 analytics 이벤트는 매번 raw로 수집 (집계 시 dedup)
+        verify(userEventPublisher).publish(
+                eq(1L),
+                eq(UserEventType.POST_VIEW),
+                eq(EventTargetType.POST),
+                eq(1L),
+                argThat(m -> Boolean.FALSE.equals(m.get("isFirstView")))
+        );
     }
 
     @Test

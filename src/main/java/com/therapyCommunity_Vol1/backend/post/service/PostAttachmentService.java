@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
@@ -29,6 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -44,6 +49,7 @@ public class PostAttachmentService {
     private final FileStorageService fileStorageService;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final UserEventPublisher userEventPublisher;
 
     @Transactional
     public PostAttachmentResponse uploadAttachment(
@@ -99,6 +105,19 @@ public class PostAttachmentService {
         );
 
         recordDownload(post, user);
+
+        userEventPublisher.publish(
+                currentUserId,
+                UserEventType.ATTACHMENT_DOWNLOAD,
+                EventTargetType.POST,
+                postId,
+                Map.of(
+                        "attachmentId", attachmentId,
+                        "extension", attachment.getExtension() == null ? "" : attachment.getExtension(),
+                        "sizeBytes", attachment.getSizeBytes()
+                )
+        );
+
         return storedFile;
     }
 

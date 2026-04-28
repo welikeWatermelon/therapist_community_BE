@@ -1,11 +1,16 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
+import com.therapyCommunity_Vol1.backend.post.event.PostCreatedEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -55,6 +60,8 @@ public class PostService {
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
     private final PostSearchStrategy searchStrategy;
+    private final UserEventPublisher userEventPublisher;
+    private final AiCommentStatusProvider aiCommentStatusProvider;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -91,7 +98,19 @@ public class PostService {
                 .text(saved.getSearchText())
                 .build());
 
-        return TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        // 자동 댓글 요청: 검증만 하고, job 생성은 autocomment 패키지의 리스너에서 처리
+        boolean requestAutoComment = Boolean.TRUE.equals(request.getRequestAutoComment());
+        if (requestAutoComment && request.getVisibility() == Visibility.PRIVATE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        // PostCreatedEvent 발행 — autocomment 리스너가 job 생성/이벤트 처리
+        eventPublisher.publishEvent(new PostCreatedEvent(saved.getId(), userId, requestAutoComment));
+
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(saved.getId());
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getPosts(
@@ -271,9 +290,25 @@ public class PostService {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
 
-        if (postViewCountService.isFirstView(postId, currentUserId)) {
+        boolean firstView = postViewCountService.isFirstView(postId, currentUserId);
+        if (firstView) {
             post.increaseViewCount();
         }
+
+        // 집계 시점에 dedup/window 처리할 수 있도록 매 조회마다 raw 발행.
+        // isFirstView 플래그는 view_count와의 정합성 재구성을 위해 보존.
+        userEventPublisher.publish(
+                currentUserId,
+                UserEventType.POST_VIEW,
+                EventTargetType.POST,
+                postId,
+                Map.of(
+                        "isFirstView", firstView,
+                        "postType", post.getPostType().name(),
+                        "therapyArea", post.getTherapyArea().name(),
+                        "visibility", post.getVisibility().name()
+                )
+        );
 
         List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
                 .findByPostIdOrderByCreatedAtAsc(postId)
@@ -288,7 +323,7 @@ public class PostService {
                 .map(TherapyPostReaction::getReactionType)
                 .orElse(null);
 
-        return TherapyPostDetailResponse.from(
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(
                 post,
                 attachments,
                 commentCount,
@@ -298,6 +333,9 @@ public class PostService {
                 currentUserRole,
                 isScrapped
         );
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional
@@ -330,7 +368,10 @@ public class PostService {
                     .build());
         }
 
-        return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional

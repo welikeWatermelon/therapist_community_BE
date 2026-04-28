@@ -17,6 +17,7 @@ spring:
 
 jwt:
   access-secret: test-access-secret-key-for-jwt-1234567890
+  refresh-secret: test-refresh-secret-key-for-jwt-1234567890
   access-ttl-sec: 1800
   refresh-ttl-sec: 1209600
 

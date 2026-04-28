@@ -49,6 +49,16 @@ app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
   cors:
     allowed-origins: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+  knowledge:
+    enabled: ${KNOWLEDGE_ENABLED:false}
+    api-key: ${GOOGLE_AI_API_KEY:}
+    embedding-model: ${KNOWLEDGE_EMBEDDING_MODEL:gemini-embedding-001}
+  ai-comment:
+    enabled: ${AI_COMMENT_ENABLED:false}
+    api-key: ${GOOGLE_AI_API_KEY:}
+    chat-model: ${AI_COMMENT_CHAT_MODEL:gemini-2.5-flash}
+    embedding-model: ${AI_COMMENT_EMBEDDING_MODEL:gemini-embedding-001}
+    ai-user-email: ${AI_COMMENT_USER_EMAIL:ai-comment@system.local}
   search:
     strategy: gin
     embedding:
