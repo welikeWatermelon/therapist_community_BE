@@ -9,8 +9,8 @@ import com.therapyCommunity_Vol1.backend.knowledge.extraction.ExtractedDocument;
 import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeChunkRepository;
 import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeDocumentArtifactRepository;
 import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeDocumentRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,6 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class KnowledgeIngestionService {
 
     private static final int MAX_CHUNK_SIZE = 1000;
@@ -38,9 +37,31 @@ public class KnowledgeIngestionService {
     private final FileStorageService fileStorageService;
     private final KnowledgeProperties properties;
     private final JdbcTemplate jdbcTemplate;
+    private final KnowledgeIngestionService self;
+
+    public KnowledgeIngestionService(
+            KnowledgeDocumentRepository documentRepository,
+            KnowledgeChunkRepository chunkRepository,
+            KnowledgeDocumentArtifactRepository artifactRepository,
+            List<DocumentExtractor> extractors,
+            GeminiEmbeddingClient embeddingClient,
+            FileStorageService fileStorageService,
+            KnowledgeProperties properties,
+            JdbcTemplate jdbcTemplate,
+            @Lazy KnowledgeIngestionService self
+    ) {
+        this.documentRepository = documentRepository;
+        this.chunkRepository = chunkRepository;
+        this.artifactRepository = artifactRepository;
+        this.extractors = extractors;
+        this.embeddingClient = embeddingClient;
+        this.fileStorageService = fileStorageService;
+        this.properties = properties;
+        this.jdbcTemplate = jdbcTemplate;
+        this.self = self;
+    }
 
     @Scheduled(fixedDelay = 60000)
-    @Transactional
     public void pollDueDocuments() {
         if (!properties.isEnabled()) return;
 
@@ -50,7 +71,7 @@ public class KnowledgeIngestionService {
         }
         for (KnowledgeDocument doc : dueDocuments) {
             try {
-                processDocument(doc);
+                self.processDocument(doc);
             } catch (Exception e) {
                 log.error("Knowledge ingestion failed: docId={}", doc.getId(), e);
             }
