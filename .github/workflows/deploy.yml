@@ -3,10 +3,7 @@ name: "CI/CD — main to dev"
 permissions:
   id-token: write
   contents: read
-<<<<<<< HEAD
-=======
 
->>>>>>> main
 on:
   push:
     branches:
