@@ -48,8 +48,6 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @Column(name = "title_choseong", length = 200)
-    private String titleChoseong;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false, length = 20)
@@ -65,6 +63,9 @@ public class TherapyPost extends BaseEntity {
      */
     private static final long TIME_SCORE_DIVISOR = 8640L;
 
+    @Column(name = "search_text", columnDefinition = "TEXT")
+    private String searchText;
+
     private TherapyPost(
             String content,
             TherapyArea therapyArea,
@@ -78,6 +79,7 @@ public class TherapyPost extends BaseEntity {
         this.author = author;
         this.viewCount = 0L;
         this.popularityScore = java.time.Instant.now().getEpochSecond() / TIME_SCORE_DIVISOR;
+        this.searchText = buildSearchText(this.content, this.therapyArea);
     }
 
     public static TherapyPost create(
@@ -101,6 +103,18 @@ public class TherapyPost extends BaseEntity {
         this.content = content;
         this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
         this.visibility = visibility != null ? visibility : this.visibility;
+        this.searchText = buildSearchText(this.content, this.therapyArea);
+    }
+
+    private static String buildSearchText(
+            String content,
+            TherapyArea therapyArea
+    ) {
+        String c = content == null
+                ? ""
+                : content.substring(0, Math.min(100, content.length()));
+        String a = therapyArea == null ? "" : therapyArea.getDescription();
+        return (c + " " + a).trim().toLowerCase();
     }
 
     public void updatePostType(PostType postType) {
