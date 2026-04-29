@@ -1,6 +1,5 @@
 package com.therapyCommunity_Vol1.backend.post.service.search;
 
-import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -39,7 +38,7 @@ public class GinTrigramSearchStrategy implements PostSearchStrategy {
             BigDecimal lastScore,
             Long lastId,
             int size,
-            boolean publicOnly
+            boolean canViewPrivate
     ) {
         // pg_trgm <% 연산자(word_similarity)의 임계값을 트랜잭션 스코프로 0.1로 설정.
         // 트랜잭션 종료 시 자동으로 원복된다.
@@ -55,23 +54,13 @@ public class GinTrigramSearchStrategy implements PostSearchStrategy {
         int limit = size + 1;
         boolean firstPage = (lastScore == null && lastId == null);
 
-        List<Object[]> rows;
+        // PRIVATE UX 개편: 모든 role이 PUBLIC + PRIVATE 결과를 조회. 마스킹은 assembler에서.
+        List<Object[]> rows = firstPage
+                ? therapyPostRepository.searchIdsByRelevanceFirstPage(
+                        rawKeyword, escapedKeyword, area, type, limit)
+                : therapyPostRepository.searchIdsByRelevanceNextPage(
+                        rawKeyword, escapedKeyword, area, type, lastScore, lastId, limit);
 
-        if (firstPage) {
-            rows = publicOnly
-                    ? therapyPostRepository.searchIdsByRelevanceFirstPageAndVisibility(
-                            rawKeyword, escapedKeyword, area, type, Visibility.PUBLIC.name(), limit)
-                    : therapyPostRepository.searchIdsByRelevanceFirstPage(
-                            rawKeyword, escapedKeyword, area, type, limit);
-        } else {
-            rows = publicOnly
-                    ? therapyPostRepository.searchIdsByRelevanceNextPageAndVisibility(
-                            rawKeyword, escapedKeyword, area, type, Visibility.PUBLIC.name(),
-                            lastScore, lastId, limit)
-                    : therapyPostRepository.searchIdsByRelevanceNextPage(
-                            rawKeyword, escapedKeyword, area, type, lastScore, lastId, limit);
-        }
-
-        return assembler.assemble(rows, size);
+        return assembler.assemble(rows, size, canViewPrivate);
     }
 }

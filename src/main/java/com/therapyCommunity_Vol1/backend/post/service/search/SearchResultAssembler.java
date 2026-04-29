@@ -40,7 +40,7 @@ public class SearchResultAssembler {
      *             score DESC, id DESC 로 정렬되어 있어야 한다.
      * @param size 요청 페이지 크기 (rows 는 size+1 개까지 포함 가능)
      */
-    public SearchCursorResponse assemble(List<Object[]> rows, int size) {
+    public SearchCursorResponse assemble(List<Object[]> rows, int size, boolean canViewPrivate) {
         boolean hasNextData = rows.size() > size;
         List<Object[]> pageRows = hasNextData ? rows.subList(0, size) : rows;
 
@@ -62,7 +62,7 @@ public class SearchResultAssembler {
                 .map(byId::get)
                 .filter(Objects::nonNull)
                 .toList();
-        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts);
+        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts, canViewPrivate);
 
         BigDecimal nextScore = null;
         Long nextId = null;
@@ -83,7 +83,7 @@ public class SearchResultAssembler {
      * 폴백 min-score로 조회한 결과의 커서가 원래 minScore 기준 다음 페이지와
      * 불일치하는 문제를 방지한다.
      */
-    public SearchCursorResponse assembleNoNext(List<Object[]> rows, int size) {
+    public SearchCursorResponse assembleNoNext(List<Object[]> rows, int size, boolean canViewPrivate) {
         List<Object[]> pageRows = rows.size() > size ? rows.subList(0, size) : rows;
 
         if (pageRows.isEmpty()) {
@@ -104,7 +104,7 @@ public class SearchResultAssembler {
                 .map(byId::get)
                 .filter(Objects::nonNull)
                 .toList();
-        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts);
+        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts, canViewPrivate);
 
         return new SearchCursorResponse(
                 items,
@@ -112,7 +112,7 @@ public class SearchResultAssembler {
         );
     }
 
-    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts) {
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate) {
         if (posts.isEmpty()) {
             return List.of();
         }
@@ -130,7 +130,8 @@ public class SearchResultAssembler {
                         post,
                         likeCounts.getOrDefault(post.getId(), 0L),
                         commentCounts.getOrDefault(post.getId(), 0L),
-                        false
+                        false,
+                        canViewPrivate
                 ))
                 .toList();
     }

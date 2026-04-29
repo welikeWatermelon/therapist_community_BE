@@ -1,6 +1,5 @@
 package com.therapyCommunity_Vol1.backend.post.service.search;
 
-import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.dto.PostSearchCondition;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
@@ -53,7 +52,7 @@ public class PgVectorSearchStrategy implements PostSearchStrategy {
             BigDecimal lastScore,
             Long lastId,
             int size,
-            boolean publicOnly
+            boolean canViewPrivate
     ) {
         // 검색 키워드를 벡터로 변환
         float[] queryEmbedding = embeddingService.embed(condition.getKeyword().trim());
@@ -65,31 +64,18 @@ public class PgVectorSearchStrategy implements PostSearchStrategy {
         int limit = size + 1;
         boolean firstPage = (lastScore == null && lastId == null);
 
-        List<Object[]> rows;
-
-        if (firstPage) {
-            rows = publicOnly
-                    ? therapyPostRepository.vectorSearchFirstPageAndVisibility(
-                            embeddingStr, area, type, Visibility.PUBLIC.name(), minScore, limit)
-                    : therapyPostRepository.vectorSearchFirstPage(
-                            embeddingStr, area, type, minScore, limit);
-        } else {
-            rows = publicOnly
-                    ? therapyPostRepository.vectorSearchNextPageAndVisibility(
-                            embeddingStr, area, type, Visibility.PUBLIC.name(), minScore,
-                            lastScore, lastId, limit)
-                    : therapyPostRepository.vectorSearchNextPage(
-                            embeddingStr, area, type, minScore, lastScore, lastId, limit);
-        }
+        // PRIVATE UX 개편: 모든 role이 PUBLIC + PRIVATE 결과를 조회. 마스킹은 assembler에서.
+        List<Object[]> rows = firstPage
+                ? therapyPostRepository.vectorSearchFirstPage(
+                        embeddingStr, area, type, minScore, limit)
+                : therapyPostRepository.vectorSearchNextPage(
+                        embeddingStr, area, type, minScore, lastScore, lastId, limit);
 
         // 첫 페이지에서 결과가 부족하면 min-score를 완화하여 재검색
         boolean fallbackApplied = false;
         if (firstPage && rows.size() < FALLBACK_THRESHOLD && FALLBACK_MIN_SCORE.compareTo(minScore) < 0) {
-            rows = publicOnly
-                    ? therapyPostRepository.vectorSearchFirstPageAndVisibility(
-                            embeddingStr, area, type, Visibility.PUBLIC.name(), FALLBACK_MIN_SCORE, limit)
-                    : therapyPostRepository.vectorSearchFirstPage(
-                            embeddingStr, area, type, FALLBACK_MIN_SCORE, limit);
+            rows = therapyPostRepository.vectorSearchFirstPage(
+                    embeddingStr, area, type, FALLBACK_MIN_SCORE, limit);
             fallbackApplied = true;
         }
 
@@ -103,9 +89,9 @@ public class PgVectorSearchStrategy implements PostSearchStrategy {
         // 폴백이 발동된 경우: 다음 페이지 쿼리가 원래 minScore를 사용하면
         // 폴백 범위(minScore 미만) 결과와 커서가 불일치하므로 hasNext를 강제 false 처리
         if (fallbackApplied) {
-            return assembler.assembleNoNext(rows, size);
+            return assembler.assembleNoNext(rows, size, canViewPrivate);
         }
 
-        return assembler.assemble(rows, size);
+        return assembler.assemble(rows, size, canViewPrivate);
     }
 }
