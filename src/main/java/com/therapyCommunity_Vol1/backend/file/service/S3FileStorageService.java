@@ -18,11 +18,14 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.ContentStreamProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -39,6 +42,7 @@ import java.util.UUID;
 public class S3FileStorageService implements FileStorageService {
 
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
     @Value("${app.aws.s3.bucket}")
     private String bucket;
@@ -144,6 +148,19 @@ public class S3FileStorageService implements FileStorageService {
             log.error("S3 delete failed: storedPath={}", storedPath, e);
             throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
+    }
+
+    @Override
+    public String presignGet(String storedPath, Duration ttl) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(storedPath)
+                .build();
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(ttl)
+                .getObjectRequest(getObjectRequest)
+                .build();
+        return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
     private StoredFileInfo store(MultipartFile file, String directory) {
