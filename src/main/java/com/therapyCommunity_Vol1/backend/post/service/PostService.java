@@ -123,40 +123,35 @@ public class PostService {
         if (sortType == PostSortType.RELEVANCE) {
             throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
         }
-        Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
+        Page<TherapyPost> result = findPosts(page, size, sortType, condition);
 
-        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
+        boolean canViewPrivate = visibilityPolicy.canViewPrivate(currentUserRole);
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), canViewPrivate);
 
         return PagedResponse.from(result, posts);
     }
 
+    /**
+     * PRIVATE UX 개편: 모든 role이 PUBLIC + PRIVATE 게시글을 함께 조회.
+     * USER role의 경우 응답 변환 시 contentPreview/이미지가 마스킹되고 accessLocked=true가 표시됨.
+     * 상세 페이지 진입은 PostVisibilityAccessPolicy.checkAccess가 여전히 차단.
+     */
     private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType,
-                                         PostSearchCondition condition, UserRole role) {
-        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
-
+                                         PostSearchCondition condition) {
         // RELEVANCE 는 별도 무한스크롤 엔드포인트(/posts/search)에서만 노출된다.
         // 이 경로로 sortType=RELEVANCE 가 들어오면 toSort() 가 LATEST 정렬로 폴백한다.
         Pageable pageable = PageRequest.of(page, size, toSort(sortType));
 
         if (condition.isEmpty()) {
-            return publicOnly
-                    ? therapyPostRepository.findByDeletedAtIsNullAndVisibility(Visibility.PUBLIC, pageable)
-                    : therapyPostRepository.findByDeletedAtIsNull(pageable);
+            return therapyPostRepository.findByDeletedAtIsNull(pageable);
         } else if (condition.hasKeyword()) {
             String lowerKeyword = condition.getEscapedKeyword().trim().toLowerCase();
-            return publicOnly
-                    ? therapyPostRepository.searchByKeywordAndVisibility(
-                            lowerKeyword, condition.getTherapyArea(),
-                            condition.getPostType(), Visibility.PUBLIC, pageable)
-                    : therapyPostRepository.searchByKeyword(
-                            lowerKeyword, condition.getTherapyArea(),
-                            condition.getPostType(), pageable);
+            return therapyPostRepository.searchByKeyword(
+                    lowerKeyword, condition.getTherapyArea(),
+                    condition.getPostType(), pageable);
         } else {
-            return publicOnly
-                    ? therapyPostRepository.searchByFilterAndVisibility(
-                            condition.getTherapyArea(), condition.getPostType(), Visibility.PUBLIC, pageable)
-                    : therapyPostRepository.searchByFilter(
-                            condition.getTherapyArea(), condition.getPostType(), pageable);
+            return therapyPostRepository.searchByFilter(
+                    condition.getTherapyArea(), condition.getPostType(), pageable);
         }
     }
 
@@ -174,15 +169,17 @@ public class PostService {
             int size,
             UserRole role
     ) {
-        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
-        return searchStrategy.search(condition, lastScore, lastId, size, publicOnly);
+        // PRIVATE UX 개편: 모든 role이 PUBLIC + PRIVATE 검색 결과를 받고, USER는 마스킹된 형태로 노출.
+        boolean canViewPrivate = visibilityPolicy.canViewPrivate(role);
+        return searchStrategy.search(condition, lastScore, lastId, size, canViewPrivate);
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
 
-        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
+        // 본인 글이므로 PRIVATE도 자유롭게 볼 수 있음.
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), true);
 
         return PagedResponse.from(result, posts);
     }
@@ -200,60 +197,50 @@ public class PostService {
     public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(
             int size, String cursor, UserRole role, FeedSortType sortType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
-        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
+        boolean canViewPrivate = visibilityPolicy.canViewPrivate(role);
 
         return switch (sortType) {
-            case LATEST -> fetchLatestFeed(size, cursor, publicOnly);
-            case POPULAR -> fetchPopularFeed(size, cursor, publicOnly);
+            case LATEST -> fetchLatestFeed(size, cursor, canViewPrivate);
+            case POPULAR -> fetchPopularFeed(size, cursor, canViewPrivate);
         };
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
-            int size, String cursor, boolean publicOnly) {
+            int size, String cursor, boolean canViewPrivate) {
         PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
         List<TherapyPost> posts;
         if (postCursor == null) {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedLatestByVisibility(Visibility.PUBLIC, limit)
-                    : therapyPostRepository.findFeedLatest(limit);
+            posts = therapyPostRepository.findFeedLatest(limit);
         } else {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedLatestByVisibility(
-                            Visibility.PUBLIC, postCursor.createdAt(), postCursor.id(), limit)
-                    : therapyPostRepository.findFeedLatest(
-                            postCursor.createdAt(), postCursor.id(), limit);
+            posts = therapyPostRepository.findFeedLatest(
+                    postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(posts);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
-            int size, String cursor, boolean publicOnly) {
+            int size, String cursor, boolean canViewPrivate) {
         PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
         List<TherapyPost> posts;
         if (popCursor == null) {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedPopularByVisibility(Visibility.PUBLIC, limit)
-                    : therapyPostRepository.findFeedPopular(limit);
+            posts = therapyPostRepository.findFeedPopular(limit);
         } else {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedPopularByVisibility(
-                            Visibility.PUBLIC, popCursor.score(), popCursor.id(), limit)
-                    : therapyPostRepository.findFeedPopular(
-                            popCursor.score(), popCursor.id(), limit);
+            posts = therapyPostRepository.findFeedPopular(
+                    popCursor.score(), popCursor.id(), limit);
         }
 
         boolean hasNext = posts.size() > size;
         List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed, canViewPrivate);
 
         String nextCursor = hasNext
                 ? new PopularCursor(
@@ -389,7 +376,7 @@ public class PostService {
 
     // ── Summary DTO 변환 헬퍼 ──────────────────────────────
 
-    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts) {
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate) {
         if (posts.isEmpty()) {
             return List.of();
         }
@@ -407,7 +394,8 @@ public class PostService {
                         post,
                         likeCounts.getOrDefault(post.getId(), 0L),
                         commentCounts.getOrDefault(post.getId(), 0L),
-                        false
+                        false,
+                        canViewPrivate
                 ))
                 .toList();
     }

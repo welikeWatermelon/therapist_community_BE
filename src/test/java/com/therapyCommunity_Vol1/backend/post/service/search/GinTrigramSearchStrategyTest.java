@@ -21,6 +21,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class GinTrigramSearchStrategyTest {
@@ -74,17 +76,56 @@ class GinTrigramSearchStrategyTest {
         assertThat(response.getMeta().isHasNextData()).isFalse();
     }
 
+    /**
+     * PRIVATE UX 개편 후 — canViewPrivate 값과 무관하게 visibility 필터 없이 통합 쿼리 호출.
+     * 회귀 보호: 누가 publicOnly 분기를 다시 추가하면 verify(never)에서 실패.
+     */
     @Test
-    void publicOnly_true면_가시성_쿼리를_사용한다() {
+    void canViewPrivate_false여도_visibility_필터_없이_통합_쿼리_사용() {
         PostSearchCondition condition = new PostSearchCondition("언어치료", null, null);
 
-        when(therapyPostRepository.searchIdsByRelevanceFirstPageAndVisibility(
-                anyString(), anyString(), isNull(), isNull(), anyString(), eq(11)))
+        when(therapyPostRepository.searchIdsByRelevanceFirstPage(
+                anyString(), anyString(), isNull(), isNull(), eq(11)))
                 .thenReturn(List.of());
 
-        SearchCursorResponse response = strategy.search(condition, null, null, 10, true);
+        strategy.search(condition, null, null, 10, false);
 
-        assertThat(response.getData()).isEmpty();
-        assertThat(response.getMeta().isHasNextData()).isFalse();
+        verify(therapyPostRepository).searchIdsByRelevanceFirstPage(
+                anyString(), anyString(), isNull(), isNull(), eq(11));
+        verify(therapyPostRepository, never()).searchIdsByRelevanceFirstPageAndVisibility(
+                anyString(), anyString(), any(), any(), anyString(), anyInt());
+    }
+
+    @Test
+    void canViewPrivate_true도_동일하게_통합_쿼리_사용() {
+        PostSearchCondition condition = new PostSearchCondition("언어치료", null, null);
+
+        when(therapyPostRepository.searchIdsByRelevanceFirstPage(
+                anyString(), anyString(), isNull(), isNull(), eq(11)))
+                .thenReturn(List.of());
+
+        strategy.search(condition, null, null, 10, true);
+
+        verify(therapyPostRepository).searchIdsByRelevanceFirstPage(
+                anyString(), anyString(), isNull(), isNull(), eq(11));
+        verify(therapyPostRepository, never()).searchIdsByRelevanceFirstPageAndVisibility(
+                anyString(), anyString(), any(), any(), anyString(), anyInt());
+    }
+
+    @Test
+    void 다음_페이지에서도_visibility_필터_없이_통합_쿼리_사용() {
+        PostSearchCondition condition = new PostSearchCondition("언어치료", null, null);
+
+        when(therapyPostRepository.searchIdsByRelevanceNextPage(
+                anyString(), anyString(), isNull(), isNull(), any(BigDecimal.class), eq(5L), eq(11)))
+                .thenReturn(List.of());
+
+        strategy.search(condition, new BigDecimal("0.50000000"), 5L, 10, false);
+
+        verify(therapyPostRepository).searchIdsByRelevanceNextPage(
+                anyString(), anyString(), isNull(), isNull(), any(BigDecimal.class), eq(5L), eq(11));
+        verify(therapyPostRepository, never()).searchIdsByRelevanceNextPageAndVisibility(
+                anyString(), anyString(), any(), any(), anyString(),
+                any(BigDecimal.class), anyLong(), anyInt());
     }
 }

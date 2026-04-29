@@ -44,7 +44,7 @@ class SearchResultAssemblerTest {
 
     @Test
     void 빈_결과는_빈_응답을_반환한다() {
-        SearchCursorResponse response = assembler.assemble(List.of(), 10);
+        SearchCursorResponse response = assembler.assemble(List.of(), 10, true);
 
         assertThat(response.getData()).isEmpty();
         assertThat(response.getMeta().isHasNextData()).isFalse();
@@ -66,7 +66,7 @@ class SearchResultAssemblerTest {
         );
         when(therapyPostRepository.findAllByIdInWithAuthor(anyList())).thenReturn(posts);
 
-        SearchCursorResponse response = assembler.assemble(rows, 2);
+        SearchCursorResponse response = assembler.assemble(rows, 2, true);
 
         assertThat(response.getData()).hasSize(2);
         assertThat(response.getMeta().isHasNextData()).isTrue();
@@ -82,7 +82,7 @@ class SearchResultAssemblerTest {
         List<TherapyPost> posts = List.of(createPost(1L, "test1"));
         when(therapyPostRepository.findAllByIdInWithAuthor(anyList())).thenReturn(posts);
 
-        SearchCursorResponse response = assembler.assemble(rows, 10);
+        SearchCursorResponse response = assembler.assemble(rows, 10, true);
 
         assertThat(response.getData()).hasSize(1);
         assertThat(response.getMeta().isHasNextData()).isFalse();
@@ -105,7 +105,7 @@ class SearchResultAssemblerTest {
         );
         when(therapyPostRepository.findAllByIdInWithAuthor(anyList())).thenReturn(posts);
 
-        SearchCursorResponse response = assembler.assemble(rows, 2);
+        SearchCursorResponse response = assembler.assemble(rows, 2, true);
 
         assertThat(response.getData()).hasSize(2);
         assertThat(response.getMeta().isHasNextData()).isTrue();
@@ -125,7 +125,7 @@ class SearchResultAssemblerTest {
         when(therapyPostRepository.findAllByIdInWithAuthor(anyList()))
                 .thenReturn(List.of(createPost(1L, "test1")));
 
-        SearchCursorResponse response = assembler.assemble(rows, 10);
+        SearchCursorResponse response = assembler.assemble(rows, 10, true);
 
         assertThat(response.getData()).hasSize(1);
     }

@@ -634,14 +634,27 @@ class PostServiceTest {
     }
 
     @Test
-    void 피드_USER는_PUBLIC_ONLY_쿼리_사용() {
-        when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), any(Pageable.class)))
-                .thenReturn(List.of());
+    void 피드_USER도_PRIVATE_포함_전체_조회하고_USER에게는_accessLocked로_마스킹된다() {
+        // PRIVATE UX 개편: USER도 PRIVATE 게시글을 메타데이터까지 보지만, 본문은 마스킹.
+        User author = User.builder().id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost privatePost = TherapyPost.create("<p>비밀</p>", TherapyArea.SPEECH, Visibility.PRIVATE, author);
+        ReflectionTestUtils.setField(privatePost, "id", 1L);
+        ReflectionTestUtils.setField(privatePost, "viewCount", 0L);
+        ReflectionTestUtils.setField(privatePost, "createdAt", LocalDateTime.now());
 
-        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
+        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
+                .thenReturn(List.of(privatePost));
 
-        verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedLatest(any(Pageable.class));
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
+
+        verify(therapyPostRepository).findFeedLatest(any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedLatestByVisibility(any(), any(Pageable.class));
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).isAccessLocked()).isTrue();
+        assertThat(response.getItems().get(0).getContentPreview()).isEqualTo("비공개 글입니다");
+        assertThat(response.getItems().get(0).getAuthorNickname()).isEqualTo("tester");
     }
 
     @Test
@@ -673,13 +686,14 @@ class PostServiceTest {
     }
 
     @Test
-    void 인기순_피드_USER는_PUBLIC_ONLY_쿼리_사용() {
-        when(therapyPostRepository.findFeedPopularByVisibility(eq(Visibility.PUBLIC), any(Pageable.class)))
+    void 인기순_피드_USER도_PRIVATE_포함_전체_조회() {
+        // PRIVATE UX 개편: USER도 PUBLIC + PRIVATE 통합 조회.
+        when(therapyPostRepository.findFeedPopular(any(Pageable.class)))
                 .thenReturn(List.of());
 
         postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
 
-        verify(therapyPostRepository).findFeedPopularByVisibility(eq(Visibility.PUBLIC), any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedPopular(any(Pageable.class));
+        verify(therapyPostRepository).findFeedPopular(any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedPopularByVisibility(any(), any(Pageable.class));
     }
 }
