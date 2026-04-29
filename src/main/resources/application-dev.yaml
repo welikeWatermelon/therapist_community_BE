@@ -11,7 +11,13 @@ spring:
       ddl-auto: none
   ai:
     model:
+      chat: none
       embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
 server:
   forward-headers-strategy: framework
 jwt:
