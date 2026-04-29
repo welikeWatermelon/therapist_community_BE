@@ -9,6 +9,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  ai:
+    model:
+      embedding: none
 server:
   forward-headers-strategy: framework
 jwt:
