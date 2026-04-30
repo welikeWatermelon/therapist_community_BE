@@ -21,6 +21,16 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
+    # Spring AI starter는 OPENAI_API_KEY가 비면 부팅 시 audio.speech 등 bean 생성에서 IllegalArgumentException 발생.
+    # 운영에선 OpenAI 사용 안 하므로 모든 모델을 none으로 비활성화. 사용 시 환경별 yaml에서 override.
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
 auth:
   cookie:
     refresh:
