@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
 
 @Slf4j
@@ -26,6 +27,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostImageService {
+
+    private static final Duration PRESIGN_TTL = Duration.ofHours(1);
 
     private final ActivePostFinder activePostFinder;
     private final TherapyPostImageRepository therapyPostImageRepository;
@@ -57,7 +60,7 @@ public class PostImageService {
         );
 
         TherapyPostImage saved = therapyPostImageRepository.save(image);
-        return PostImageResponse.from(saved);
+        return toResponse(saved);
     }
 
     public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole) {
@@ -66,8 +69,16 @@ public class PostImageService {
 
         return therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(postId)
                 .stream()
-                .map(PostImageResponse::from)
+                .map(this::toResponse)
                 .toList();
+    }
+
+    private PostImageResponse toResponse(TherapyPostImage image) {
+        String presignedUrl = fileStorageService.presignGet(image.getStoredPath(), PRESIGN_TTL);
+        if (presignedUrl != null) {
+            return PostImageResponse.of(image, presignedUrl);
+        }
+        return PostImageResponse.from(image);
     }
 
     public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole) {

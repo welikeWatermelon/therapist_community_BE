@@ -17,9 +17,13 @@ public class PostImageResponse {
     private LocalDateTime createdAt;
 
     public static PostImageResponse from(TherapyPostImage image) {
+        return of(image, "/api/v1/posts/" + image.getPost().getId() + "/images/" + image.getId());
+    }
+
+    public static PostImageResponse of(TherapyPostImage image, String imageUrl) {
         return new PostImageResponse(
                 image.getId(),
-                "/api/v1/posts/" + image.getPost().getId() + "/images/" + image.getId(),
+                imageUrl,
                 image.getOriginalFilename(),
                 image.getDisplayOrder(),
                 image.getCreatedAt()
