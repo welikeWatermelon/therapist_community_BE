@@ -45,7 +45,7 @@ class UserServiceTest {
         tokenService = mock(TokenService.class);
         fileStorageService = mock(FileStorageService.class);
         userCacheService = mock(UserCacheService.class);
-        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080");
+        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080", fileStorageService);
         userService = new UserService(
                 userRepository,
                 therapistVerificationService,
