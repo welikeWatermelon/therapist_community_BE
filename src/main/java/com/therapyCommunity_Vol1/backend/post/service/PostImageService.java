@@ -21,6 +21,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -79,6 +81,24 @@ public class PostImageService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * 목록 응답 빌드 시점의 N+1 제거용 batch 조회.
+     * 호출처가 권한 따라 visiblePostIds를 미리 필터해서 넘기므로 권한 가드 없이 단순 조회.
+     * 빈 입력은 빈 맵 반환(SQL 실행 X).
+     */
+    public Map<Long, List<PostImageResponse>> getImagesByPostIds(List<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        return therapyPostImageRepository
+                .findByPostIdInOrderByPostIdAscDisplayOrderAsc(postIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        img -> img.getPost().getId(),
+                        Collectors.mapping(this::toResponse, Collectors.toList())
+                ));
     }
 
     private PostImageResponse toResponse(TherapyPostImage image) {

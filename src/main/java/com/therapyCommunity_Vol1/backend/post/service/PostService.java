@@ -394,6 +394,17 @@ public class PostService {
                 therapyPostCommentRepository.countActiveByPostIdIn(postIds)
         );
 
+        // 권한 없는 사용자에겐 PRIVATE 게시글의 이미지 URL을 DB 조회 자체에서 제외 (효율 + 보안 이중 방어).
+        // DTO 단계의 accessLocked 마스킹은 그대로 유지.
+        List<Long> visiblePostIds = canViewPrivate
+                ? postIds
+                : posts.stream()
+                        .filter(p -> p.getVisibility() == Visibility.PUBLIC)
+                        .map(TherapyPost::getId)
+                        .toList();
+        Map<Long, List<PostImageResponse>> imagesByPostId =
+                postImageService.getImagesByPostIds(visiblePostIds);
+
         return posts.stream()
                 .map(post -> TherapyPostSummaryResponse.from(
                         post,
@@ -402,7 +413,7 @@ public class PostService {
                         false,
                         canViewPrivate,
                         profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
-                        postImageService.getImagesForPostUnchecked(post.getId()).stream()
+                        imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
                                 .map(PostImageResponse::getImageUrl)
                                 .toList()
                 ))
