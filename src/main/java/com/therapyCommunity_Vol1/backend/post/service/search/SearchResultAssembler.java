@@ -2,11 +2,15 @@ package com.therapyCommunity_Vol1.backend.post.service.search;
 
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+import com.therapyCommunity_Vol1.backend.post.dto.PostImageResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.PostImageService;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +38,8 @@ public class SearchResultAssembler {
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostReactionRepository therapyPostReactionRepository;
     private final TherapyPostCommentRepository therapyPostCommentRepository;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
+    private final PostImageService postImageService;
 
     /**
      * @param rows native query 결과. 각 행은 [postId(Number), score(BigDecimal)].
@@ -125,13 +131,28 @@ public class SearchResultAssembler {
                 therapyPostCommentRepository.countActiveByPostIdIn(postIds)
         );
 
+        // 권한 없는 사용자에겐 PRIVATE 게시글의 이미지 URL을 DB 조회 자체에서 제외 (효율 + 보안 이중 방어).
+        // DTO 단계의 accessLocked 마스킹은 그대로 유지.
+        List<Long> visiblePostIds = canViewPrivate
+                ? postIds
+                : posts.stream()
+                        .filter(p -> p.getVisibility() == Visibility.PUBLIC)
+                        .map(TherapyPost::getId)
+                        .toList();
+        Map<Long, List<PostImageResponse>> imagesByPostId =
+                postImageService.getImagesByPostIds(visiblePostIds);
+
         return posts.stream()
                 .map(post -> TherapyPostSummaryResponse.from(
                         post,
                         likeCounts.getOrDefault(post.getId(), 0L),
                         commentCounts.getOrDefault(post.getId(), 0L),
                         false,
-                        canViewPrivate
+                        canViewPrivate,
+                        profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                        imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
+                                .map(PostImageResponse::getImageUrl)
+                                .toList()
                 ))
                 .toList();
     }

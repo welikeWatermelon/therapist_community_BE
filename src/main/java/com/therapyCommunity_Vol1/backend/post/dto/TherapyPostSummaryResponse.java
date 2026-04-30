@@ -7,6 +7,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class TherapyPostSummaryResponse {
@@ -15,6 +16,7 @@ public class TherapyPostSummaryResponse {
     private PostType postType;
     private String contentPreview;
     private String authorNickname;
+    private String authorProfileImageUrl;
     private TherapyArea therapyArea;
     private Visibility visibility;
     private Long viewCount;
@@ -30,12 +32,14 @@ public class TherapyPostSummaryResponse {
      * 프론트는 true일 때 contentPreview/이미지를 마스킹 처리하고 클릭 시 인증 유도 모달.
      */
     private boolean accessLocked;
+    private List<String> imageUrls;
 
     public TherapyPostSummaryResponse(
             Long id,
             PostType postType,
             String contentPreview,
             String authorNickname,
+            String authorProfileImageUrl,
             TherapyArea therapyArea,
             Visibility visibility,
             Long viewCount,
@@ -43,12 +47,14 @@ public class TherapyPostSummaryResponse {
             Long commentCount,
             LocalDateTime createdAt,
             boolean isScrapped,
-            boolean accessLocked
+            boolean accessLocked,
+            List<String> imageUrls
     ) {
         this.id = id;
         this.postType = postType;
         this.contentPreview = contentPreview;
         this.authorNickname = authorNickname;
+        this.authorProfileImageUrl = authorProfileImageUrl;
         this.therapyArea = therapyArea;
         this.visibility = visibility;
         this.viewCount = viewCount;
@@ -57,16 +63,17 @@ public class TherapyPostSummaryResponse {
         this.createdAt = createdAt;
         this.isScrapped = isScrapped;
         this.accessLocked = accessLocked;
+        this.imageUrls = imageUrls;
     }
 
     private static final String PRIVATE_CONTENT_MESSAGE = "비공개 글입니다";
 
     /**
-     * canViewPrivate 정보가 없는 호출처용 (테스트 헬퍼 등).
-     * accessLocked는 보수적으로 PRIVATE 여부만으로 판단 — 결과적으로 가장 안전한 마스킹.
+     * 테스트 헬퍼 — 카운트/프로필/이미지 정보가 없을 때.
+     * accessLocked는 보수적으로 PRIVATE 여부만으로 판단.
      */
     public static TherapyPostSummaryResponse from(TherapyPost post, boolean isScrapped) {
-        return from(post, 0L, 0L, isScrapped, false);
+        return from(post, 0L, 0L, isScrapped, false, null, List.of());
     }
 
     public static TherapyPostSummaryResponse from(
@@ -74,17 +81,22 @@ public class TherapyPostSummaryResponse {
             Long likeCount,
             Long commentCount,
             boolean isScrapped,
-            boolean canViewPrivate
+            boolean canViewPrivate,
+            String authorProfileImageUrl,
+            List<String> imageUrls
     ) {
         boolean accessLocked = post.getVisibility() == Visibility.PRIVATE && !canViewPrivate;
         String preview = accessLocked
                 ? PRIVATE_CONTENT_MESSAGE
                 : makePreview(post.getContent());
+        // PRIVATE 게시글의 이미지 URL은 권한 없는 사용자에게 노출하지 않음
+        List<String> safeImageUrls = accessLocked ? List.of() : imageUrls;
         return new TherapyPostSummaryResponse(
                 post.getId(),
                 post.getPostType(),
                 preview,
                 post.getAuthor().getDisplayNickname(),
+                authorProfileImageUrl,
                 post.getTherapyArea(),
                 post.getVisibility(),
                 post.getViewCount(),
@@ -92,7 +104,8 @@ public class TherapyPostSummaryResponse {
                 commentCount,
                 post.getCreatedAt(),
                 isScrapped,
-                accessLocked
+                accessLocked,
+                safeImageUrls
         );
     }
 

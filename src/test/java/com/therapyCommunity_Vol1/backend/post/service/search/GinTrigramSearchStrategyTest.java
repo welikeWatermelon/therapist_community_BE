@@ -41,7 +41,16 @@ class GinTrigramSearchStrategyTest {
                 .thenReturn(List.of());
         when(commentRepo.countActiveByPostIdIn(anyList()))
                 .thenReturn(List.of());
-        assembler = new SearchResultAssembler(therapyPostRepository, reactionRepo, commentRepo);
+        com.therapyCommunity_Vol1.backend.post.service.PostImageService postImageServiceMock =
+                mock(com.therapyCommunity_Vol1.backend.post.service.PostImageService.class);
+        when(postImageServiceMock.getImagesForPostUnchecked(anyLong())).thenReturn(List.of());
+        assembler = new SearchResultAssembler(
+                therapyPostRepository,
+                reactionRepo,
+                commentRepo,
+                mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class),
+                postImageServiceMock
+        );
         entityManager = mock(EntityManager.class);
 
         strategy = new GinTrigramSearchStrategy(therapyPostRepository, assembler);

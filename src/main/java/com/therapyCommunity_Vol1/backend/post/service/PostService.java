@@ -27,6 +27,7 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +64,8 @@ public class PostService {
     private final UserEventPublisher userEventPublisher;
     private final AiCommentStatusProvider aiCommentStatusProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
+    private final PostImageService postImageService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -318,7 +321,9 @@ public class PostService {
                 myReactionType,
                 currentUserId,
                 currentUserRole,
-                isScrapped
+                isScrapped,
+                profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                postImageService.getImagesForPostUnchecked(postId)
         );
         AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
         response.setAutoComment(acStatus.status(), acStatus.sourceMode());
@@ -389,13 +394,28 @@ public class PostService {
                 therapyPostCommentRepository.countActiveByPostIdIn(postIds)
         );
 
+        // 권한 없는 사용자에겐 PRIVATE 게시글의 이미지 URL을 DB 조회 자체에서 제외 (효율 + 보안 이중 방어).
+        // DTO 단계의 accessLocked 마스킹은 그대로 유지.
+        List<Long> visiblePostIds = canViewPrivate
+                ? postIds
+                : posts.stream()
+                        .filter(p -> p.getVisibility() == Visibility.PUBLIC)
+                        .map(TherapyPost::getId)
+                        .toList();
+        Map<Long, List<PostImageResponse>> imagesByPostId =
+                postImageService.getImagesByPostIds(visiblePostIds);
+
         return posts.stream()
                 .map(post -> TherapyPostSummaryResponse.from(
                         post,
                         likeCounts.getOrDefault(post.getId(), 0L),
                         commentCounts.getOrDefault(post.getId(), 0L),
                         false,
-                        canViewPrivate
+                        canViewPrivate,
+                        profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                        imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
+                                .map(PostImageResponse::getImageUrl)
+                                .toList()
                 ))
                 .toList();
     }
