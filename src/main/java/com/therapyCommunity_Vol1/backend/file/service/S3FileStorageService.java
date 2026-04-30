@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ByteArrayResource;
@@ -32,6 +33,7 @@ import java.util.UUID;
     matchIfMissing = false
 )
 @Primary
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class S3FileStorageService implements FileStorageService {
@@ -43,30 +45,34 @@ public class S3FileStorageService implements FileStorageService {
 
     @Override
     public StoredFileInfo storeTherapistVerificationImage(MultipartFile file) {
-        try {
-            validateImage(file);
-            return store(file, "therapist-verifications");
-        } catch (Exception e) {
-            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
-        }
+        return storeWithValidation(file, "therapist-verifications", this::validateImage);
     }
 
     @Override
     public StoredFileInfo storePostAttachment(MultipartFile file) {
-        try {
-            validatePdf(file);
-            return store(file, "post-attachments");
-        } catch (Exception e) {
-            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
-        }
+        return storeWithValidation(file, "post-attachments", this::validatePdf);
     }
 
     @Override
     public StoredFileInfo storeProfileImage(MultipartFile file) {
+        return storeWithValidation(file, "profile-images", this::validateImage);
+    }
+
+    private StoredFileInfo storeWithValidation(
+            MultipartFile file,
+            String directory,
+            java.util.function.Consumer<MultipartFile> validator
+    ) {
+        validator.accept(file);
         try {
-            validateImage(file);
-            return store(file, "profile-images");
+            return store(file, directory);
         } catch (Exception e) {
+            log.error("S3 upload failed: directory={}, filename={}, size={}, contentType={}",
+                    directory,
+                    file.getOriginalFilename(),
+                    file.getSize(),
+                    file.getContentType(),
+                    e);
             throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
@@ -100,6 +106,34 @@ public class S3FileStorageService implements FileStorageService {
 
 
     @Override
+    public StoredFileInfo storeKnowledgeDocument(MultipartFile file) {
+        try {
+            return store(file, "knowledge-documents");
+        } catch (Exception e) {
+            log.error("S3 upload failed: directory={}, filename={}, size={}, contentType={}",
+                    "knowledge-documents",
+                    file.getOriginalFilename(),
+                    file.getSize(),
+                    file.getContentType(),
+                    e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
+        }
+    }
+
+    @Override
+    public java.io.InputStream loadAsStream(String storedPath) {
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(storedPath)
+                    .build();
+            return s3Client.getObject(request);
+        } catch (NoSuchKeyException e) {
+            throw new CustomException(ErrorCode.RESOURCE_NOT_FOUND);
+        }
+    }
+
+    @Override
     public void delete(String storedPath) {
         try {
             s3Client.deleteObject(DeleteObjectRequest.builder()
@@ -107,6 +141,7 @@ public class S3FileStorageService implements FileStorageService {
                     .key(storedPath)
                     .build());
         } catch (Exception e) {
+            log.error("S3 delete failed: storedPath={}", storedPath, e);
             throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
     }
@@ -176,7 +211,7 @@ public class S3FileStorageService implements FileStorageService {
         if (ext.startsWith(".")) {
             ext = ext.substring(1);
         }
-        if (!ALLOWED_EXTENSIONS.contains(ext)) {
+        if (!ALLOWED_EXTENSIONS.contains(ext.toLowerCase(Locale.ROOT))) {
             throw new CustomException(ErrorCode.INVALID_LICENSE_IMAGE);
         }
 

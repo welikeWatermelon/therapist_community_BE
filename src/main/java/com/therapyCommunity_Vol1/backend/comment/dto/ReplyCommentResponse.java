@@ -19,6 +19,7 @@ public class ReplyCommentResponse {
     private Long authorId;
     private String authorNickname;
     private String authorRole;
+    private boolean authorIsAi;
     private String content;
     private boolean deleted;
     private boolean canEdit;
@@ -29,7 +30,8 @@ public class ReplyCommentResponse {
     public static ReplyCommentResponse from(
             TherapyPostComment comment,
             Long currentUserId,
-            UserRole currentUserRole
+            UserRole currentUserRole,
+            String aiUserEmail
     ) {
         boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
         return new ReplyCommentResponse(
@@ -39,6 +41,7 @@ public class ReplyCommentResponse {
                 comment.getAuthor().getId(),
                 comment.getAuthor().getDisplayNickname(),
                 comment.getAuthor().getRole().getCode(),
+                aiUserEmail != null && aiUserEmail.equals(comment.getAuthor().getEmail()),
                 comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),
                 canManage,
