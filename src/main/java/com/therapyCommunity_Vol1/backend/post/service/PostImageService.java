@@ -19,13 +19,18 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostImageService {
+
+    private static final Duration PRESIGN_TTL = Duration.ofHours(1);
 
     private final ActivePostFinder activePostFinder;
     private final TherapyPostImageRepository therapyPostImageRepository;
@@ -44,7 +49,7 @@ public class PostImageService {
         visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        StoredFileInfo storedFileInfo = fileStorageService.storeProfileImage(file);
+        StoredFileInfo storedFileInfo = fileStorageService.storePostImage(file);
         int nextOrder = therapyPostImageRepository.countByPostId(postId);
 
         TherapyPostImage image = TherapyPostImage.create(
@@ -57,17 +62,51 @@ public class PostImageService {
         );
 
         TherapyPostImage saved = therapyPostImageRepository.save(image);
-        return PostImageResponse.from(saved);
+        return toResponse(saved);
     }
 
     public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
 
+        return getImagesForPostUnchecked(postId);
+    }
+
+    /**
+     * 게시글 응답 빌드 시점에 이미지 정보를 함께 박을 때 사용 — 권한 체크 없이 단순 조회.
+     * 호출처(PostService 등)가 이미 게시글에 대한 visibility/access 가드를 통과한 후 호출한다고 전제.
+     */
+    public List<PostImageResponse> getImagesForPostUnchecked(Long postId) {
         return therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(postId)
                 .stream()
-                .map(PostImageResponse::from)
+                .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * 목록 응답 빌드 시점의 N+1 제거용 batch 조회.
+     * 호출처가 권한 따라 visiblePostIds를 미리 필터해서 넘기므로 권한 가드 없이 단순 조회.
+     * 빈 입력은 빈 맵 반환(SQL 실행 X).
+     */
+    public Map<Long, List<PostImageResponse>> getImagesByPostIds(List<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        return therapyPostImageRepository
+                .findByPostIdInOrderByPostIdAscDisplayOrderAsc(postIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        img -> img.getPost().getId(),
+                        Collectors.mapping(this::toResponse, Collectors.toList())
+                ));
+    }
+
+    private PostImageResponse toResponse(TherapyPostImage image) {
+        String presignedUrl = fileStorageService.presignGet(image.getStoredPath(), PRESIGN_TTL);
+        if (presignedUrl != null) {
+            return PostImageResponse.of(image, presignedUrl);
+        }
+        return PostImageResponse.from(image);
     }
 
     public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole) {

@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.scrap.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
@@ -41,6 +44,7 @@ public class ScrapService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final UserEventPublisher userEventPublisher;
 
     public Set<Long> getScrappedPostIds(Long userId, List<Long> postIds) {
         if (userId == null || postIds.isEmpty()) {
@@ -71,6 +75,14 @@ public class ScrapService {
                     .referenceId(postId)
                     .content(user.getNickname() + "님이 회원님의 게시글을 스크랩했습니다.")
                     .build());
+
+            // 이미 스크랩한 상태에서 재요청은 멱등 응답이므로 수집하지 않음.
+            userEventPublisher.publish(
+                    currentUserId,
+                    UserEventType.POST_SCRAP,
+                    EventTargetType.POST,
+                    postId
+            );
         }
 
         return new ScrapStatusResponse(postId, true);

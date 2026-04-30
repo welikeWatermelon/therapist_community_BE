@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.reaction.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
@@ -38,6 +41,7 @@ public class PostReactionService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final UserEventPublisher userEventPublisher;
 
     /**
      * 반응 토글 (생성/삭제/변경).
@@ -62,10 +66,12 @@ public class PostReactionService {
         postReactionRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresentOrElse(existing -> {
                     if (existing.getReactionType() == request.getReactionType()) {
-                        // 같은 반응 → 삭제 (토글 off)
+                        // 같은 반응 → 삭제 (토글 off). 부정 시그널이므로 analytics 미수집.
                         postReactionRepository.delete(existing);
                     } else {
-                        // 다른 반응 → 타입 변경
+                        // 다른 반응 → 타입 변경. 이미 활성 상태이므로 신규 positive signal이 아님.
+                        // 동일 유저가 LIKE↔USEFUL을 반복 토글할 경우 지표가 부풀려져, 어뷰징 가능성을
+                        // 차단하기 위해 analytics 미수집.
                         existing.changeReactionType(request.getReactionType());
                     }
                 }, () -> {
@@ -82,6 +88,8 @@ public class PostReactionService {
                             .referenceId(postId)
                             .content(user.getNickname() + "님이 회원님의 게시글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
                             .build());
+
+                    publishReactAnalytics(currentUserId, postId, request.getReactionType());
                 });
 
         postService.recalculatePopularityScore(postId);
@@ -131,6 +139,18 @@ public class PostReactionService {
     }
 
     // ── 내부 헬퍼 ──────────────────────────────────────────
+
+    /** positive reaction 신호만 analytics로 전송 (전문성/매칭 지표 산출용). */
+    private void publishReactAnalytics(Long userId, Long postId, PostReactionType reactionType) {
+        userEventPublisher.publish(
+                userId,
+                UserEventType.POST_REACT,
+                EventTargetType.POST,
+                postId,
+                Map.of("reactionType", reactionType.name())
+        );
+    }
+
 
     /**
      * GROUP BY 쿼리 결과를 모든 반응 타입이 포함된 EnumMap으로 변환.

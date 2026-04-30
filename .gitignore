@@ -60,3 +60,7 @@ docs/vector/*
 #CLAUDE
 CLAUDE.md
 .claude/
+
+#aws docs
+docs/DEV_TUNNELS.md
+docs/AI_COMMENT_TESTING.md

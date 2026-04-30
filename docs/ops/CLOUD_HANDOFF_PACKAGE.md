@@ -112,6 +112,11 @@ JWT_REFRESH_TTL_SEC=1209600
 APP_AWS_REGION=ap-northeast-2
 APP_AWS_S3_BUCKET=<S3_BUCKET_NAME>
 APP_CORS_ALLOWED_ORIGINS=https://www.melonnetherapists.com
+
+# === 검색 (현재 불필요, pgvector 전환 시에만 추가) ===
+# OPENAI_API_KEY=sk-xxxx
+# APP_SEARCH_STRATEGY=pgvector
+# APP_SEARCH_EMBEDDING_ENABLED=true
 ```
 
 주의:
@@ -253,7 +258,77 @@ EC2 IAM Role 최소 권한 예시:
 - `s3:DeleteObject`
 - 필요 시 `s3:ListBucket`
 
-## 12) 현재 코드 기준 메모
+## 12) 검색 엔진 설정 (pgvector 전환 가이드)
+
+현재 검색은 **GIN trigram (pg_trgm)** 기반이며, 추가 설정 없이 동작합니다.
+향후 검색 정확도가 부족하면 **pgvector (OpenAI 임베딩)** 로 전환합니다.
+
+### 현재 상태 (Phase 1 — GIN)
+
+추가 환경변수 불필요. 기본값으로 동작합니다.
+
+```yaml
+# application.yaml 기본값 (변경 불필요)
+app:
+  search:
+    strategy: gin           # GIN trigram 검색
+    embedding:
+      enabled: false        # 임베딩 파이프라인 비활성화
+```
+
+- `OPENAI_API_KEY` — **지금은 불필요**, `.env`에 비워두면 됨
+- Docker 이미지가 `pgvector/pgvector:pg16`이지만, GIN 모드에서는 pgvector 기능을 사용하지 않음
+
+### 전환 시 (Phase 2 — pgvector)
+
+백엔드 팀이 전환을 결정하면 클라우드 팀에 아래를 요청합니다.
+
+**1) 환경변수 추가** (`backend.env`):
+
+```bash
+# 검색 전환용 — 백엔드 팀 요청 시에만 추가
+OPENAI_API_KEY=sk-xxxx                     # OpenAI API 키 (시크릿 채널로 전달)
+APP_SEARCH_STRATEGY=pgvector               # 검색 전략 전환
+APP_SEARCH_EMBEDDING_ENABLED=true          # 임베딩 생성 활성화
+```
+
+**2) 전환 전 사전 조건** (백엔드 팀이 확인):
+
+```sql
+-- 모든 게시글에 임베딩이 생성되어 있어야 함
+SELECT COUNT(*) FROM therapy_posts
+WHERE content_embedding IS NULL AND deleted_at IS NULL;
+-- 결과가 0이어야 전환 가능
+```
+
+**3) 전환 절차**:
+
+| 순서 | 담당 | 작업 |
+|------|------|------|
+| 1 | 백엔드 | GIN 모드에서 `embedding.enabled=true`로 임베딩 사전 생성 |
+| 2 | 백엔드 | admin API로 기존 게시글 backfill 완료 확인 |
+| 3 | 백엔드 → 클라우드 | 환경변수 3개 전달 |
+| 4 | 클라우드 | `backend.env`에 추가 후 서비스 재시작 |
+| 5 | 백엔드 | 검색 품질 모니터링 |
+
+**4) 롤백** (검색 품질 문제 시):
+
+```bash
+# backend.env에서 아래만 변경
+APP_SEARCH_STRATEGY=gin
+# 재시작
+sudo systemctl restart backend
+```
+
+`embedding.enabled`는 켜둬도 무방 (백그라운드 임베딩 생성만 계속됨).
+
+### 비용 참고
+
+- 모델: `text-embedding-3-small` ($0.02 / 1M tokens)
+- 게시글 1건 ≈ 100~200 tokens → 1,000건 ≈ $0.004
+- 검색 쿼리당 1회 API 호출 (캐싱 적용됨)
+
+## 13) 현재 코드 기준 메모
 
 - 헬스체크는 현재 `/api/v1/home` 가 실제 구현 엔드포인트입니다.
 - `prod`/`dev`의 CORS origin은 `APP_CORS_ALLOWED_ORIGINS`로 환경변수화되어 있습니다.
