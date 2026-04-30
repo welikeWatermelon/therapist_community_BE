@@ -27,6 +27,7 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +64,8 @@ public class PostService {
     private final UserEventPublisher userEventPublisher;
     private final AiCommentStatusProvider aiCommentStatusProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
+    private final PostImageService postImageService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -318,7 +321,9 @@ public class PostService {
                 myReactionType,
                 currentUserId,
                 currentUserRole,
-                isScrapped
+                isScrapped,
+                profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                postImageService.getImagesForPostUnchecked(postId)
         );
         AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
         response.setAutoComment(acStatus.status(), acStatus.sourceMode());
@@ -395,7 +400,11 @@ public class PostService {
                         likeCounts.getOrDefault(post.getId(), 0L),
                         commentCounts.getOrDefault(post.getId(), 0L),
                         false,
-                        canViewPrivate
+                        canViewPrivate,
+                        profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                        postImageService.getImagesForPostUnchecked(post.getId()).stream()
+                                .map(PostImageResponse::getImageUrl)
+                                .toList()
                 ))
                 .toList();
     }

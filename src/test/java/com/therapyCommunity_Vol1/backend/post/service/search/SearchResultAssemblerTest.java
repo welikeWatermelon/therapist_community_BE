@@ -33,7 +33,16 @@ class SearchResultAssemblerTest {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostReactionRepository = mock(TherapyPostReactionRepository.class);
         therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
-        assembler = new SearchResultAssembler(therapyPostRepository, therapyPostReactionRepository, therapyPostCommentRepository);
+        com.therapyCommunity_Vol1.backend.post.service.PostImageService postImageServiceMock =
+                mock(com.therapyCommunity_Vol1.backend.post.service.PostImageService.class);
+        when(postImageServiceMock.getImagesForPostUnchecked(org.mockito.ArgumentMatchers.anyLong())).thenReturn(List.of());
+        assembler = new SearchResultAssembler(
+                therapyPostRepository,
+                therapyPostReactionRepository,
+                therapyPostCommentRepository,
+                mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class),
+                postImageServiceMock
+        );
 
         // 기본 count stub — 개별 테스트에서 오버라이드 가능
         when(therapyPostReactionRepository.countByPostIdInAndReactionType(anyList(), any(PostReactionType.class)))

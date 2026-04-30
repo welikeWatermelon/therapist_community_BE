@@ -53,6 +53,8 @@ class PostServiceTest {
     private UserEventPublisher userEventPublisher;
     private AiCommentStatusProvider aiCommentStatusProvider;
     private ApplicationEventPublisher eventPublisher;
+    private com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler;
+    private PostImageService postImageService;
     private PostService postService;
 
     @BeforeEach
@@ -86,6 +88,9 @@ class PostServiceTest {
         when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(anyLong()))
                 .thenReturn(0L);
         userEventPublisher = mock(UserEventPublisher.class);
+        profileImageUrlAssembler = mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
+        postImageService = mock(PostImageService.class);
+        when(postImageService.getImagesForPostUnchecked(anyLong())).thenReturn(List.of());
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
@@ -99,7 +104,9 @@ class PostServiceTest {
                 searchStrategy,
                 userEventPublisher,
                 aiCommentStatusProvider,
-                eventPublisher
+                eventPublisher,
+                profileImageUrlAssembler,
+                postImageService
         );
     }
 

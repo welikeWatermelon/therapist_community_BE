@@ -67,6 +67,14 @@ public class PostImageService {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
 
+        return getImagesForPostUnchecked(postId);
+    }
+
+    /**
+     * 게시글 응답 빌드 시점에 이미지 정보를 함께 박을 때 사용 — 권한 체크 없이 단순 조회.
+     * 호출처(PostService 등)가 이미 게시글에 대한 visibility/access 가드를 통과한 후 호출한다고 전제.
+     */
+    public List<PostImageResponse> getImagesForPostUnchecked(Long postId) {
         return therapyPostImageRepository.findByPostIdOrderByDisplayOrderAsc(postId)
                 .stream()
                 .map(this::toResponse)

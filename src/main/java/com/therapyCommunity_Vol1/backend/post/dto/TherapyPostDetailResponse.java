@@ -24,6 +24,7 @@ public class TherapyPostDetailResponse {
     private PostType postType;
     private Long authorId;
     private String authorNickname;
+    private String authorProfileImageUrl;
     private TherapyArea therapyArea;
     private Visibility visibility;
     private Long viewCount;
@@ -36,10 +37,11 @@ public class TherapyPostDetailResponse {
     private boolean canDelete;
     private boolean isScrapped;
     private List<PostAttachmentResponse> attachments;
+    private List<PostImageResponse> images;
     private String autoCommentStatus;
     private String autoCommentSourceMode;
 
-    // 생성/수정 응답 (스크랩·카운트·리액션 없음)
+    // 생성/수정 응답 (스크랩·카운트·리액션 없음, 이미지/프로필 정보 없음)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             Long currentUserId,
@@ -53,11 +55,13 @@ public class TherapyPostDetailResponse {
                 null,
                 currentUserId,
                 currentUserRole,
-                false
+                false,
+                null,
+                List.of()
         );
     }
 
-    // 상세 조회 (스크랩·카운트·리액션 포함)
+    // 상세 조회 (스크랩·카운트·리액션·작성자 프로필·이미지 포함)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             List<PostAttachmentResponse> attachments,
@@ -66,7 +70,9 @@ public class TherapyPostDetailResponse {
             PostReactionType myReactionType,
             Long currentUserId,
             UserRole currentUserRole,
-            boolean isScrapped
+            boolean isScrapped,
+            String authorProfileImageUrl,
+            List<PostImageResponse> images
     ) {
         boolean canManage = canManage(post, currentUserId, currentUserRole);
         return new TherapyPostDetailResponse(
@@ -75,6 +81,7 @@ public class TherapyPostDetailResponse {
                 post.getPostType(),
                 post.getAuthor().getId(),
                 post.getAuthor().getDisplayNickname(),
+                authorProfileImageUrl,
                 post.getTherapyArea(),
                 post.getVisibility(),
                 post.getViewCount(),
@@ -87,6 +94,7 @@ public class TherapyPostDetailResponse {
                 canManage,
                 isScrapped,
                 attachments,
+                images,
                 null,
                 null
         );

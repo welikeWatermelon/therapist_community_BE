@@ -2,11 +2,14 @@ package com.therapyCommunity_Vol1.backend.post.service.search;
 
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.dto.PostImageResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.SearchCursorResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.service.PostImageService;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +37,8 @@ public class SearchResultAssembler {
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostReactionRepository therapyPostReactionRepository;
     private final TherapyPostCommentRepository therapyPostCommentRepository;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
+    private final PostImageService postImageService;
 
     /**
      * @param rows native query 결과. 각 행은 [postId(Number), score(BigDecimal)].
@@ -131,7 +136,11 @@ public class SearchResultAssembler {
                         likeCounts.getOrDefault(post.getId(), 0L),
                         commentCounts.getOrDefault(post.getId(), 0L),
                         false,
-                        canViewPrivate
+                        canViewPrivate,
+                        profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                        postImageService.getImagesForPostUnchecked(post.getId()).stream()
+                                .map(PostImageResponse::getImageUrl)
+                                .toList()
                 ))
                 .toList();
     }
