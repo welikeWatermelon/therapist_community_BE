@@ -58,6 +58,11 @@ public class S3FileStorageService implements FileStorageService {
     }
 
     @Override
+    public StoredFileInfo storePostImage(MultipartFile file) {
+        return storeWithValidation(file, "post-images", this::validateImage);
+    }
+
+    @Override
     public StoredFileInfo storeProfileImage(MultipartFile file) {
         return storeWithValidation(file, "profile-images", this::validateImage);
     }
