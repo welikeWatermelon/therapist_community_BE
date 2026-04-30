@@ -25,6 +25,13 @@ jwt:
   refresh-secret: ${JWT_REFRESH_SECRET}
   access-ttl-sec: ${JWT_ACCESS_TTL_SEC:1800}
   refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
+auth:
+  cookie:
+    refresh:
+      # Vercel preview(*.vercel.app) ↔ api-staging.melonnetherapists.com 이 cross-site라
+      # SameSite=Lax면 cross-site fetch에 refreshToken 쿠키가 첨부되지 않아 자동 로그아웃 발생.
+      # staging에서만 None으로 풀고, prod는 same-site 환경이라 application.yaml의 Lax 그대로 둔다.
+      same-site: None
 app:
   base-url: http://43.201.120.96:8080
   cors:
