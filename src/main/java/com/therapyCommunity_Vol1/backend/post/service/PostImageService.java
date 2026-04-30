@@ -44,7 +44,7 @@ public class PostImageService {
         visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        StoredFileInfo storedFileInfo = fileStorageService.storeProfileImage(file);
+        StoredFileInfo storedFileInfo = fileStorageService.storePostImage(file);
         int nextOrder = therapyPostImageRepository.countByPostId(postId);
 
         TherapyPostImage image = TherapyPostImage.create(

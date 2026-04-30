@@ -11,6 +11,8 @@ public interface FileStorageService {
 
     StoredFileInfo storePostAttachment(MultipartFile file);
 
+    StoredFileInfo storePostImage(MultipartFile file);
+
     StoredFileInfo storeProfileImage(MultipartFile file);
 
     StoredFileInfo storeKnowledgeDocument(MultipartFile file);

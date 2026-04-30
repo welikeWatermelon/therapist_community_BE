@@ -54,6 +54,12 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
+    public StoredFileInfo storePostImage(MultipartFile file) {
+        validateProfileImage(file);
+        return store(file, "post-images");
+    }
+
+    @Override
     public StoredFileInfo storeProfileImage(MultipartFile file) {
         validateProfileImage(file);
         return store(file, "profile-images");
