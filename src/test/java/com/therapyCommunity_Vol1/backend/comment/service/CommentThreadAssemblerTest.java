@@ -61,7 +61,7 @@ class CommentThreadAssemblerTest {
         TherapyPostComment r1 = root(1L, "루트1");
         TherapyPostComment p1 = reply(2L, r1, "리플1");
 
-        List<CommentResponse> result = assembler.assemble(List.of(r1, p1), 1L, UserRole.USER);
+        List<CommentResponse> result = assembler.assemble(List.of(r1, p1), 1L, UserRole.USER, java.util.Map.of());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getId()).isEqualTo(1L);
@@ -76,7 +76,7 @@ class CommentThreadAssemblerTest {
         TherapyPostComment r1 = softDelete(root(1L, "루트1"));
         TherapyPostComment p1 = reply(2L, r1, "리플1");
 
-        List<CommentResponse> result = assembler.assemble(List.of(r1, p1), 1L, UserRole.USER);
+        List<CommentResponse> result = assembler.assemble(List.of(r1, p1), 1L, UserRole.USER, java.util.Map.of());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getId()).isEqualTo(1L);
@@ -93,7 +93,7 @@ class CommentThreadAssemblerTest {
         TherapyPostComment p1 = reply(2L, r1, "리플1");
         TherapyPostComment p2 = softDelete(reply(3L, r1, "리플2_삭제됨"));
 
-        List<CommentResponse> result = assembler.assemble(List.of(r1, p1, p2), 1L, UserRole.USER);
+        List<CommentResponse> result = assembler.assemble(List.of(r1, p1, p2), 1L, UserRole.USER, java.util.Map.of());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getReplies()).hasSize(1);
@@ -106,7 +106,7 @@ class CommentThreadAssemblerTest {
         TherapyPostComment p1 = softDelete(reply(2L, r1, "리플1_삭제"));
         TherapyPostComment p2 = softDelete(reply(3L, r1, "리플2_삭제"));
 
-        List<CommentResponse> result = assembler.assemble(List.of(r1, p1, p2), 1L, UserRole.USER);
+        List<CommentResponse> result = assembler.assemble(List.of(r1, p1, p2), 1L, UserRole.USER, java.util.Map.of());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getReplies()).isEmpty();

@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.comment.dto;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,12 +27,16 @@ public class ReplyCommentResponse {
     private boolean canDelete;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private long likeCount;
+    private long dislikeCount;
+    private CommentReactionType myReactionType;
 
     public static ReplyCommentResponse from(
             TherapyPostComment comment,
             Long currentUserId,
             UserRole currentUserRole,
-            String aiUserEmail
+            String aiUserEmail,
+            CommentReactionAggregate reactions
     ) {
         boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
         return new ReplyCommentResponse(
@@ -47,7 +52,10 @@ public class ReplyCommentResponse {
                 canManage,
                 canManage,
                 comment.getCreatedAt(),
-                comment.getUpdatedAt()
+                comment.getUpdatedAt(),
+                reactions.likeCount(),
+                reactions.dislikeCount(),
+                reactions.myReactionType()
         );
     }
 
