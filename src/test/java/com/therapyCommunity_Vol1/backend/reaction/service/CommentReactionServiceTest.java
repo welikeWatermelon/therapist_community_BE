@@ -72,7 +72,7 @@ class CommentReactionServiceTest {
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.empty());
 
         when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.LIKE)).thenReturn(1L);
-        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.DISLIKE)).thenReturn(0L);
+        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.CURIOUS)).thenReturn(0L);
 
         TherapyPostCommentReaction saved = TherapyPostCommentReaction.create(comment, user, CommentReactionType.LIKE);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.empty(), Optional.of(saved));
@@ -108,21 +108,21 @@ class CommentReactionServiceTest {
         TherapyPostCommentReaction existing = TherapyPostCommentReaction.create(comment, user, CommentReactionType.LIKE);
 
         ToggleCommentReactionRequest request =
-                new ToggleCommentReactionRequest(CommentReactionType.DISLIKE);
+                new ToggleCommentReactionRequest(CommentReactionType.CURIOUS);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.of(existing), Optional.of(existing));
 
         when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.LIKE)).thenReturn(0L);
-        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.DISLIKE)).thenReturn(1L);
+        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.CURIOUS)).thenReturn(1L);
 
         // when
         CommentReactionStatusResponse response = commentReactionService.toggleReaction(1L, 20L, request);
 
         // then
-        assertThat(existing.getReactionType()).isEqualTo(CommentReactionType.DISLIKE);
-        assertThat(response.getDislikeCount()).isEqualTo(1L);
-        assertThat(response.getMyReactionType()).isEqualTo(CommentReactionType.DISLIKE);
+        assertThat(existing.getReactionType()).isEqualTo(CommentReactionType.CURIOUS);
+        assertThat(response.getCuriousCount()).isEqualTo(1L);
+        assertThat(response.getMyReactionType()).isEqualTo(CommentReactionType.CURIOUS);
     }
 }
