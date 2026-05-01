@@ -91,6 +91,8 @@ class PostServiceTest {
         profileImageUrlAssembler = mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
         postImageService = mock(PostImageService.class);
         when(postImageService.getImagesForPostUnchecked(anyLong())).thenReturn(List.of());
+        PostAttachmentService postAttachmentService = mock(PostAttachmentService.class);
+        when(postAttachmentService.getAttachmentsForPostUnchecked(any(), anyLong())).thenReturn(List.of());
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
@@ -106,7 +108,8 @@ class PostServiceTest {
                 aiCommentStatusProvider,
                 eventPublisher,
                 profileImageUrlAssembler,
-                postImageService
+                postImageService,
+                postAttachmentService
         );
     }
 
