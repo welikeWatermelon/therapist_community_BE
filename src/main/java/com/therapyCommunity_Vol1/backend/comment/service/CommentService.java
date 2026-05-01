@@ -167,7 +167,7 @@ public class CommentService {
 
     /**
      * 댓글 목록 응답 빌드 시점의 N+1 제거용 batch 헬퍼.
-     * commentIds로 한 번의 IN 절 SQL → 메모리에서 (likeCount/dislikeCount/myReactionType) 그룹화.
+     * commentIds로 한 번의 IN 절 SQL → 메모리에서 (likeCount/curiousCount/usefulCount/myReactionType) 그룹화.
      */
     private Map<Long, CommentReactionAggregate> aggregateReactionsForComments(List<TherapyPostComment> comments, Long currentUserId) {
         if (comments.isEmpty()) {
@@ -185,25 +185,30 @@ public class CommentService {
         }
         for (Map.Entry<Long, List<TherapyPostCommentReaction>> entry : grouped.entrySet()) {
             long likes = 0;
-            long dislikes = 0;
+            long curious = 0;
+            long useful = 0;
             CommentReactionType my = null;
             for (TherapyPostCommentReaction r : entry.getValue()) {
-                if (r.getReactionType() == CommentReactionType.LIKE) likes++;
-                else if (r.getReactionType() == CommentReactionType.DISLIKE) dislikes++;
+                switch (r.getReactionType()) {
+                    case LIKE -> likes++;
+                    case CURIOUS -> curious++;
+                    case USEFUL -> useful++;
+                }
                 if (r.getUser().getId().equals(currentUserId)) my = r.getReactionType();
             }
-            result.put(entry.getKey(), new CommentReactionAggregate(likes, dislikes, my));
+            result.put(entry.getKey(), new CommentReactionAggregate(likes, curious, useful, my));
         }
         return result;
     }
 
     private CommentReactionAggregate aggregateSingleCommentReactions(Long commentId, Long currentUserId) {
         long likes = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.LIKE);
-        long dislikes = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.DISLIKE);
+        long curious = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.CURIOUS);
+        long useful = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.USEFUL);
         CommentReactionType my = commentReactionRepository.findByCommentIdAndUserId(commentId, currentUserId)
                 .map(TherapyPostCommentReaction::getReactionType)
                 .orElse(null);
-        return new CommentReactionAggregate(likes, dislikes, my);
+        return new CommentReactionAggregate(likes, curious, useful, my);
     }
 
     @Transactional
