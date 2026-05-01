@@ -5,10 +5,14 @@ import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
 import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import com.therapyCommunity_Vol1.backend.comment.dto.CommentReactionAggregate;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.dto.UpdateCommentRequest;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostCommentReaction;
+import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
@@ -47,6 +51,7 @@ public class CommentService {
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final UserEventPublisher userEventPublisher;
+    private final TherapyPostCommentReactionRepository commentReactionRepository;
 
     @Transactional
     public CommentResponse createComment(
@@ -122,7 +127,8 @@ public class CommentService {
                 metadata
         );
 
-        return CommentResponse.from(saved, currentUserId, author.getRole(), aiCommentProperties.getAiUserEmail());
+        // 새로 생성된 댓글이라 reaction 0개 + null
+        return CommentResponse.from(saved, currentUserId, author.getRole(), aiCommentProperties.getAiUserEmail(), CommentReactionAggregate.empty());
     }
 
     public List<CommentResponse> getComments(
@@ -134,7 +140,9 @@ public class CommentService {
         visibilityPolicy.checkAccess(post, currentUserRole);
 
         List<TherapyPostComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
-        return commentThreadAssembler.assemble(comments, currentUserId, currentUserRole);
+        // N+1 제거: commentIds 한 번의 IN 절 SQL로 모든 reaction 가져와 메모리에서 매핑
+        Map<Long, CommentReactionAggregate> reactionByCommentId = aggregateReactionsForComments(comments, currentUserId);
+        return commentThreadAssembler.assemble(comments, currentUserId, currentUserRole, reactionByCommentId);
     }
 
     @Transactional
@@ -152,7 +160,50 @@ public class CommentService {
 
         comment.update(request.getContent());
 
-        return CommentResponse.from(comment, currentUserId, currentUserRole, aiCommentProperties.getAiUserEmail());
+        // 단일 댓글 — 기존 reaction 그대로 (수정해도 좋아요는 유지)
+        CommentReactionAggregate reactions = aggregateSingleCommentReactions(commentId, currentUserId);
+        return CommentResponse.from(comment, currentUserId, currentUserRole, aiCommentProperties.getAiUserEmail(), reactions);
+    }
+
+    /**
+     * 댓글 목록 응답 빌드 시점의 N+1 제거용 batch 헬퍼.
+     * commentIds로 한 번의 IN 절 SQL → 메모리에서 (likeCount/dislikeCount/myReactionType) 그룹화.
+     */
+    private Map<Long, CommentReactionAggregate> aggregateReactionsForComments(List<TherapyPostComment> comments, Long currentUserId) {
+        if (comments.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> commentIds = comments.stream().map(TherapyPostComment::getId).toList();
+        List<TherapyPostCommentReaction> reactions = commentReactionRepository.findByCommentIdIn(commentIds);
+        Map<Long, CommentReactionAggregate> result = new HashMap<>();
+        for (Long id : commentIds) {
+            result.put(id, CommentReactionAggregate.empty());
+        }
+        Map<Long, List<TherapyPostCommentReaction>> grouped = new HashMap<>();
+        for (TherapyPostCommentReaction r : reactions) {
+            grouped.computeIfAbsent(r.getComment().getId(), ignored -> new java.util.ArrayList<>()).add(r);
+        }
+        for (Map.Entry<Long, List<TherapyPostCommentReaction>> entry : grouped.entrySet()) {
+            long likes = 0;
+            long dislikes = 0;
+            CommentReactionType my = null;
+            for (TherapyPostCommentReaction r : entry.getValue()) {
+                if (r.getReactionType() == CommentReactionType.LIKE) likes++;
+                else if (r.getReactionType() == CommentReactionType.DISLIKE) dislikes++;
+                if (r.getUser().getId().equals(currentUserId)) my = r.getReactionType();
+            }
+            result.put(entry.getKey(), new CommentReactionAggregate(likes, dislikes, my));
+        }
+        return result;
+    }
+
+    private CommentReactionAggregate aggregateSingleCommentReactions(Long commentId, Long currentUserId) {
+        long likes = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.LIKE);
+        long dislikes = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.DISLIKE);
+        CommentReactionType my = commentReactionRepository.findByCommentIdAndUserId(commentId, currentUserId)
+                .map(TherapyPostCommentReaction::getReactionType)
+                .orElse(null);
+        return new CommentReactionAggregate(likes, dislikes, my);
     }
 
     @Transactional
