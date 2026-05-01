@@ -29,7 +29,8 @@ public class CommentResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private long likeCount;
-    private long dislikeCount;
+    private long curiousCount;
+    private long usefulCount;
     private CommentReactionType myReactionType;
     private List<ReplyCommentResponse> replies;
 
@@ -60,7 +61,8 @@ public class CommentResponse {
                 comment.getCreatedAt(),
                 comment.getUpdatedAt(),
                 reactions.likeCount(),
-                reactions.dislikeCount(),
+                reactions.curiousCount(),
+                reactions.usefulCount(),
                 reactions.myReactionType(),
                 List.of()
         );
@@ -82,7 +84,8 @@ public class CommentResponse {
                 createdAt,
                 updatedAt,
                 likeCount,
-                dislikeCount,
+                curiousCount,
+                usefulCount,
                 myReactionType,
                 replies
         );
