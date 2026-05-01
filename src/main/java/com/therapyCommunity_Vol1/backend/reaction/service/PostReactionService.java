@@ -44,6 +44,21 @@ public class PostReactionService {
     private final UserEventPublisher userEventPublisher;
 
     /**
+     * 게시글 목록 응답에 myReactionType을 batch로 채우기 위한 헬퍼.
+     * userId가 null이면 빈 맵 반환 (anonymous 사용자).
+     * 결과: postId → myReactionType (해당 사용자가 그 게시글에 남긴 반응)
+     */
+    public Map<Long, PostReactionType> getMyReactionByPostIds(Long userId, List<Long> postIds) {
+        if (userId == null || postIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, PostReactionType> result = new java.util.HashMap<>();
+        postReactionRepository.findByPostIdInAndUserId(postIds, userId)
+                .forEach(r -> result.put(r.getPost().getId(), r.getReactionType()));
+        return result;
+    }
+
+    /**
      * 반응 토글 (생성/삭제/변경).
      * 규칙:
      *  - 반응 없음 → 새 반응 생성

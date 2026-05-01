@@ -414,7 +414,8 @@ public class PostService {
                         profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
                         imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
                                 .map(PostImageResponse::getImageUrl)
-                                .toList()
+                                .toList(),
+                        null
                 ))
                 .toList();
     }
