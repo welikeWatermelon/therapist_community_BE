@@ -4,6 +4,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class TherapyPostSummaryResponse {
     private Long commentCount;
     private LocalDateTime createdAt;
     private boolean isScrapped;
+    private PostReactionType myReactionType;
     /**
      * 현재 사용자가 이 게시글의 본문/이미지를 볼 수 없는 상태인지.
      * PRIVATE 게시글 + 인증되지 않은 USER role일 때 true.
@@ -47,6 +49,7 @@ public class TherapyPostSummaryResponse {
             Long commentCount,
             LocalDateTime createdAt,
             boolean isScrapped,
+            PostReactionType myReactionType,
             boolean accessLocked,
             List<String> imageUrls
     ) {
@@ -62,6 +65,7 @@ public class TherapyPostSummaryResponse {
         this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.isScrapped = isScrapped;
+        this.myReactionType = myReactionType;
         this.accessLocked = accessLocked;
         this.imageUrls = imageUrls;
     }
@@ -69,11 +73,11 @@ public class TherapyPostSummaryResponse {
     private static final String PRIVATE_CONTENT_MESSAGE = "비공개 글입니다";
 
     /**
-     * 테스트 헬퍼 — 카운트/프로필/이미지 정보가 없을 때.
+     * 테스트 헬퍼 — 카운트/프로필/이미지/내 반응 정보가 없을 때.
      * accessLocked는 보수적으로 PRIVATE 여부만으로 판단.
      */
     public static TherapyPostSummaryResponse from(TherapyPost post, boolean isScrapped) {
-        return from(post, 0L, 0L, isScrapped, false, null, List.of());
+        return from(post, 0L, 0L, isScrapped, false, null, List.of(), null);
     }
 
     public static TherapyPostSummaryResponse from(
@@ -83,7 +87,8 @@ public class TherapyPostSummaryResponse {
             boolean isScrapped,
             boolean canViewPrivate,
             String authorProfileImageUrl,
-            List<String> imageUrls
+            List<String> imageUrls,
+            PostReactionType myReactionType
     ) {
         boolean accessLocked = post.getVisibility() == Visibility.PRIVATE && !canViewPrivate;
         String preview = accessLocked
@@ -104,6 +109,7 @@ public class TherapyPostSummaryResponse {
                 commentCount,
                 post.getCreatedAt(),
                 isScrapped,
+                myReactionType,
                 accessLocked,
                 safeImageUrls
         );
@@ -111,6 +117,10 @@ public class TherapyPostSummaryResponse {
 
     public void markScrapped(boolean scrapped) {
         this.isScrapped = scrapped;
+    }
+
+    public void markMyReactionType(PostReactionType type) {
+        this.myReactionType = type;
     }
 
     private static String makePreview(String htmlContent) {
