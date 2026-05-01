@@ -10,7 +10,7 @@ on:
       - main
       - deploy
 concurrency:
-  group: deploy-staging
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: true
 
 env:
@@ -96,6 +96,12 @@ jobs:
               fi
               if [ "$i" -eq 12 ]; then
                 echo "Health check failed after 60s — rolling back"
+                echo "Container status before rollback:"
+                docker ps -a --filter "name=builders-backend-new" || true
+                docker inspect builders-backend-new \
+                  --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' || true
+                echo "Recent container logs:"
+                docker logs builders-backend-new || true
                 docker rm -f builders-backend-new || true
                 exit 1
               fi
@@ -150,6 +156,12 @@ jobs:
               fi
               if [ "$i" -eq 12 ]; then
                 echo "Health check failed after 60s — rolling back"
+                echo "Container status before rollback:"
+                docker ps -a --filter "name=builders-backend-new" || true
+                docker inspect builders-backend-new \
+                  --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' || true
+                echo "Recent container logs:"
+                docker logs builders-backend-new || true
                 docker rm -f builders-backend-new || true
                 exit 1
               fi
