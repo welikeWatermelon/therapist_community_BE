@@ -66,6 +66,7 @@ public class PostService {
     private final ApplicationEventPublisher eventPublisher;
     private final ProfileImageUrlAssembler profileImageUrlAssembler;
     private final PostImageService postImageService;
+    private final PostAttachmentService postAttachmentService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -300,11 +301,9 @@ public class PostService {
                 )
         );
 
-        List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
-                .findByPostIdOrderByCreatedAtAsc(postId)
-                .stream()
-                .map(PostAttachmentResponse::from)
-                .toList();
+        // 첨부파일은 PostAttachmentService에 위임 — presigned S3 URL 발급 + audit log INSERT(idempotent).
+        // 발급 == 다운로드 의도로 간주(보기 != 다운로드 정확도는 trade-off).
+        List<PostAttachmentResponse> attachments = postAttachmentService.getAttachmentsForPostUnchecked(post, currentUserId);
 
         long commentCount = therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(postId);
         Map<PostReactionType, Long> reactionCounts = buildReactionCountMap(postId);
