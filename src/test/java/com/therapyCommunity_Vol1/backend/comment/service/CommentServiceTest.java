@@ -59,7 +59,8 @@ class CommentServiceTest {
         eventPublisher = mock(ApplicationEventPublisher.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         userEventPublisher = mock(UserEventPublisher.class);
-        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, aiCommentProperties, eventPublisher, visibilityPolicy, userEventPublisher);
+        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, aiCommentProperties, eventPublisher, visibilityPolicy, userEventPublisher,
+                mock(com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository.class));
     }
 
     @Test

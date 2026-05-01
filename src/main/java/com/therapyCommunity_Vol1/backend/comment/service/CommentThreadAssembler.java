@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.comment.service;
 
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import com.therapyCommunity_Vol1.backend.comment.dto.CommentReactionAggregate;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.ReplyCommentResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
@@ -31,17 +32,22 @@ public class CommentThreadAssembler {
     public List<CommentResponse> assemble(
             List<TherapyPostComment> comments,
             Long currentUserId,
-            UserRole currentUserRole
+            UserRole currentUserRole,
+            Map<Long, CommentReactionAggregate> reactionByCommentId
     ) {
         String aiEmail = aiCommentProperties.getAiUserEmail();
         Map<Long, CommentResponse> rootComments = new LinkedHashMap<>();
         Map<Long, List<ReplyCommentResponse>> repliesByParentId = new LinkedHashMap<>();
 
         for (TherapyPostComment comment : comments) {
+            CommentReactionAggregate reactions = reactionByCommentId.getOrDefault(
+                    comment.getId(), CommentReactionAggregate.empty()
+            );
+
             if (comment.getParentComment() == null) {
                 // root는 deleted여도 placeholder로 유지 (thread 연속성)
                 rootComments.put(comment.getId(),
-                        CommentResponse.from(comment, currentUserId, currentUserRole, aiEmail)
+                        CommentResponse.from(comment, currentUserId, currentUserRole, aiEmail, reactions)
                 );
                 continue;
             }
@@ -54,7 +60,7 @@ public class CommentThreadAssembler {
             repliesByParentId.computeIfAbsent(
                     comment.getParentComment().getId(),
                     ignored -> new ArrayList<>()
-            ).add(ReplyCommentResponse.from(comment, currentUserId, currentUserRole, aiEmail));
+            ).add(ReplyCommentResponse.from(comment, currentUserId, currentUserRole, aiEmail, reactions));
         }
 
         return rootComments.values().stream()
