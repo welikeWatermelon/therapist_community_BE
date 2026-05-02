@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.global.config;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 
@@ -8,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 class AsyncConfigTest {
 
-    private final AsyncConfig asyncConfig = new AsyncConfig();
+    private final AsyncConfig asyncConfig = new AsyncConfig(new SimpleMeterRegistry());
 
     @Test
     void AsyncUncaughtExceptionHandler가_등록되어_있다() {
