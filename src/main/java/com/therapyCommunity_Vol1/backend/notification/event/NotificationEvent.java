@@ -1,13 +1,14 @@
 package com.therapyCommunity_Vol1.backend.notification.event;
 
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
 
 @Getter
-@Builder
+@Builder(access = AccessLevel.PRIVATE)
 public class NotificationEvent {
 
     private final Long senderId;
