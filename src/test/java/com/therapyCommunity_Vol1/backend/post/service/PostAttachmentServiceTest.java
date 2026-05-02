@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
@@ -31,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 class PostAttachmentServiceTest {
@@ -42,6 +47,7 @@ class PostAttachmentServiceTest {
     private FileStorageService fileStorageService;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private UserEventPublisher userEventPublisher;
     private PostAttachmentService postAttachmentService;
 
     @BeforeEach
@@ -57,6 +63,8 @@ class PostAttachmentServiceTest {
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
 
+        userEventPublisher = mock(UserEventPublisher.class);
+
         postAttachmentService = new PostAttachmentService(
                 activePostFinder,
                 therapyPostAttachmentRepository,
@@ -64,7 +72,8 @@ class PostAttachmentServiceTest {
                 userRepository,
                 fileStorageService,
                 resourceAccessValidator,
-                visibilityPolicy
+                visibilityPolicy,
+                userEventPublisher
         );
     }
 
@@ -163,6 +172,38 @@ class PostAttachmentServiceTest {
 
         assertThat(response.getOriginalFilename()).isEqualTo("guide.pdf");
         verify(therapyPostDownloadRepository).save(any(TherapyPostDownload.class));
+    }
+
+    @Test
+    void 다운로드_시_ATTACHMENT_DOWNLOAD_이벤트_발행() {
+        Long userId = 2L;
+        User author = therapist(1L, "author@test.com", "author");
+        User downloader = therapist(userId, "reader@test.com", "reader");
+        TherapyPost post = resourcePost(10L, author);
+        TherapyPostAttachment attachment = attachment(99L, post);
+        StoredFileResource storedFile = new StoredFileResource(
+                new ByteArrayResource("pdf".getBytes()),
+                "application/pdf",
+                "guide.pdf"
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
+        when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
+        when(fileStorageService.loadAsResource(any(), any(), any())).thenReturn(storedFile);
+        when(therapyPostDownloadRepository.findByPostIdAndUserId(10L, userId)).thenReturn(Optional.empty());
+
+        postAttachmentService.downloadAttachment(userId, UserRole.THERAPIST, 10L, 99L);
+
+        verify(userEventPublisher).publish(
+                eq(userId),
+                eq(UserEventType.ATTACHMENT_DOWNLOAD),
+                eq(EventTargetType.POST),
+                eq(10L),
+                argThat(m -> Long.valueOf(99L).equals(m.get("attachmentId"))
+                          && "pdf".equals(m.get("extension"))
+                          && Long.valueOf(1234L).equals(m.get("sizeBytes")))
+        );
     }
 
     @Test

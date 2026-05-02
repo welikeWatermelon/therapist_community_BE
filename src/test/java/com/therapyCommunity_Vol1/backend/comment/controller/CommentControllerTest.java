@@ -83,12 +83,17 @@ class CommentControllerTest {
                 2L,
                 "reply-user",
                 "USER",
+                false,
                 "대댓글",
                 false,
                 false,
                 false,
                 LocalDateTime.of(2026, 3, 16, 10, 5),
-                LocalDateTime.of(2026, 3, 16, 10, 5)
+                LocalDateTime.of(2026, 3, 16, 10, 5),
+                0L,
+                0L,
+                0L,
+                null
         );
 
         CommentResponse root = new CommentResponse(
@@ -98,12 +103,17 @@ class CommentControllerTest {
                 1L,
                 "tester",
                 "THERAPIST",
+                false,
                 "부모 댓글",
                 false,
                 true,
                 true,
                 LocalDateTime.of(2026, 3, 16, 10, 0),
                 LocalDateTime.of(2026, 3, 16, 10, 0),
+                0L,
+                0L,
+                0L,
+                null,
                 List.of(reply)
         );
 

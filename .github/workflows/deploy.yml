@@ -1,12 +1,16 @@
 name: "CI/CD — main to dev"
 
+permissions:
+  id-token: write
+  contents: read
+
 on:
   push:
     branches:
       - main
       - deploy
 concurrency:
-  group: deploy-staging
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: true
 
 env:
@@ -33,12 +37,17 @@ jobs:
       - name: Build JAR
         run: ./gradlew bootJar -x test
 
-      - name: Configure AWS credentials
+      - name: Debug OIDC token sub
+        run: |
+          IDTOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo $IDTOKEN | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '.sub'
+
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::771338875653:role/GitHubActionsMelonneCommunityDeployRole
+          aws-region: ap-northeast-2
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -87,6 +96,12 @@ jobs:
               fi
               if [ "$i" -eq 12 ]; then
                 echo "Health check failed after 60s — rolling back"
+                echo "Container status before rollback:"
+                docker ps -a --filter "name=builders-backend-new" || true
+                docker inspect builders-backend-new \
+                  --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' || true
+                echo "Recent container logs:"
+                docker logs builders-backend-new || true
                 docker rm -f builders-backend-new || true
                 exit 1
               fi
@@ -141,6 +156,12 @@ jobs:
               fi
               if [ "$i" -eq 12 ]; then
                 echo "Health check failed after 60s — rolling back"
+                echo "Container status before rollback:"
+                docker ps -a --filter "name=builders-backend-new" || true
+                docker inspect builders-backend-new \
+                  --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' || true
+                echo "Recent container logs:"
+                docker logs builders-backend-new || true
                 docker rm -f builders-backend-new || true
                 exit 1
               fi

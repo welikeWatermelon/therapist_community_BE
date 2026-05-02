@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
@@ -16,8 +19,10 @@ import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReaction
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -29,6 +34,8 @@ import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 
 import static org.assertj.core.api.Assertions.*;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class PostServiceTest {
@@ -42,6 +49,12 @@ class PostServiceTest {
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
+    private com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy searchStrategy;
+    private UserEventPublisher userEventPublisher;
+    private AiCommentStatusProvider aiCommentStatusProvider;
+    private ApplicationEventPublisher eventPublisher;
+    private com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler;
+    private PostImageService postImageService;
     private PostService postService;
 
     @BeforeEach
@@ -55,6 +68,11 @@ class PostServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
+        searchStrategy = mock(com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy.class);
+        aiCommentStatusProvider = mock(AiCommentStatusProvider.class);
+        when(aiCommentStatusProvider.getStatus(anyLong()))
+                .thenReturn(new AiCommentStatusProvider.AutoCommentStatus("NOT_REQUESTED", null));
+        eventPublisher = mock(ApplicationEventPublisher.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
@@ -69,6 +87,12 @@ class PostServiceTest {
                 .thenReturn(Optional.empty());
         when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(anyLong()))
                 .thenReturn(0L);
+        userEventPublisher = mock(UserEventPublisher.class);
+        profileImageUrlAssembler = mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
+        postImageService = mock(PostImageService.class);
+        when(postImageService.getImagesForPostUnchecked(anyLong())).thenReturn(List.of());
+        PostAttachmentService postAttachmentService = mock(PostAttachmentService.class);
+        when(postAttachmentService.getAttachmentsForPostUnchecked(any(), anyLong())).thenReturn(List.of());
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
@@ -78,7 +102,14 @@ class PostServiceTest {
                 userRepository,
                 resourceAccessValidator,
                 visibilityPolicy,
-                postViewCountService
+                postViewCountService,
+                searchStrategy,
+                userEventPublisher,
+                aiCommentStatusProvider,
+                eventPublisher,
+                profileImageUrlAssembler,
+                postImageService,
+                postAttachmentService
         );
     }
 
@@ -91,7 +122,8 @@ class PostServiceTest {
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "<p>본문</p>",
                 TherapyArea.SPEECH,
-                Visibility.PUBLIC
+                Visibility.PUBLIC,
+                null
         );
 
         User author = User.builder()
@@ -237,6 +269,57 @@ class PostServiceTest {
                 .containsEntry(PostReactionType.CURIOUS, 2L)
                 .containsEntry(PostReactionType.USEFUL, 0L);
         assertThat(response.getMyReactionType()).isEqualTo(PostReactionType.LIKE);
+    }
+
+    @Test
+    void 게시글_상세조회시_POST_VIEW_이벤트_발행_isFirstView_true() {
+        User author = User.builder().id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(true);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L)).thenReturn(List.of());
+
+        postService.getPostDetail(1L, UserRole.THERAPIST, 1L, false);
+
+        verify(userEventPublisher).publish(
+                eq(1L),
+                eq(UserEventType.POST_VIEW),
+                eq(EventTargetType.POST),
+                eq(1L),
+                argThat(m -> Boolean.TRUE.equals(m.get("isFirstView"))
+                          && "SPEECH".equals(m.get("therapyArea"))
+                          && "PUBLIC".equals(m.get("visibility")))
+        );
+    }
+
+    @Test
+    void 게시글_상세조회_중복조회도_POST_VIEW_이벤트_발행_isFirstView_false() {
+        User author = User.builder().id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 1L);
+        ReflectionTestUtils.setField(post, "viewCount", 10L);
+        ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+
+        when(activePostFinder.findOrThrow(1L)).thenReturn(post);
+        when(postViewCountService.isFirstView(1L, 1L)).thenReturn(false);
+        when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L)).thenReturn(List.of());
+
+        postService.getPostDetail(1L, UserRole.THERAPIST, 1L, false);
+
+        // view_count는 증가하지 않지만 analytics 이벤트는 매번 raw로 수집 (집계 시 dedup)
+        verify(userEventPublisher).publish(
+                eq(1L),
+                eq(UserEventType.POST_VIEW),
+                eq(EventTargetType.POST),
+                eq(1L),
+                argThat(m -> Boolean.FALSE.equals(m.get("isFirstView")))
+        );
     }
 
     @Test
@@ -561,14 +644,27 @@ class PostServiceTest {
     }
 
     @Test
-    void 피드_USER는_PUBLIC_ONLY_쿼리_사용() {
-        when(therapyPostRepository.findFeedLatestByVisibility(eq(Visibility.PUBLIC), any(Pageable.class)))
-                .thenReturn(List.of());
+    void 피드_USER도_PRIVATE_포함_전체_조회하고_USER에게는_accessLocked로_마스킹된다() {
+        // PRIVATE UX 개편: USER도 PRIVATE 게시글을 메타데이터까지 보지만, 본문은 마스킹.
+        User author = User.builder().id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost privatePost = TherapyPost.create("<p>비밀</p>", TherapyArea.SPEECH, Visibility.PRIVATE, author);
+        ReflectionTestUtils.setField(privatePost, "id", 1L);
+        ReflectionTestUtils.setField(privatePost, "viewCount", 0L);
+        ReflectionTestUtils.setField(privatePost, "createdAt", LocalDateTime.now());
 
-        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
+        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
+                .thenReturn(List.of(privatePost));
 
-        verify(therapyPostRepository).findFeedLatestByVisibility(eq(Visibility.PUBLIC), any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedLatest(any(Pageable.class));
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
+
+        verify(therapyPostRepository).findFeedLatest(any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedLatestByVisibility(any(), any(Pageable.class));
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).isAccessLocked()).isTrue();
+        assertThat(response.getItems().get(0).getContentPreview()).isEqualTo("비공개 글입니다");
+        assertThat(response.getItems().get(0).getAuthorNickname()).isEqualTo("tester");
     }
 
     @Test
@@ -600,13 +696,14 @@ class PostServiceTest {
     }
 
     @Test
-    void 인기순_피드_USER는_PUBLIC_ONLY_쿼리_사용() {
-        when(therapyPostRepository.findFeedPopularByVisibility(eq(Visibility.PUBLIC), any(Pageable.class)))
+    void 인기순_피드_USER도_PRIVATE_포함_전체_조회() {
+        // PRIVATE UX 개편: USER도 PUBLIC + PRIVATE 통합 조회.
+        when(therapyPostRepository.findFeedPopular(any(Pageable.class)))
                 .thenReturn(List.of());
 
         postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
 
-        verify(therapyPostRepository).findFeedPopularByVisibility(eq(Visibility.PUBLIC), any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedPopular(any(Pageable.class));
+        verify(therapyPostRepository).findFeedPopular(any(Pageable.class));
+        verify(therapyPostRepository, never()).findFeedPopularByVisibility(any(), any(Pageable.class));
     }
 }

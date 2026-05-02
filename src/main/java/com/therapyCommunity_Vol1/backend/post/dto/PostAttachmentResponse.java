@@ -19,14 +19,18 @@ public class PostAttachmentResponse {
     private LocalDateTime createdAt;
 
     public static PostAttachmentResponse from(TherapyPostAttachment attachment) {
+        return of(attachment, "/api/v1/posts/" + attachment.getPost().getId()
+                + "/attachments/" + attachment.getId() + "/download");
+    }
+
+    public static PostAttachmentResponse of(TherapyPostAttachment attachment, String downloadUrl) {
         return new PostAttachmentResponse(
                 attachment.getId(),
                 attachment.getOriginalFilename(),
                 attachment.getContentType(),
                 attachment.getSizeBytes(),
                 attachment.getExtension(),
-                "/api/v1/posts/" + attachment.getPost().getId()
-                        + "/attachments/" + attachment.getId() + "/download",
+                downloadUrl,
                 attachment.getCreatedAt()
         );
     }

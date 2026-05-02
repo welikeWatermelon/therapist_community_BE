@@ -1,12 +1,17 @@
 package com.therapyCommunity_Vol1.backend.user.support;
 
+import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class ProfileImageUrlAssemblerTest {
 
-    private final ProfileImageUrlAssembler assembler = new ProfileImageUrlAssembler("http://localhost:8080");
+    // mock의 default presignGet은 null이라 fallback(baseUrl + endpoint) 경로로 동작.
+    // S3 환경의 presigned URL 동작은 통합 테스트에서 검증.
+    private final FileStorageService fileStorageService = mock(FileStorageService.class);
+    private final ProfileImageUrlAssembler assembler = new ProfileImageUrlAssembler("http://localhost:8080", fileStorageService);
 
     @Test
     void toFullUrl_파일명만_저장된_경우_풀_URL로_조립() {

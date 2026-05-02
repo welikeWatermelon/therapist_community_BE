@@ -55,7 +55,7 @@ class AuthServiceTest {
         nicknameGenerator = mock(NicknameGenerator.class);
         userAgreementRepository = mock(UserAgreementRepository.class);
         loginAttemptService = mock(LoginAttemptService.class);
-        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080");
+        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080", mock(com.therapyCommunity_Vol1.backend.file.service.FileStorageService.class));
 
         authService = new AuthService(
                 userRepository,

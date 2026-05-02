@@ -17,6 +17,8 @@ import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostDetailResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UpdateTherapyPostRequest;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
+import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
+import com.therapyCommunity_Vol1.backend.reaction.service.PostReactionService;
 import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +45,7 @@ public class PostController {
 
     private final PostService postService;
     private final ScrapService scrapService;
+    private final PostReactionService postReactionService;
 
     @Operation(summary = "게시글 작성", description = "제목, 본문, 치료영역, 연령대 입력. postType은 첨부파일 유무로 자동 결정")
     @PostMapping
@@ -70,7 +74,11 @@ public class PostController {
         List<Long> postIds = response.getItems().stream()
                 .map(TherapyPostSummaryResponse::getId).toList();
         Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
-        response.getItems().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
+        Map<Long, PostReactionType> myReactions = postReactionService.getMyReactionByPostIds(userId, postIds);
+        response.getItems().forEach(post -> {
+            post.markScrapped(scrappedIds.contains(post.getId()));
+            post.markMyReactionType(myReactions.get(post.getId()));
+        });
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -94,7 +102,11 @@ public class PostController {
         List<Long> postIds = response.getItems().stream()
                 .map(TherapyPostSummaryResponse::getId).toList();
         Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
-        response.getItems().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
+        Map<Long, PostReactionType> myReactions = postReactionService.getMyReactionByPostIds(userId, postIds);
+        response.getItems().forEach(post -> {
+            post.markScrapped(scrappedIds.contains(post.getId()));
+            post.markMyReactionType(myReactions.get(post.getId()));
+        });
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -143,10 +155,13 @@ public class PostController {
         // 게시글 ID만 추출
         List<Long> postIds = response.getData().stream()
                 .map(TherapyPostSummaryResponse::getId).toList();
-        // 이 유저가 스크랩한 게시글 ID를 조회
+        // 이 유저가 스크랩한 게시글 ID + 내 reaction 타입 batch 조회
         Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
-        // 스크랩 표시 확인
-        response.getData().forEach(post -> post.markScrapped(scrappedIds.contains(post.getId())));
+        Map<Long, PostReactionType> myReactions = postReactionService.getMyReactionByPostIds(userId, postIds);
+        response.getData().forEach(post -> {
+            post.markScrapped(scrappedIds.contains(post.getId()));
+            post.markMyReactionType(myReactions.get(post.getId()));
+        });
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }

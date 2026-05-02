@@ -76,12 +76,14 @@ public class CommentReactionService {
                 .orElse(null);
 
         long likeCount = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.LIKE);
-        long dislikeCount = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.DISLIKE);
+        long curiousCount = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.CURIOUS);
+        long usefulCount = commentReactionRepository.countByCommentIdAndReactionType(commentId, CommentReactionType.USEFUL);
 
         return new CommentReactionStatusResponse(
                 commentId,
                 likeCount,
-                dislikeCount,
+                curiousCount,
+                usefulCount,
                 myReactionType
         );
     }

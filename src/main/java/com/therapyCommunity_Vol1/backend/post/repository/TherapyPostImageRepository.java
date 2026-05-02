@@ -9,5 +9,11 @@ public interface TherapyPostImageRepository extends JpaRepository<TherapyPostIma
 
     List<TherapyPostImage> findByPostIdOrderByDisplayOrderAsc(Long postId);
 
+    /**
+     * 목록 응답 빌드 시점에 N+1 제거를 위한 batch 조회.
+     * post_id ASC, display_order ASC 정렬로 호출처가 groupingBy 후 그대로 사용 가능.
+     */
+    List<TherapyPostImage> findByPostIdInOrderByPostIdAscDisplayOrderAsc(List<Long> postIds);
+
     int countByPostId(Long postId);
 }
