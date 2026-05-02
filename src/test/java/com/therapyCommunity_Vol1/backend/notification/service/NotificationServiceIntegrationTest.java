@@ -8,20 +8,19 @@ import com.therapyCommunity_Vol1.backend.notification.repository.NotificationRep
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@Transactional
 @TestPropertySource(properties = {
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.flyway.enabled=false"
@@ -60,17 +59,20 @@ class NotificationServiceIntegrationTest {
                 .build());
     }
 
+    @AfterEach
+    void tearDown() {
+        notificationRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
+    }
+
     @Test
     void 댓글_알림_이벤트_처리시_DB에_저장된다() {
-        // given
         NotificationEvent event = NotificationEvent.of(
                 sender.getId(), receiver.getId(),
                 NotificationType.NEW_COMMENT, 10L);
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).hasSize(1);
 
@@ -85,15 +87,12 @@ class NotificationServiceIntegrationTest {
 
     @Test
     void 대댓글_알림_content가_올바르게_생성된다() {
-        // given
         NotificationEvent event = NotificationEvent.of(
                 sender.getId(), receiver.getId(),
                 NotificationType.NEW_REPLY, 10L);
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).hasSize(1);
         assertThat(notifications.get(0).getContent())
@@ -102,16 +101,13 @@ class NotificationServiceIntegrationTest {
 
     @Test
     void 반응_알림_content에_반응_라벨이_포함된다() {
-        // given
         NotificationEvent event = NotificationEvent.of(
                 sender.getId(), receiver.getId(),
                 NotificationType.NEW_POST_REACTION, 10L,
                 "좋아요");
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).hasSize(1);
 
@@ -123,16 +119,13 @@ class NotificationServiceIntegrationTest {
 
     @Test
     void 댓글_반응_알림_content에_반응_라벨이_포함된다() {
-        // given
         NotificationEvent event = NotificationEvent.of(
                 sender.getId(), receiver.getId(),
                 NotificationType.NEW_COMMENT_REACTION, 20L,
                 "싫어요");
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).hasSize(1);
         assertThat(notifications.get(0).getContent())
@@ -141,30 +134,24 @@ class NotificationServiceIntegrationTest {
 
     @Test
     void 자기_자신에게는_알림을_보내지_않는다() {
-        // given
         NotificationEvent event = NotificationEvent.of(
                 sender.getId(), sender.getId(),
                 NotificationType.NEW_COMMENT, 10L);
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).isEmpty();
     }
 
     @Test
     void 스크랩_알림이_정상_저장된다() {
-        // given
         NotificationEvent event = NotificationEvent.of(
                 sender.getId(), receiver.getId(),
                 NotificationType.NEW_SCRAP, 10L);
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).hasSize(1);
         assertThat(notifications.get(0).getContent())
@@ -173,15 +160,12 @@ class NotificationServiceIntegrationTest {
 
     @Test
     void 삭제된_sender는_알수없는사용자로_표시된다() {
-        // given — sender가 DB에 없는 경우 (비동기 처리 중 삭제)
         NotificationEvent event = NotificationEvent.of(
                 9999L, receiver.getId(),
                 NotificationType.NEW_COMMENT, 10L);
 
-        // when
-        notificationService.createAndSend(event);
+        notificationService.createNotifications(event);
 
-        // then
         List<Notification> notifications = notificationRepository.findAll();
         assertThat(notifications).hasSize(1);
         assertThat(notifications.get(0).getSender()).isNull();
