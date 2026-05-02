@@ -74,7 +74,7 @@ class AiCommentReviewServiceTest {
         when(userRepository.findByEmail("ai-comment@system.local")).thenReturn(Optional.of(aiUser));
 
         CommentResponse mockComment = new CommentResponse(
-                50L, 10L, null, 100L, "Melonne AI", "ADMIN", true,
+                50L, 10L, null, 100L, "Melonne AI", "ADMIN", null, true,
                 "초안 댓글입니다.", false, true, true, null, null,
                 0L, 0L, 0L, null,
                 List.of()

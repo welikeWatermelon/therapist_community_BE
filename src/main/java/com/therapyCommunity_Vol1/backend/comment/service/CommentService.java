@@ -21,6 +21,7 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -52,6 +53,7 @@ public class CommentService {
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final UserEventPublisher userEventPublisher;
     private final TherapyPostCommentReactionRepository commentReactionRepository;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
     @Transactional
     public CommentResponse createComment(
@@ -128,7 +130,8 @@ public class CommentService {
         );
 
         // 새로 생성된 댓글이라 reaction 0개 + null
-        return CommentResponse.from(saved, currentUserId, author.getRole(), aiCommentProperties.getAiUserEmail(), CommentReactionAggregate.empty());
+        String authorProfileUrl = profileImageUrlAssembler.toFullUrl(author.getProfileImageUrl());
+        return CommentResponse.from(saved, currentUserId, author.getRole(), aiCommentProperties.getAiUserEmail(), authorProfileUrl, CommentReactionAggregate.empty());
     }
 
     public List<CommentResponse> getComments(
@@ -162,7 +165,8 @@ public class CommentService {
 
         // 단일 댓글 — 기존 reaction 그대로 (수정해도 좋아요는 유지)
         CommentReactionAggregate reactions = aggregateSingleCommentReactions(commentId, currentUserId);
-        return CommentResponse.from(comment, currentUserId, currentUserRole, aiCommentProperties.getAiUserEmail(), reactions);
+        String authorProfileUrl = profileImageUrlAssembler.toFullUrl(comment.getAuthor().getProfileImageUrl());
+        return CommentResponse.from(comment, currentUserId, currentUserRole, aiCommentProperties.getAiUserEmail(), authorProfileUrl, reactions);
     }
 
     /**
