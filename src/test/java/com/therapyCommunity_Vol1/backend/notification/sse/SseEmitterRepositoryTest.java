@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.notification.sse;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -20,7 +21,8 @@ class SseEmitterRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        repository = new SseEmitterRepository();
+        repository = new SseEmitterRepository(new SimpleMeterRegistry());
+        repository.initMetrics();
     }
 
     @Test
@@ -304,5 +306,46 @@ class SseEmitterRepositoryTest {
         List<SseEmitterRepository.CachedEvent> events = repository.getEventsAfter(999L, "0_0");
 
         assertThat(events).isEmpty();
+    }
+
+    // ── emitter 수 상한 ──
+
+    @Test
+    void 유저당_emitter가_상한을_초과하면_가장_오래된_emitter가_complete된다() {
+        Long userId = 1L;
+        SseEmitter first = new SseEmitter(30000L);
+        repository.save(userId, first);
+
+        // 4개 더 추가 (총 5개 — 상한)
+        for (int i = 0; i < 4; i++) {
+            repository.save(userId, new SseEmitter(30000L));
+        }
+        assertThat(repository.getEmitters(userId)).hasSize(SseEmitterRepository.MAX_EMITTERS_PER_USER);
+
+        // 6번째 추가 → 첫 번째가 evict
+        repository.save(userId, new SseEmitter(30000L));
+        assertThat(repository.getEmitters(userId)).hasSize(SseEmitterRepository.MAX_EMITTERS_PER_USER);
+    }
+
+    // ── eventId 유틸 ──
+
+    @Test
+    void createEventId는_notificationId_timestamp_형식을_반환한다() {
+        String eventId = SseEmitterRepository.createEventId(42L);
+        assertThat(eventId).startsWith("42_");
+        assertThat(SseEmitterRepository.parseNotificationId(eventId)).isEqualTo(42L);
+    }
+
+    @Test
+    void parseNotificationId는_잘못된_포맷에_null을_반환한다() {
+        assertThat(SseEmitterRepository.parseNotificationId(null)).isNull();
+        assertThat(SseEmitterRepository.parseNotificationId("")).isNull();
+        assertThat(SseEmitterRepository.parseNotificationId("abc")).isNull();
+        assertThat(SseEmitterRepository.parseNotificationId("abc_123")).isNull();
+    }
+
+    @Test
+    void parseNotificationId는_여러_언더스코어도_처리한다() {
+        assertThat(SseEmitterRepository.parseNotificationId("1_2_3")).isEqualTo(1L);
     }
 }
