@@ -79,7 +79,14 @@ public class PostAttachmentService {
 
             TherapyPostAttachment saved = therapyPostAttachmentRepository.save(attachment);
             post.updatePostType(PostType.RESOURCE);
-            return PostAttachmentResponse.from(saved);
+            // 게시글 상세 응답과 동일하게 presigned URL을 박아 클라이언트가 S3 직접 GET하게 함.
+            // 업로드 직후 시점은 다운로드 의도가 아니므로 audit log(recordDownload)는 호출하지 않음.
+            String downloadUrl = fileStorageService.presignGet(saved.getStoredPath(), ATTACHMENT_PRESIGN_TTL);
+            if (downloadUrl == null) {
+                downloadUrl = "/api/v1/posts/" + post.getId()
+                        + "/attachments/" + saved.getId() + "/download";
+            }
+            return PostAttachmentResponse.of(saved, downloadUrl);
         } catch (RuntimeException e) {
             safeDelete(storedFileInfo.getStoredPath(), currentUserId);
             throw e;
