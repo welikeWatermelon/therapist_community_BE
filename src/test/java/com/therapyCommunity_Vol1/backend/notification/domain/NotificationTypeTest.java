@@ -57,4 +57,29 @@ class NotificationTypeTest {
 
         assertThat(result).isEqualTo("이치료님이 회원님의 게시글을 스크랩했습니다.");
     }
+
+    @Test
+    void extraParams_부족시_예외_없이_fallback_반환한다() {
+        // NEW_POST_REACTION은 extraParams 1개 필요하지만 0개로 호출
+        String result = NotificationType.NEW_POST_REACTION.formatMessage("홍길동");
+
+        // String.format 실패 시 template 그대로 반환
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void extraParams_초과시_예외_없이_정상_반환한다() {
+        // NEW_COMMENT는 extraParams 0개인데 1개 전달
+        String result = NotificationType.NEW_COMMENT.formatMessage("홍길동", "불필요한파라미터");
+
+        assertThat(result).isEqualTo("홍길동님이 회원님의 게시글에 댓글을 남겼습니다.");
+    }
+
+    @Test
+    void requiredExtraParams가_올바르게_설정되었다() {
+        assertThat(NotificationType.NEW_COMMENT.getRequiredExtraParams()).isZero();
+        assertThat(NotificationType.NEW_POST_REACTION.getRequiredExtraParams()).isEqualTo(1);
+        assertThat(NotificationType.NEW_COMMENT_REACTION.getRequiredExtraParams()).isEqualTo(1);
+        assertThat(NotificationType.VERIFICATION_APPROVED.getRequiredExtraParams()).isZero();
+    }
 }
