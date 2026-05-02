@@ -5,11 +5,13 @@ import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentReactionAggregate;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.ReplyCommentResponse;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class CommentThreadAssembler {
 
     private final AiCommentProperties aiCommentProperties;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
     /**
      * 댓글 + 대댓글을 트리 구조로 어셈블.
@@ -36,6 +39,7 @@ public class CommentThreadAssembler {
             Map<Long, CommentReactionAggregate> reactionByCommentId
     ) {
         String aiEmail = aiCommentProperties.getAiUserEmail();
+        Map<Long, String> profileUrlByAuthorId = resolveAuthorProfileUrls(comments);
         Map<Long, CommentResponse> rootComments = new LinkedHashMap<>();
         Map<Long, List<ReplyCommentResponse>> repliesByParentId = new LinkedHashMap<>();
 
@@ -43,11 +47,12 @@ public class CommentThreadAssembler {
             CommentReactionAggregate reactions = reactionByCommentId.getOrDefault(
                     comment.getId(), CommentReactionAggregate.empty()
             );
+            String authorProfileUrl = profileUrlByAuthorId.get(comment.getAuthor().getId());
 
             if (comment.getParentComment() == null) {
                 // root는 deleted여도 placeholder로 유지 (thread 연속성)
                 rootComments.put(comment.getId(),
-                        CommentResponse.from(comment, currentUserId, currentUserRole, aiEmail, reactions)
+                        CommentResponse.from(comment, currentUserId, currentUserRole, aiEmail, authorProfileUrl, reactions)
                 );
                 continue;
             }
@@ -60,11 +65,27 @@ public class CommentThreadAssembler {
             repliesByParentId.computeIfAbsent(
                     comment.getParentComment().getId(),
                     ignored -> new ArrayList<>()
-            ).add(ReplyCommentResponse.from(comment, currentUserId, currentUserRole, aiEmail, reactions));
+            ).add(ReplyCommentResponse.from(comment, currentUserId, currentUserRole, aiEmail, authorProfileUrl, reactions));
         }
 
         return rootComments.values().stream()
                 .map(root -> root.withReplies(repliesByParentId.getOrDefault(root.getId(), List.of())))
                 .toList();
+    }
+
+    /**
+     * 같은 author가 여러 댓글을 단 경우 presigned URL 발급 횟수를 줄이기 위해
+     * authorId 단위로 한 번씩만 변환해 메모리 캐시.
+     */
+    private Map<Long, String> resolveAuthorProfileUrls(List<TherapyPostComment> comments) {
+        Map<Long, String> result = new HashMap<>();
+        for (TherapyPostComment comment : comments) {
+            Long authorId = comment.getAuthor().getId();
+            if (result.containsKey(authorId)) {
+                continue;
+            }
+            result.put(authorId, profileImageUrlAssembler.toFullUrl(comment.getAuthor().getProfileImageUrl()));
+        }
+        return result;
     }
 }

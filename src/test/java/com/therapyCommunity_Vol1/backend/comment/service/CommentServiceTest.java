@@ -55,12 +55,15 @@ class CommentServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         aiCommentProperties = mock(AiCommentProperties.class);
         when(aiCommentProperties.getAiUserEmail()).thenReturn("ai-comment@system.local");
-        commentThreadAssembler = new CommentThreadAssembler(aiCommentProperties);
+        com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler =
+                mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
+        commentThreadAssembler = new CommentThreadAssembler(aiCommentProperties, profileImageUrlAssembler);
         eventPublisher = mock(ApplicationEventPublisher.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         userEventPublisher = mock(UserEventPublisher.class);
         commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, aiCommentProperties, eventPublisher, visibilityPolicy, userEventPublisher,
-                mock(com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository.class));
+                mock(com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository.class),
+                profileImageUrlAssembler);
     }
 
     @Test
