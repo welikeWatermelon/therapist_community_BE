@@ -93,6 +93,8 @@ class PostServiceTest {
         when(postImageService.getImagesForPostUnchecked(anyLong())).thenReturn(List.of());
         PostAttachmentService postAttachmentService = mock(PostAttachmentService.class);
         when(postAttachmentService.getAttachmentsForPostUnchecked(any(), anyLong())).thenReturn(List.of());
+        PostVideoService postVideoService = mock(PostVideoService.class);
+        when(postVideoService.getVideosForPostUnchecked(anyLong())).thenReturn(List.of());
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
@@ -109,7 +111,8 @@ class PostServiceTest {
                 eventPublisher,
                 profileImageUrlAssembler,
                 postImageService,
-                postAttachmentService
+                postAttachmentService,
+                postVideoService
         );
     }
 

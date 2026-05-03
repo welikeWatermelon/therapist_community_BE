@@ -67,6 +67,7 @@ public class PostService {
     private final ProfileImageUrlAssembler profileImageUrlAssembler;
     private final PostImageService postImageService;
     private final PostAttachmentService postAttachmentService;
+    private final PostVideoService postVideoService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -322,7 +323,8 @@ public class PostService {
                 currentUserRole,
                 isScrapped,
                 profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
-                postImageService.getImagesForPostUnchecked(postId)
+                postImageService.getImagesForPostUnchecked(postId),
+                postVideoService.getVideosForPostUnchecked(postId)
         );
         AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
         response.setAutoComment(acStatus.status(), acStatus.sourceMode());
