@@ -93,6 +93,8 @@ class PostServiceTest {
         when(postImageService.getImagesForPostUnchecked(anyLong())).thenReturn(List.of());
         PostAttachmentService postAttachmentService = mock(PostAttachmentService.class);
         when(postAttachmentService.getAttachmentsForPostUnchecked(any(), anyLong())).thenReturn(List.of());
+        PostVideoService postVideoService = mock(PostVideoService.class);
+        when(postVideoService.getVideosForPostUnchecked(anyLong())).thenReturn(List.of());
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
@@ -109,7 +111,8 @@ class PostServiceTest {
                 eventPublisher,
                 profileImageUrlAssembler,
                 postImageService,
-                postAttachmentService
+                postAttachmentService,
+                postVideoService
         );
     }
 
@@ -191,9 +194,8 @@ class PostServiceTest {
 
         when(therapyPostRepository.findByDeletedAtIsNull(any(Pageable.class)))
                 .thenReturn(page);
-        when(therapyPostReactionRepository.countByPostIdInAndReactionType(
-                eq(List.of(1L)), eq(PostReactionType.LIKE)))
-                .thenReturn(List.<Object[]>of(new Object[]{1L, 5L}));
+        when(therapyPostReactionRepository.countByPostIdInGroupedByType(eq(List.of(1L))))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, PostReactionType.LIKE, 5L}));
         when(therapyPostCommentRepository.countActiveByPostIdIn(eq(List.of(1L))))
                 .thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
 

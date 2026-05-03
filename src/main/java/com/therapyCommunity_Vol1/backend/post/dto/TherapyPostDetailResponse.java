@@ -38,10 +38,11 @@ public class TherapyPostDetailResponse {
     private boolean isScrapped;
     private List<PostAttachmentResponse> attachments;
     private List<PostImageResponse> images;
+    private List<PostVideoResponse> videos;
     private String autoCommentStatus;
     private String autoCommentSourceMode;
 
-    // 생성/수정 응답 (스크랩·카운트·리액션 없음, 이미지/프로필 정보 없음)
+    // 생성/수정 응답 (스크랩·카운트·리액션 없음, 이미지/영상/프로필 정보 없음)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             Long currentUserId,
@@ -57,11 +58,12 @@ public class TherapyPostDetailResponse {
                 currentUserRole,
                 false,
                 null,
+                List.of(),
                 List.of()
         );
     }
 
-    // 상세 조회 (스크랩·카운트·리액션·작성자 프로필·이미지 포함)
+    // 상세 조회 (스크랩·카운트·리액션·작성자 프로필·이미지·영상 포함)
     public static TherapyPostDetailResponse from(
             TherapyPost post,
             List<PostAttachmentResponse> attachments,
@@ -72,7 +74,8 @@ public class TherapyPostDetailResponse {
             UserRole currentUserRole,
             boolean isScrapped,
             String authorProfileImageUrl,
-            List<PostImageResponse> images
+            List<PostImageResponse> images,
+            List<PostVideoResponse> videos
     ) {
         boolean canManage = canManage(post, currentUserId, currentUserRole);
         return new TherapyPostDetailResponse(
@@ -95,6 +98,7 @@ public class TherapyPostDetailResponse {
                 isScrapped,
                 attachments,
                 images,
+                videos,
                 null,
                 null
         );

@@ -98,21 +98,13 @@ public class CommentService {
         TherapyPostComment saved = commentRepository.save(comment);
 
         if (request.getParentCommentId() == null) {
-            eventPublisher.publishEvent(NotificationEvent.builder()
-                    .senderId(currentUserId)
-                    .receiverIds(List.of(post.getAuthor().getId()))
-                    .type(NotificationType.NEW_COMMENT)
-                    .referenceId(postId)
-                    .content(author.getNickname() + "님이 회원님의 게시글에 댓글을 남겼습니다.")
-                    .build());
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    currentUserId, post.getAuthor().getId(),
+                    NotificationType.NEW_COMMENT, postId));
         } else {
-            eventPublisher.publishEvent(NotificationEvent.builder()
-                    .senderId(currentUserId)
-                    .receiverIds(List.of(comment.getParentComment().getAuthor().getId()))
-                    .type(NotificationType.NEW_REPLY)
-                    .referenceId(postId)
-                    .content(author.getNickname() + "님이 회원님의 댓글에 답글을 남겼습니다.")
-                    .build());
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    currentUserId, comment.getParentComment().getAuthor().getId(),
+                    NotificationType.NEW_REPLY, postId));
         }
 
         Map<String, Object> metadata = new HashMap<>();

@@ -22,9 +22,15 @@ public enum ErrorCode {
 
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_404", "게시글을 찾을 수 없습니다."),
     POST_ACCESS_DENIED(HttpStatus.FORBIDDEN, "POST_403", "게시글에 대한 권한이 없습니다."),
+    INVALID_POST_IMAGE(HttpStatus.BAD_REQUEST, "POST_400_IMAGE", "유효하지 않은 게시글 이미지입니다."),
     INVALID_POST_ATTACHMENT(HttpStatus.BAD_REQUEST, "POST_400_ATTACHMENT", "유효하지 않은 첨부 파일입니다."),
     POST_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_ATTACHMENT_404", "첨부 파일을 찾을 수 없습니다."),
     POST_ATTACHMENT_RESOURCE_ONLY(HttpStatus.BAD_REQUEST, "POST_400_RESOURCE_ONLY", "자료형 게시글에만 첨부 파일을 업로드할 수 있습니다."),
+    INVALID_POST_VIDEO(HttpStatus.BAD_REQUEST, "POST_400_VIDEO", "유효하지 않은 게시글 영상입니다."),
+    POST_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_VIDEO_404", "게시글 영상을 찾을 수 없습니다."),
+    POST_MEDIA_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "POST_400_MEDIA_LIMIT", "게시글당 미디어 개수 한도를 초과했습니다."),
+    INVALID_UPLOAD_KIND(HttpStatus.BAD_REQUEST, "POST_400_UPLOAD_KIND", "유효하지 않은 업로드 유형입니다."),
+    UPLOAD_NOT_FOUND_IN_S3(HttpStatus.BAD_REQUEST, "POST_400_UPLOAD_MISSING", "업로드된 객체가 스토리지에 존재하지 않습니다."),
 
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMENT_404", "댓글을 찾을 수 없습니다."),
     COMMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "COMMENT_403", "댓글에 대한 권한이 없습니다."),

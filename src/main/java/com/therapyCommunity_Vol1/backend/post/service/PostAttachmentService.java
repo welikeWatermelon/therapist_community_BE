@@ -93,6 +93,37 @@ public class PostAttachmentService {
         }
     }
 
+    /**
+     * UploadConfirmService 가 권한/형식/한도 검증과 S3 copy/delete 를 마친 뒤 호출.
+     * INSERT + PostType=RESOURCE 자동 전환.
+     */
+    @Transactional
+    public PostAttachmentResponse confirmUpload(
+            TherapyPost post,
+            String storedPath,
+            String originalFilename,
+            String contentType,
+            long sizeBytes
+    ) {
+        TherapyPostAttachment attachment = TherapyPostAttachment.create(
+                post,
+                storedPath,
+                originalFilename,
+                contentType,
+                sizeBytes,
+                extractExtension(originalFilename)
+        );
+        TherapyPostAttachment saved = therapyPostAttachmentRepository.save(attachment);
+        post.updatePostType(PostType.RESOURCE);
+
+        String downloadUrl = fileStorageService.presignGet(saved.getStoredPath(), ATTACHMENT_PRESIGN_TTL);
+        if (downloadUrl == null) {
+            downloadUrl = "/api/v1/posts/" + post.getId()
+                    + "/attachments/" + saved.getId() + "/download";
+        }
+        return PostAttachmentResponse.of(saved, downloadUrl);
+    }
+
     @Transactional
     public StoredFileResource downloadAttachment(
             Long currentUserId,
