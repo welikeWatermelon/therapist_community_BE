@@ -27,7 +27,7 @@ class TherapyPostSummaryResponseTest {
     void PRIVATE_게시글은_canViewPrivate_false면_accessLocked_true_본문_마스킹() {
         TherapyPost post = privatePost("<p>비밀 내용</p>");
 
-        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, 0L, 0L, false, false, null, java.util.List.of(), null);
+        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, 0L, 0L, 0L, 0L, false, false, null, java.util.List.of(), null);
 
         assertThat(r.isAccessLocked()).isTrue();
         assertThat(r.getContentPreview()).isEqualTo("비공개 글입니다");
@@ -41,7 +41,7 @@ class TherapyPostSummaryResponseTest {
     void PRIVATE_게시글은_canViewPrivate_true면_accessLocked_false_본문_정상_노출() {
         TherapyPost post = privatePost("<p>치료사 자료 본문</p>");
 
-        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, 0L, 0L, false, true, null, java.util.List.of(), null);
+        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, 0L, 0L, 0L, 0L, false, true, null, java.util.List.of(), null);
 
         assertThat(r.isAccessLocked()).isFalse();
         assertThat(r.getContentPreview()).isEqualTo("치료사 자료 본문");
@@ -51,8 +51,8 @@ class TherapyPostSummaryResponseTest {
     void PUBLIC_게시글은_canViewPrivate과_무관하게_accessLocked_false() {
         TherapyPost post = publicPost("<p>공개 내용</p>");
 
-        TherapyPostSummaryResponse rUser = TherapyPostSummaryResponse.from(post, 0L, 0L, false, false, null, java.util.List.of(), null);
-        TherapyPostSummaryResponse rTherapist = TherapyPostSummaryResponse.from(post, 0L, 0L, false, true, null, java.util.List.of(), null);
+        TherapyPostSummaryResponse rUser = TherapyPostSummaryResponse.from(post, 0L, 0L, 0L, 0L, false, false, null, java.util.List.of(), null);
+        TherapyPostSummaryResponse rTherapist = TherapyPostSummaryResponse.from(post, 0L, 0L, 0L, 0L, false, true, null, java.util.List.of(), null);
 
         assertThat(rUser.isAccessLocked()).isFalse();
         assertThat(rTherapist.isAccessLocked()).isFalse();

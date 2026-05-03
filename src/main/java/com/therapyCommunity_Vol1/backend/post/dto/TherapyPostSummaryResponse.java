@@ -22,6 +22,8 @@ public class TherapyPostSummaryResponse {
     private Visibility visibility;
     private Long viewCount;
     private Long likeCount;
+    private Long curiousCount;
+    private Long usefulCount;
     private Long commentCount;
     private LocalDateTime createdAt;
     private boolean isScrapped;
@@ -46,6 +48,8 @@ public class TherapyPostSummaryResponse {
             Visibility visibility,
             Long viewCount,
             Long likeCount,
+            Long curiousCount,
+            Long usefulCount,
             Long commentCount,
             LocalDateTime createdAt,
             boolean isScrapped,
@@ -62,6 +66,8 @@ public class TherapyPostSummaryResponse {
         this.visibility = visibility;
         this.viewCount = viewCount;
         this.likeCount = likeCount;
+        this.curiousCount = curiousCount;
+        this.usefulCount = usefulCount;
         this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.isScrapped = isScrapped;
@@ -77,12 +83,14 @@ public class TherapyPostSummaryResponse {
      * accessLocked는 보수적으로 PRIVATE 여부만으로 판단.
      */
     public static TherapyPostSummaryResponse from(TherapyPost post, boolean isScrapped) {
-        return from(post, 0L, 0L, isScrapped, false, null, List.of(), null);
+        return from(post, 0L, 0L, 0L, 0L, isScrapped, false, null, List.of(), null);
     }
 
     public static TherapyPostSummaryResponse from(
             TherapyPost post,
             Long likeCount,
+            Long curiousCount,
+            Long usefulCount,
             Long commentCount,
             boolean isScrapped,
             boolean canViewPrivate,
@@ -106,6 +114,8 @@ public class TherapyPostSummaryResponse {
                 post.getVisibility(),
                 post.getViewCount(),
                 likeCount,
+                curiousCount,
+                usefulCount,
                 commentCount,
                 post.getCreatedAt(),
                 isScrapped,

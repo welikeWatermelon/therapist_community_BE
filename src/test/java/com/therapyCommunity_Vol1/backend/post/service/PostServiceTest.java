@@ -191,9 +191,8 @@ class PostServiceTest {
 
         when(therapyPostRepository.findByDeletedAtIsNull(any(Pageable.class)))
                 .thenReturn(page);
-        when(therapyPostReactionRepository.countByPostIdInAndReactionType(
-                eq(List.of(1L)), eq(PostReactionType.LIKE)))
-                .thenReturn(List.<Object[]>of(new Object[]{1L, 5L}));
+        when(therapyPostReactionRepository.countByPostIdInGroupedByType(eq(List.of(1L))))
+                .thenReturn(List.<Object[]>of(new Object[]{1L, PostReactionType.LIKE, 5L}));
         when(therapyPostCommentRepository.countActiveByPostIdIn(eq(List.of(1L))))
                 .thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
 
