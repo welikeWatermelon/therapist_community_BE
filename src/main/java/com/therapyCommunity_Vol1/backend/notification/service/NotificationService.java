@@ -20,7 +20,6 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataAccessException;
 import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -161,13 +160,6 @@ public class NotificationService {
             payloads.add(new SsePayload(receiverId, eventId, response));
         }
         return payloads;
-    }
-
-    @Recover
-    public List<SsePayload> recoverCreateNotifications(DataAccessException e, NotificationEvent event) {
-        log.error("알림 DB 저장 재시도 모두 실패: type={}, senderId={}, receiverIds={}",
-                event.getType(), event.getSenderId(), event.getReceiverIds(), e);
-        return List.of();
     }
 
     public void sendSseNotifications(List<SsePayload> payloads) {
