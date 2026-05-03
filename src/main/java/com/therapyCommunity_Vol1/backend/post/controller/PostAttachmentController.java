@@ -28,7 +28,12 @@ public class PostAttachmentController {
 
     private final PostAttachmentService postAttachmentService;
 
-    @Operation(summary = "첨부파일 업로드", description = "파일 업로드 시 게시글 postType이 RESOURCE로 자동 변경")
+    @Operation(
+            summary = "첨부파일 업로드 (deprecated)",
+            description = "presigned PUT 흐름(/uploads/init + /uploads/confirm)을 사용하세요. 후속 PR에서 제거 예정. 파일 업로드 시 게시글 postType 이 RESOURCE 로 자동 변경",
+            deprecated = true
+    )
+    @Deprecated
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostAttachmentResponse>> uploadAttachment(
             @AuthenticationPrincipal CustomUserDetails userDetails,

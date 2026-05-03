@@ -65,6 +65,31 @@ public class PostImageService {
         return toResponse(saved);
     }
 
+    /**
+     * UploadConfirmService 가 권한/형식/한도 검증과 S3 copy/delete 를 마친 뒤 호출.
+     * 단순 INSERT + displayOrder 부여.
+     */
+    @Transactional
+    public PostImageResponse confirmUpload(
+            TherapyPost post,
+            String storedPath,
+            String originalFilename,
+            String contentType,
+            long sizeBytes
+    ) {
+        int nextOrder = therapyPostImageRepository.countByPostId(post.getId());
+        TherapyPostImage image = TherapyPostImage.create(
+                post,
+                storedPath,
+                originalFilename,
+                contentType,
+                sizeBytes,
+                nextOrder
+        );
+        TherapyPostImage saved = therapyPostImageRepository.save(image);
+        return toResponse(saved);
+    }
+
     public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);

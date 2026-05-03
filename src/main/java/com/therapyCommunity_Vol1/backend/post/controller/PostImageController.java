@@ -30,7 +30,12 @@ public class PostImageController {
 
     private final PostImageService postImageService;
 
-    @Operation(summary = "이미지 업로드", description = "jpg/png/webp, 5MB 이하")
+    @Operation(
+            summary = "이미지 업로드 (deprecated)",
+            description = "presigned PUT 흐름(/uploads/init + /uploads/confirm)을 사용하세요. 후속 PR에서 제거 예정. jpg/png/webp, 5MB 이하",
+            deprecated = true
+    )
+    @Deprecated
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostImageResponse>> uploadImage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
