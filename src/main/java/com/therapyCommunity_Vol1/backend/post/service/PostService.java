@@ -386,9 +386,14 @@ public class PostService {
         }
         List<Long> postIds = posts.stream().map(TherapyPost::getId).toList();
 
-        Map<Long, Long> likeCounts = toCountMap(
-                therapyPostReactionRepository.countByPostIdInAndReactionType(postIds, PostReactionType.LIKE)
-        );
+        // 3종 reaction 카운트를 한 번의 GROUP BY로 batch 조회 (postId, type, count) → Map<postId, Map<type, count>>
+        Map<Long, Map<PostReactionType, Long>> reactionByPostId = new HashMap<>();
+        for (Object[] row : therapyPostReactionRepository.countByPostIdInGroupedByType(postIds)) {
+            Long postId = (Long) row[0];
+            PostReactionType type = (PostReactionType) row[1];
+            Long count = (Long) row[2];
+            reactionByPostId.computeIfAbsent(postId, k -> new HashMap<>()).put(type, count);
+        }
         Map<Long, Long> commentCounts = toCountMap(
                 therapyPostCommentRepository.countActiveByPostIdIn(postIds)
         );
@@ -405,18 +410,23 @@ public class PostService {
                 postImageService.getImagesByPostIds(visiblePostIds);
 
         return posts.stream()
-                .map(post -> TherapyPostSummaryResponse.from(
-                        post,
-                        likeCounts.getOrDefault(post.getId(), 0L),
-                        commentCounts.getOrDefault(post.getId(), 0L),
-                        false,
-                        canViewPrivate,
-                        profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
-                        imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
-                                .map(PostImageResponse::getImageUrl)
-                                .toList(),
-                        null
-                ))
+                .map(post -> {
+                    Map<PostReactionType, Long> counts = reactionByPostId.getOrDefault(post.getId(), Map.of());
+                    return TherapyPostSummaryResponse.from(
+                            post,
+                            counts.getOrDefault(PostReactionType.LIKE, 0L),
+                            counts.getOrDefault(PostReactionType.CURIOUS, 0L),
+                            counts.getOrDefault(PostReactionType.USEFUL, 0L),
+                            commentCounts.getOrDefault(post.getId(), 0L),
+                            false,
+                            canViewPrivate,
+                            profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                            imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
+                                    .map(PostImageResponse::getImageUrl)
+                                    .toList(),
+                            null
+                    );
+                })
                 .toList();
     }
 
