@@ -21,6 +21,7 @@ public class CommentResponse {
     private Long authorId;
     private String authorNickname;
     private String authorRole;
+    private String authorProfileImageUrl;
     private boolean authorIsAi;
     private String content;
     private boolean deleted;
@@ -43,6 +44,7 @@ public class CommentResponse {
             Long currentUserId,
             UserRole currentUserRole,
             String aiUserEmail,
+            String authorProfileImageUrl,
             CommentReactionAggregate reactions
     ) {
         boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
@@ -53,6 +55,7 @@ public class CommentResponse {
                 comment.getAuthor().getId(),
                 comment.getAuthor().getDisplayNickname(),
                 comment.getAuthor().getRole().getCode(),
+                authorProfileImageUrl,
                 aiUserEmail != null && aiUserEmail.equals(comment.getAuthor().getEmail()),
                 comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),
@@ -76,6 +79,7 @@ public class CommentResponse {
                 authorId,
                 authorNickname,
                 authorRole,
+                authorProfileImageUrl,
                 authorIsAi,
                 content,
                 deleted,
