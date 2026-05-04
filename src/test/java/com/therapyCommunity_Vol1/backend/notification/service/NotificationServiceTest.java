@@ -73,8 +73,8 @@ class NotificationServiceTest {
         // Given
         ScheduledFuture<?> mockHeartbeat = mock(ScheduledFuture.class);
         when(sseEmitterRepository.save(eq(1L), any(SseEmitter.class))).thenReturn("1_1");
-        when(taskScheduler.scheduleAtFixedRate(any(Runnable.class), any(Duration.class)))
-                .thenReturn(mockHeartbeat);
+        doReturn(mockHeartbeat).when(taskScheduler)
+                .scheduleAtFixedRate(any(Runnable.class), any(Duration.class));
 
         SseEmitter emitter = notificationService.subscribe(1L, "");
 
@@ -91,8 +91,8 @@ class NotificationServiceTest {
         // Given
         ScheduledFuture<?> mockHeartbeat = mock(ScheduledFuture.class);
         when(sseEmitterRepository.save(eq(1L), any(SseEmitter.class))).thenReturn("1_1");
-        when(taskScheduler.scheduleAtFixedRate(any(Runnable.class), any(Duration.class)))
-                .thenReturn(mockHeartbeat);
+        doReturn(mockHeartbeat).when(taskScheduler)
+                .scheduleAtFixedRate(any(Runnable.class), any(Duration.class));
 
         SseEmitter emitter = notificationService.subscribe(1L, "");
 
