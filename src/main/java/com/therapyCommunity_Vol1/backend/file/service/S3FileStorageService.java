@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.file.service;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import com.therapyCommunity_Vol1.backend.file.dto.S3ObjectMeta;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import javax.imageio.ImageIO;
 import java.io.IOException;
@@ -166,6 +168,61 @@ public class S3FileStorageService implements FileStorageService {
                 .getObjectRequest(getObjectRequest)
                 .build();
         return s3Presigner.presignGetObject(presignRequest).url().toString();
+    }
+
+    @Override
+    public String presignPut(String storedPath, String contentType, Duration ttl) {
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(storedPath)
+                .contentType(contentType)
+                .build();
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(ttl)
+                .putObjectRequest(putObjectRequest)
+                .build();
+        return s3Presigner.presignPutObject(presignRequest).url().toString();
+    }
+
+    @Override
+    public S3ObjectMeta headObject(String storedPath) {
+        try {
+            HeadObjectResponse response = s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(storedPath)
+                    .build());
+            String contentType = response.contentType() != null
+                    ? response.contentType()
+                    : "application/octet-stream";
+            long size = response.contentLength() != null ? response.contentLength() : 0L;
+            return new S3ObjectMeta(contentType, size);
+        } catch (NoSuchKeyException e) {
+            return null;
+        } catch (software.amazon.awssdk.services.s3.model.S3Exception e) {
+            if (e.statusCode() == 404) {
+                return null;
+            }
+            log.error("S3 head failed: storedPath={}", storedPath, e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
+        } catch (Exception e) {
+            log.error("S3 head failed: storedPath={}", storedPath, e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
+        }
+    }
+
+    @Override
+    public void copy(String fromKey, String toKey) {
+        try {
+            s3Client.copyObject(CopyObjectRequest.builder()
+                    .sourceBucket(bucket)
+                    .sourceKey(fromKey)
+                    .destinationBucket(bucket)
+                    .destinationKey(toKey)
+                    .build());
+        } catch (Exception e) {
+            log.error("S3 copy failed: fromKey={}, toKey={}", fromKey, toKey, e);
+            throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
+        }
     }
 
     private StoredFileInfo store(MultipartFile file, String directory) {

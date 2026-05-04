@@ -30,7 +30,9 @@ class CommentThreadAssemblerTest {
     void setUp() {
         aiCommentProperties = mock(AiCommentProperties.class);
         when(aiCommentProperties.getAiUserEmail()).thenReturn("ai-comment@system.local");
-        assembler = new CommentThreadAssembler(aiCommentProperties);
+        com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler =
+                mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
+        assembler = new CommentThreadAssembler(aiCommentProperties, profileImageUrlAssembler);
 
         author = User.builder()
                 .id(1L).email("t@t.com").nickname("tester").role(UserRole.THERAPIST)

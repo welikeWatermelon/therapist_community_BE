@@ -96,13 +96,10 @@ public class PostReactionService {
                     );
                     postReactionRepository.save(reaction);
 
-                    eventPublisher.publishEvent(NotificationEvent.builder()
-                            .senderId(currentUserId)
-                            .receiverIds(List.of(post.getAuthor().getId()))
-                            .type(NotificationType.NEW_POST_REACTION)
-                            .referenceId(postId)
-                            .content(user.getNickname() + "님이 회원님의 게시글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
-                            .build());
+                    eventPublisher.publishEvent(NotificationEvent.of(
+                            currentUserId, post.getAuthor().getId(),
+                            NotificationType.NEW_POST_REACTION, postId,
+                            request.getReactionType().getLabel()));
 
                     publishReactAnalytics(currentUserId, postId, request.getReactionType());
                 });

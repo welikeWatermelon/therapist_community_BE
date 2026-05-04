@@ -18,11 +18,6 @@ public class PostAttachmentResponse {
     private String downloadUrl;
     private LocalDateTime createdAt;
 
-    public static PostAttachmentResponse from(TherapyPostAttachment attachment) {
-        return of(attachment, "/api/v1/posts/" + attachment.getPost().getId()
-                + "/attachments/" + attachment.getId() + "/download");
-    }
-
     public static PostAttachmentResponse of(TherapyPostAttachment attachment, String downloadUrl) {
         return new PostAttachmentResponse(
                 attachment.getId(),
