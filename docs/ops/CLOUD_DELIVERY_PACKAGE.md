@@ -1,4 +1,4 @@
-# Cloud Handoff Package
+# Cloud Delivery Package
 
 클라우드/배포 관련 단일 기준 문서입니다.
 EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 문서만 기준으로 봅니다.
@@ -16,11 +16,11 @@ EC2, Nginx, systemd, 환경변수, CORS, S3, CloudWatch, 체크리스트는 이 
 권장 전달 문구:
 
 ```text
-[Backend -> Cloud Handoff]
+[Backend → Cloud Delivery]
 - Repo: <REPO_URL>
 - Branch for deploy: deploy
 - Branch guide: docs/BRANCH_OPERATIONS_GUIDE.md
-- Handoff doc: docs/CLOUD_HANDOFF_PACKAGE.md
+- Delivery doc: docs/ops/CLOUD_DELIVERY_PACKAGE.md
 - Secrets: 1Password/DM로 별도 전달
 
 이번 범위:

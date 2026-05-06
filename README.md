@@ -611,7 +611,7 @@ docker compose down -v
 | **API** | [API_SPEC.md](docs/api/API_SPEC.md) | 엔드포인트 명세 |
 | | [API_RULES.md](docs/api/API_RULES.md) | API 설계 규칙 (URL 패턴, 응답 형식, 페이지네이션) |
 | | [openapi.json](docs/api/openapi.json) | springdoc 자동 생성 OpenAPI 3.1 스펙 |
-| **운영** | [CLOUD_HANDOFF_PACKAGE.md](docs/ops/CLOUD_HANDOFF_PACKAGE.md) | 클라우드 배포 (systemd, Nginx, CloudWatch) |
+| **운영** | [CLOUD_DELIVERY_PACKAGE.md](docs/ops/CLOUD_DELIVERY_PACKAGE.md) | 클라우드 배포 (systemd, Nginx, CloudWatch) |
 | | [SERVER_CHECK_RUNBOOK.md](docs/ops/SERVER_CHECK_RUNBOOK.md) | 서버 점검 및 장애 구분 절차 |
 | | [BRANCH_OPERATIONS_GUIDE.md](docs/ops/BRANCH_OPERATIONS_GUIDE.md) | 브랜치 운영 규칙 |
 | **기획** | [정책 결정](docs/product/therapist_community_policy_decisions.md) | 서비스 정책 결정 배경 |

@@ -19,7 +19,7 @@
 
 ## ops/ — 운영 & 인프라
 
-- [CLOUD_HANDOFF_PACKAGE.md](./ops/CLOUD_HANDOFF_PACKAGE.md): 클라우드 배포, systemd, Nginx, 환경변수, CloudWatch
+- [CLOUD_DELIVERY_PACKAGE.md](./ops/CLOUD_DELIVERY_PACKAGE.md): 클라우드 배포, systemd, Nginx, 환경변수, CloudWatch
 - [SERVER_CHECK_RUNBOOK.md](./ops/SERVER_CHECK_RUNBOOK.md): 운영 서버 점검과 장애 구분 절차
 - [BRANCH_OPERATIONS_GUIDE.md](./ops/BRANCH_OPERATIONS_GUIDE.md): 브랜치 운영 규칙
 - [ops-todo.md](./ops/ops-todo.md): 미완료 운영 작업 체크리스트

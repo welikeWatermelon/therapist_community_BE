@@ -5,7 +5,7 @@
 운영 서버가 실제로 정상 동작 중인지 빠르게 확인하고, 장애와 단순 요청 오류를 구분하기 위한 수동 점검 절차를 정리한다.
 
 이 문서는 2026년 3월 25일에 실제 EC2 서버를 점검하며 사용한 명령과 해석 기준을 기준으로 작성했다.
-배포 절차, 환경변수, CloudWatch 설정은 [CLOUD_HANDOFF_PACKAGE.md](./CLOUD_HANDOFF_PACKAGE.md)를 기준으로 보고, 이 문서는 점검과 원인 분리에만 사용한다.
+배포 절차, 환경변수, CloudWatch 설정은 [CLOUD_DELIVERY_PACKAGE.md](./CLOUD_DELIVERY_PACKAGE.md)를 기준으로 보고, 이 문서는 점검과 원인 분리에만 사용한다.
 
 ---
 
