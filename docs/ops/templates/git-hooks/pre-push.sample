@@ -14,7 +14,8 @@
 
 set -uo pipefail
 
-# stdin을 그냥 흘려보내 push가 정상 동작하게 한다.
+# pre-push hook은 stdin으로 ref 정보(local-ref local-oid remote-ref remote-oid)를 받지만
+# 본 스크립트는 사용하지 않는다. 읽지 않고 폐기.
 cat > /dev/null
 
 TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/:\1/')"

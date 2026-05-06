@@ -2,10 +2,12 @@
 
 ## 읽는 순서
 
-1. 범위 확인: [../PRD.md](../PRD.md)
-2. 교차 흐름 확인: [../Architecture.md](../Architecture.md)
-3. 이유 확인: [../ARD.md](../ARD.md)
+1. 범위 확인: [../PRD.md](../PRD.md) *(local-only, 없으면 [`docs/product/`](../../docs/product/) 또는 사용자에게 확인)*
+2. 교차 흐름 확인: [../Architecture.md](../Architecture.md) *(local-only, 없으면 [`docs/architecture/ARCHITECTURE.md`](../../docs/architecture/ARCHITECTURE.md))*
+3. 이유 확인: [../ARD.md](../ARD.md) *(local-only, 없으면 git log + PR description 참조)*
 4. 도메인 세부 확인: 아래 문서
+
+> `../PRD.md`, `../ARD.md`, `../Architecture.md`는 사용자 개인 기획 노트이며 `.gitignore` 대상(local-only). fresh clone 또는 다른 워크트리에서는 부재할 수 있다. 자세한 위치 정책은 [`docs/ops/AGENT_WORKFLOW.md §11.1`](../../docs/ops/AGENT_WORKFLOW.md) 참조.
 
 ## Identity / Trust
 
