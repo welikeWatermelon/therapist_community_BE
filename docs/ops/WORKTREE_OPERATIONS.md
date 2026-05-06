@@ -32,8 +32,10 @@ Codex와 Claude가 동시에 작업할 때는 작업 위치와 통합 위치를 
 
 **영구 보존된 워크트리에서 브랜치만 회전한다.** 매번 새 worktree를 추가하지 않는다.
 
+> 본 절의 명령은 Claude/Codex 공통이다. `<agent>` ∈ { `claude`, `codex` }, `<work-worktree>` = `/Users/tom/dev/buildersMvp/backend-<agent>`.
+
 ```bash
-cd /Users/tom/dev/buildersMvp/backend-claude
+cd <work-worktree>              # Claude면 backend-claude, Codex면 backend-codex
 
 # 상태 점검 (clean이어야 함)
 git status
@@ -42,20 +44,30 @@ git status
 git fetch origin --prune
 
 # 작업 브랜치 시작 (origin/main 기준 — 작업 워크트리는 로컬 main을 직접 체크아웃하지 않음)
+git switch -c <agent>/<task-name> origin/main
+```
+
+예시:
+
+```bash
+# Claude
 git switch -c claude/<task-name> origin/main
+
+# Codex
+git switch -c codex/<task-name> origin/main
 ```
 
 이어서 작업할 기존 브랜치가 있다면:
 
 ```bash
-git switch claude/<task-name>
+git switch <agent>/<task-name>
 git rebase origin/main          # 또는 git merge origin/main
 ```
 
 머지된 동명 브랜치 잔존:
 
 ```bash
-git branch -d claude/<old-task>
+git branch -d <agent>/<old-task>
 ```
 
 ## 워크트리 최초 1회 생성 (부재 시)

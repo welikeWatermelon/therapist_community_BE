@@ -14,10 +14,14 @@
 
 워크트리는 영구 자산이며 디스크 정리 등 명백한 사유가 있을 때만 `git worktree remove`를 사용한다. 작업이 끝났다고 매 PR마다 워크트리를 지우지 않는다.
 
-`backend-claude` / `backend-codex`가 부재할 때는 1회만 다음 명령으로 생성한다(반드시 한 줄로 실행):
+`backend-claude` / `backend-codex`가 부재할 때는 1회만 다음 명령으로 생성한다(반드시 한 줄로 실행).
 
 ```bash
+# Claude
 git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b claude/<task-name> origin/main
+
+# Codex
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-codex -b codex/<task-name> origin/main
 ```
 
 ## 2. 세션 ↔ 워크트리 매핑
@@ -30,8 +34,14 @@ git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/builde
 
 ## 3. 작업 시작 절차 (작업 세션)
 
+> 본 절의 명령은 Claude/Codex 공통이다. `<agent>` 자리에 Claude 작업이면 `claude`, Codex 작업이면 `codex`를 넣는다.
+>
+> 변수 매핑:
+> - `<agent>` ∈ { `claude`, `codex` }
+> - `<work-worktree>` = `/Users/tom/dev/buildersMvp/backend-<agent>`
+
 ```bash
-cd /Users/tom/dev/buildersMvp/backend-claude
+cd <work-worktree>                              # Claude면 backend-claude, Codex면 backend-codex
 
 git status                                      # working tree clean 확인
 git branch --show-current                       # 현재 브랜치 파악
@@ -43,7 +53,17 @@ clean이면 다음을 실행한다.
 
 ```bash
 git fetch origin --prune
-git switch -c claude/<task-name> origin/main    # 항상 origin/main 기준
+git switch -c <agent>/<task-name> origin/main   # 항상 origin/main 기준
+```
+
+예시:
+
+```bash
+# Claude
+git switch -c claude/<task-name> origin/main
+
+# Codex
+git switch -c codex/<task-name> origin/main
 ```
 
 `backend-now`가 이미 `main`을 점유하므로 작업 워크트리에서 로컬 `main`으로 직접 switch하지 않는다. 항상 `origin/main`에서 새 작업 브랜치를 분기한다.
@@ -51,14 +71,14 @@ git switch -c claude/<task-name> origin/main    # 항상 origin/main 기준
 이어서 작업할 기존 브랜치가 있다면:
 
 ```bash
-git switch claude/<task-name>
-git rebase origin/main                           # 또는 merge
+git switch <agent>/<task-name>
+git rebase origin/main                          # 또는 merge
 ```
 
 이미 머지된 동명 브랜치가 잔존할 때:
 
 ```bash
-git branch -d claude/<old-task>
+git branch -d <agent>/<old-task>
 ```
 
 ## 4. 작업 종료 → PR 흐름
@@ -71,7 +91,7 @@ git branch -d claude/<old-task>
    │         커밋 / push / PR 모두 진행하지 않는다.
    └─ 성공 → 다음 단계
 2. 커밋 (Lore Commit Protocol, 5절). amend 금지.
-3. git push -u origin claude/<task-name>
+3. git push -u origin <agent>/<task-name>     # 예: claude/<task> 또는 codex/<task>
 4. gh pr create --base main
    본문에 Summary, Test plan, 외부 전달(필요 시 FE/Ops 안내) 포함
 5. 종료 보고:
