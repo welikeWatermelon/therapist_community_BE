@@ -1,6 +1,6 @@
 ---
 last_writer: claude | codex | user
-last_updated: <YYYY-MM-DDTHH:MM:SS+09:00>
+last_updated: <YYYY-MM-DDTHH-MM-SS+09-00>      # 파일명 안전 형식, hook 출력과 통일
 branch: <현재 작업 브랜치>
 pr: <PR 번호 또는 null>
 status: in-progress | paused | done

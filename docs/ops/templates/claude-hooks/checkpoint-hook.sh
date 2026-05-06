@@ -19,7 +19,9 @@
 set -uo pipefail
 
 EVENT="${1:-unknown}"
-TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/:\1/')"
+# 파일명에 안전한 timestamp: ISO 8601에 가까우되 콜론을 쓰지 않는다 (Windows·일부 도구 호환).
+# 예) 2026-05-07T11-30-00+09-00. AGENT_WORKFLOW.md §11.7 파일명 예시와 일치.
+TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/-\1/')"
 HARNESS_DIR="harness"
 CHECKPOINTS_DIR="${HARNESS_DIR}/checkpoints"
 

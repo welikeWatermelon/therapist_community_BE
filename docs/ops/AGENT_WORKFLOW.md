@@ -107,7 +107,7 @@ AI는 다음 두 조건이 모두 충족되기 전까지 절대 머지하지 않
 
 ## 5. Lore Commit Protocol
 
-`~/.codex/AGENTS.md`의 Lore protocol을 따른다. 본문은 한국어 가능, 트레일러 키는 영문 고정.
+본 절(§5)이 Lore Commit Protocol의 단일 출처(Tier 1)다. 본문은 한국어 가능, 트레일러 키는 영문 고정. (글로벌 개인 문서 `~/.codex/AGENTS.md`에 같은 protocol이 있더라도 §11.9 위계에 따라 본 §5가 우선한다.)
 
 ```
 <intent line: 왜 변경했는지 — 무엇을 변경했는지가 아님>
@@ -333,7 +333,7 @@ checkpoint 파일:
 ---
 last_writer: claude | codex | user
 created_at: <ISO 8601 with timezone>
-event: post-commit | pre-pr | pre-compact | post-compact | stop | pre-push
+event: post-commit | pre-pr | pre-compact | post-compact | session-start | stop | pre-push
 branch: <원본 브랜치명>
 ---
 ```

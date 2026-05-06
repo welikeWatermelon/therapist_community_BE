@@ -1,6 +1,6 @@
 ---
 last_writer: user
-last_updated: <YYYY-MM-DDTHH:MM:SS+09:00>
+last_updated: <YYYY-MM-DDTHH-MM-SS+09-00>      # 파일명 안전 형식, hook 출력과 통일
 ---
 
 # Main Session Context

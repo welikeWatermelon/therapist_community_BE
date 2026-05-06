@@ -1,7 +1,7 @@
 ---
 last_writer: claude | codex | user
-created_at: <YYYY-MM-DDTHH:MM:SS+09:00>
-event: post-commit | pre-pr | pre-compact | post-compact | stop | pre-push
+created_at: <YYYY-MM-DDTHH-MM-SS+09-00>      # 파일명 안전 형식, hook 출력과 통일
+event: post-commit | pre-pr | pre-compact | post-compact | session-start | stop | pre-push
 branch: <현재 브랜치>
 short_sha: <commit short hash, post-commit/pre-push 시>
 ---

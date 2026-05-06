@@ -18,7 +18,8 @@ set -uo pipefail
 # 본 스크립트는 사용하지 않는다. 읽지 않고 폐기.
 cat > /dev/null
 
-TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/:\1/')"
+# 파일명 안전 timestamp (콜론 X, +09-00 형식). AGENT_WORKFLOW.md §11.7 정합.
+TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/-\1/')"
 HARNESS_DIR="harness"
 CHECKPOINTS_DIR="${HARNESS_DIR}/checkpoints"
 
