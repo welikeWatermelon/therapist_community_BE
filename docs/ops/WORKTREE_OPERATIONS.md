@@ -36,54 +36,72 @@ Codex와 Claude가 동시에 작업할 때는 작업 위치와 통합 위치를 
 >
 > ⚠️ `<...>` placeholder는 **그대로 복사·실행하지 않는다.** 셸이 `<` `>`를 리다이렉션 연산자로 해석한다. 실제 값으로 치환한 뒤 실행한다.
 
-```bash
-cd <work-worktree>              # Claude면 backend-claude, Codex면 backend-codex
+패턴 (참고용 — placeholder 그대로 실행 X):
 
-# 상태 점검 (clean이어야 함)
+```text
+cd <work-worktree>
 git status
-
-# origin/main 동기화
 git fetch origin --prune
-
-# 작업 브랜치 시작 (origin/main 기준 — 작업 워크트리는 로컬 main을 직접 체크아웃하지 않음)
 git switch -c <agent>/<task-name> origin/main
 ```
 
-예시:
+실행 예시 (TASK 변수 치환 후 그대로 복사 가능):
 
 ```bash
 # Claude
-git switch -c claude/<task-name> origin/main
-
-# Codex
-git switch -c codex/<task-name> origin/main
+cd /Users/tom/dev/buildersMvp/backend-claude
+git status
+TASK=setup-foo
+git fetch origin --prune
+git switch -c "claude/$TASK" origin/main
 ```
 
-이어서 작업할 기존 브랜치가 있다면:
+```bash
+# Codex
+cd /Users/tom/dev/buildersMvp/backend-codex
+git status
+TASK=domain-policy
+git fetch origin --prune
+git switch -c "codex/$TASK" origin/main
+```
+
+이어서 작업할 기존 브랜치가 있다면 (TASK에 task slug 넣고):
 
 ```bash
-git switch <agent>/<task-name>
+TASK=setup-foo
+git switch "claude/$TASK"       # Codex면 codex/$TASK
 git rebase origin/main          # 또는 git merge origin/main
 ```
 
-머지된 동명 브랜치 잔존:
+머지된 동명 브랜치 잔존 (OLD에 옛 task slug):
 
 ```bash
-git branch -d <agent>/<old-task>
+OLD=old-task
+git branch -d "claude/$OLD"     # Codex면 codex/$OLD
 ```
 
 ## 워크트리 최초 1회 생성 (부재 시)
 
 `backend-claude` / `backend-codex`가 아예 없는 경우 1회만 생성한다(반드시 한 줄로 실행).
 
-> ⚠️ 아래 명령의 `<task-name>` placeholder는 그대로 실행하면 셸 리다이렉션으로 해석되어 깨진다. 실제 task slug로 치환 후 실행.
+패턴 (참고용 — placeholder 그대로 실행 X):
+
+```text
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-<agent> -b <agent>/<task-name> origin/main
+```
+
+실행 예시 (TASK 변수 치환 후 그대로 복사 가능):
 
 ```bash
-git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b claude/<task-name> origin/main
+# Claude
+TASK=setup-foo
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b "claude/$TASK" origin/main
 ```
 
 ```bash
-git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-codex -b codex/<task-name> origin/main
+# Codex
+TASK=domain-policy
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-codex -b "codex/$TASK" origin/main
 ```
 
 이후 작업은 위 "새 작업 시작 절차"를 따르고 워크트리는 영구 보존한다.

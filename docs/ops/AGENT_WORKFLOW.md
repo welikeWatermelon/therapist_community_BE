@@ -16,14 +16,24 @@
 
 `backend-claude` / `backend-codex`가 부재할 때는 1회만 다음 명령으로 생성한다(반드시 한 줄로 실행).
 
-> ⚠️ 아래 코드 블록의 `<task-name>` 등 `<...>` placeholder는 **그대로 복사·실행하지 않는다.** 셸이 `<` `>`를 리다이렉션 연산자로 해석한다. 실제 값으로 치환한 뒤 실행한다 (예: `claude/setup-foo`).
+패턴 (참고용 — placeholder 그대로 실행 X):
+
+```text
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-<agent> -b <agent>/<task-name> origin/main
+```
+
+실행 예시 (TASK 변수 치환 후 그대로 복사 가능):
 
 ```bash
 # Claude
-git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b claude/<task-name> origin/main
+TASK=setup-foo
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b "claude/$TASK" origin/main
+```
 
+```bash
 # Codex
-git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-codex -b codex/<task-name> origin/main
+TASK=domain-policy
+git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-codex -b "codex/$TASK" origin/main
 ```
 
 ## 2. 세션 ↔ 워크트리 매핑
@@ -44,45 +54,57 @@ git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/builde
 >
 > ⚠️ `<...>` placeholder는 **그대로 복사·실행하지 않는다.** 셸이 `<` `>`를 리다이렉션 연산자로 해석한다. 실제 값으로 치환한 뒤 실행한다.
 
-```bash
-cd <work-worktree>                              # Claude면 backend-claude, Codex면 backend-codex
+패턴 (참고용 — placeholder 그대로 실행 X):
 
-git status                                      # working tree clean 확인
-git branch --show-current                       # 현재 브랜치 파악
+```text
+cd <work-worktree>
+git status
+git branch --show-current
+git fetch origin --prune
+git switch -c <agent>/<task-name> origin/main
 ```
 
 dirty 상태면 멈추고 사용자에게 보고한다. 임의 stash / reset / clean 금지.
 
-clean이면 다음을 실행한다.
+clean이면 아래 실행 예시(TASK 변수 치환 후 그대로 복사 가능):
 
 ```bash
+# Claude 작업 시작
+cd /Users/tom/dev/buildersMvp/backend-claude
+git status
+git branch --show-current
+
+TASK=setup-foo
 git fetch origin --prune
-git switch -c <agent>/<task-name> origin/main   # 항상 origin/main 기준
+git switch -c "claude/$TASK" origin/main
 ```
 
-예시:
-
 ```bash
-# Claude
-git switch -c claude/<task-name> origin/main
+# Codex 작업 시작
+cd /Users/tom/dev/buildersMvp/backend-codex
+git status
+git branch --show-current
 
-# Codex
-git switch -c codex/<task-name> origin/main
+TASK=domain-policy
+git fetch origin --prune
+git switch -c "codex/$TASK" origin/main
 ```
 
 `backend-now`가 이미 `main`을 점유하므로 작업 워크트리에서 로컬 `main`으로 직접 switch하지 않는다. 항상 `origin/main`에서 새 작업 브랜치를 분기한다.
 
-이어서 작업할 기존 브랜치가 있다면:
+이어서 작업할 기존 브랜치가 있다면 (TASK 변수에 task slug 넣고):
 
 ```bash
-git switch <agent>/<task-name>
-git rebase origin/main                          # 또는 merge
+TASK=setup-foo
+git switch "claude/$TASK"   # Codex면 codex/$TASK
+git rebase origin/main      # 또는 merge
 ```
 
-이미 머지된 동명 브랜치가 잔존할 때:
+이미 머지된 동명 브랜치가 잔존할 때 (OLD에 옛 task slug 넣고):
 
 ```bash
-git branch -d <agent>/<old-task>
+OLD=old-task
+git branch -d "claude/$OLD"   # Codex면 codex/$OLD
 ```
 
 ## 4. 작업 종료 → PR 흐름
@@ -139,14 +161,21 @@ Not-tested: <검증 못한 항목>
 머지는 메인 세션(`backend-now`)에서만 실행한다. 작업 워크트리에서 `gh pr merge`를 돌리면 워크트리가 머지된 브랜치를 따라 자동으로 `main`으로 fast-forward 전환되어 `backend-now`와 충돌한다(2026-05-06 사고 사례).
 
 ```bash
-# backend-now에서
-gh pr merge <NNN> --merge --delete-branch
+# backend-now에서 (PR 번호와 옛 task slug 치환)
+cd /Users/tom/dev/buildersMvp/backend-now
+PR=103
+gh pr merge "$PR" --merge --delete-branch
 git fetch origin --prune
 git pull --ff-only origin main
 ./gradlew test                                   # 통합 회귀
 ```
 
-작업 워크트리는 그대로 둔다. 다음 작업 시 새 브랜치로 회전하고, 머지된 로컬 브랜치는 `git branch -d claude/<old>`로 정리한다.
+작업 워크트리는 그대로 둔다. 다음 작업 시 새 브랜치로 회전하고, 머지된 로컬 브랜치는 다음과 같이 정리한다:
+
+```bash
+OLD=old-task
+git branch -d "claude/$OLD"   # Codex면 codex/$OLD
+```
 
 ## 7. PR 리뷰 운영
 
