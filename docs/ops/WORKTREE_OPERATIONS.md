@@ -33,6 +33,8 @@ Codex와 Claude가 동시에 작업할 때는 작업 위치와 통합 위치를 
 **영구 보존된 워크트리에서 브랜치만 회전한다.** 매번 새 worktree를 추가하지 않는다.
 
 > 본 절의 명령은 Claude/Codex 공통이다. `<agent>` ∈ { `claude`, `codex` }, `<work-worktree>` = `/Users/tom/dev/buildersMvp/backend-<agent>`.
+>
+> ⚠️ `<...>` placeholder는 **그대로 복사·실행하지 않는다.** 셸이 `<` `>`를 리다이렉션 연산자로 해석한다. 실제 값으로 치환한 뒤 실행한다.
 
 ```bash
 cd <work-worktree>              # Claude면 backend-claude, Codex면 backend-codex
@@ -73,6 +75,8 @@ git branch -d <agent>/<old-task>
 ## 워크트리 최초 1회 생성 (부재 시)
 
 `backend-claude` / `backend-codex`가 아예 없는 경우 1회만 생성한다(반드시 한 줄로 실행).
+
+> ⚠️ 아래 명령의 `<task-name>` placeholder는 그대로 실행하면 셸 리다이렉션으로 해석되어 깨진다. 실제 task slug로 치환 후 실행.
 
 ```bash
 git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b claude/<task-name> origin/main

@@ -16,6 +16,8 @@
 
 `backend-claude` / `backend-codex`가 부재할 때는 1회만 다음 명령으로 생성한다(반드시 한 줄로 실행).
 
+> ⚠️ 아래 코드 블록의 `<task-name>` 등 `<...>` placeholder는 **그대로 복사·실행하지 않는다.** 셸이 `<` `>`를 리다이렉션 연산자로 해석한다. 실제 값으로 치환한 뒤 실행한다 (예: `claude/setup-foo`).
+
 ```bash
 # Claude
 git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/buildersMvp/backend-claude -b claude/<task-name> origin/main
@@ -39,6 +41,8 @@ git -C /Users/tom/dev/buildersMvp/backend-now worktree add /Users/tom/dev/builde
 > 변수 매핑:
 > - `<agent>` ∈ { `claude`, `codex` }
 > - `<work-worktree>` = `/Users/tom/dev/buildersMvp/backend-<agent>`
+>
+> ⚠️ `<...>` placeholder는 **그대로 복사·실행하지 않는다.** 셸이 `<` `>`를 리다이렉션 연산자로 해석한다. 실제 값으로 치환한 뒤 실행한다.
 
 ```bash
 cd <work-worktree>                              # Claude면 backend-claude, Codex면 backend-codex
@@ -151,7 +155,7 @@ git pull --ff-only origin main
 ### 수동 리뷰 흐름
 
 1. 작업 브랜치에서 테스트 통과
-2. PR 생성 — 본문에 Summary / Test plan / Risk / Handoff 작성
+2. PR 생성 — 본문에 Summary / Test plan / Risk / 외부 전달(FE/Ops 안내) 작성
 3. 사람이 리뷰
 4. 필요 시 Claude / Codex에게 수동으로 PR diff 리뷰 요청 (사용자가 직접 호출, 통제 가능)
 5. 사용자 사인오프 후 backend-now에서 머지
@@ -168,6 +172,17 @@ git pull --ff-only origin main
 - 실패 시 디버깅 PR로 분리
 
 자동 리뷰 도입 시 본 §7은 "수동 + 자동 병행"으로 갱신한다. claude-review prompt에 §11(컨텍스트 보존) 위반 검사 항목을 포함한다.
+
+### 외부 전달 문서 명명 정책
+
+외부 전달용 문서명에는 `handoff` 단어를 쓰지 않는다 (AI 세션 인수인계 — `harness/session-handoff.md` — 와 의미 충돌). 외부 전달은 "delivery", "전달 노트" 같은 표현을 쓴다.
+
+본 PR(#103)의 적용 범위:
+
+- ✅ FE 영역: `docs/handoff/` → `docs/frontend-notes/`, `FRONTEND_HANDOFF.md` → `FRONTEND_DELIVERY_GUIDE.md` 등
+- ⏳ Ops 영역: `docs/ops/CLOUD_HANDOFF_PACKAGE.md` rename(+ 본문 정리)은 **본 PR 범위 밖**, 후속 별 PR
+
+후속 PR에서 `CLOUD_HANDOFF_PACKAGE.md` → `CLOUD_DELIVERY_PACKAGE.md`(또는 사용자 결정 명) rename + 본문 표현 통일 + 참조 grep 정리 진행.
 
 ## 8. 문서 위치 정책
 
@@ -233,7 +248,7 @@ AI는 다음 시점에 local-only harness 기록을 자율 갱신한다.
 - PR 생성 직전
 - 커밋 직후 (commit hash 포함)
 - 긴 작업을 중단하기 전
-- 사용자가 "기록해줘" / "정리해줘" / "handoff 남겨줘"라고 요청한 때
+- 사용자가 "기록해줘" / "정리해줘" / "인수인계 남겨줘"라고 요청한 때
 - `/compact`가 예상되거나 컨텍스트가 길어졌다고 판단한 때
 
 #### compact 운영 원칙
@@ -280,7 +295,7 @@ AI는 새 세션 시작 시 `main-session.md`의 `Recovery`, `Current Goal`, `Op
 
 #### checkpoint 운영
 
-- 자동 스냅샷(PR 생성 직전·커밋 직후·compact 직전)은 `<worktree>/harness/checkpoints/checkpoint_<event>_<ISO-timestamp>.md`로 저장한다.
+- 자동 스냅샷은 §11.11이 정의한 hook 이벤트(`post-commit`, `pre-pr`, `pre-compact`, `post-compact`, `session-start`, `stop`, `pre-push`)마다 `<worktree>/harness/checkpoints/checkpoint_<event>_<timestamp>.md`로 저장한다. `<timestamp>` 형식은 §11.7 파일명 예시 참조 (`+09-00`).
 - `checkpoint_*`는 작업 진행 중 안전망이며 영구 기록이 아니다.
 - 작업 종료(머지·중단·폐기) 시 유효한 마지막 checkpoint 내용은 `archive_*`에 흡수하고, 나머지 `checkpoint_*`는 삭제한다.
 - 영구 보존 대상은 `archive_*`와 `main-session.md`에 승격된 요약뿐이다.

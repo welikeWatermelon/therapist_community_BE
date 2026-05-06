@@ -32,7 +32,7 @@ Claude Code는 본 `CLAUDE.md`를 우선 참조한다. 개인 전역 문서(`~/.
 2. 단순함을 우선한다. 추측성 추상화와 미래용 옵션을 넣지 않는다.
 3. 수술적으로 바꾼다. 요청과 직접 연결된 파일과 줄만 만진다.
 4. 목표 중심으로 끝낸다. 성공 기준과 검증 방법을 먼저 정하고 닫는다.
-5. 작업 생명주기 관리: 새로운 작업을 시작할 때나, 사용자가 코딩 결과를 승인("좋아", "완료" 등)했을 때, [docs/ops/AGENT_WORKFLOW.md](docs/ops/AGENT_WORKFLOW.md) §3·§4 절차를 따른다. 기존 [harness/Workflow.md](harness/Workflow.md)는 본 문서로 마이그레이션됨 (local 노트로 redirect).
+5. 작업 생명주기 관리: 새로운 작업을 시작할 때나, 사용자가 코딩 결과를 승인("좋아", "완료" 등)했을 때, [docs/ops/AGENT_WORKFLOW.md](docs/ops/AGENT_WORKFLOW.md) §3·§4 절차를 따른다. 기존 `harness/Workflow.md` *(local-only)*는 본 문서로 마이그레이션됨 (사용자 워크트리에서 한 줄 redirect로 정리 또는 삭제).
 6. local-only `harness/` 기록은 자율 갱신, tracked 문서는 사용자 명시 지시/PR 범위에서만 변경한다.
 
 ## 깊게 들어갈 때
