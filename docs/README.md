@@ -26,7 +26,7 @@
 
 ## frontend-notes/ — 프론트엔드 전달
 
-- [FRONTEND_HANDOFF.md](./frontend-notes/FRONTEND_HANDOFF.md): 프론트 전달 기준 문서 (템플릿 포함)
+- [FRONTEND_DELIVERY_GUIDE.md](./frontend-notes/FRONTEND_DELIVERY_GUIDE.md): 프론트 전달 기준 문서 (템플릿 포함)
 - [README.md](./frontend-notes/README.md): 디렉터리 목적 (외부 향, AI 세션 인수인계와 분리)
 
 ## product/ — 기획 & 정책

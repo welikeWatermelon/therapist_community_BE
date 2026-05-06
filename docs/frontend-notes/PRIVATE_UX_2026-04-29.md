@@ -1,4 +1,4 @@
-# PRIVATE UX 개편 — 프론트 핸드오프 (2026-04-29)
+# PRIVATE UX 개편 — 프론트 전달 노트 (2026-04-29)
 
 ## 목적
 
@@ -44,7 +44,7 @@
 - `GET /api/v1/posts/feed?sort=LATEST|POPULAR` — 무한스크롤 피드
 - `GET /api/v1/posts/search?keyword=...` — 검색 (RELEVANCE)
 - `GET /api/v1/me/posts` — 내가 쓴 글 (본인 글이라 항상 unlocked)
-- `GET /api/v1/me/scraps` — 스크랩한 글 (별도 처리, 추후 핸드오프 추가 시)
+- `GET /api/v1/me/scraps` — 스크랩한 글 (별도 처리, 추후 전달 노트 추가 시)
 
 ### 변경 안 된 동작
 
@@ -113,7 +113,7 @@ function handleCardClick(post) {
 
 ## 엣지 케이스
 
-- **로그인 안 한 게스트**: 현재 백엔드는 `/api/v1/posts/**`를 인증 필요로 막음. 게스트가 피드를 볼 수 없음. 이 핸드오프는 USER role 이상에 한해 적용.
+- **로그인 안 한 게스트**: 현재 백엔드는 `/api/v1/posts/**`를 인증 필요로 막음. 게스트가 피드를 볼 수 없음. 이 전달 노트는 USER role 이상에 한해 적용.
 - **이미 인증된 치료사가 보는 자기 자신의 PRIVATE 글**: `accessLocked=false`, 본문 노출.
 - **본인이 작성한 PRIVATE 글을 USER가 본인 마이페이지(`/me/posts`)에서 보는 경우**: USER는 PRIVATE 작성 권한 없음 → 발생 불가.
 

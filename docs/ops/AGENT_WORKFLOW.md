@@ -73,7 +73,7 @@ git branch -d claude/<old-task>
 2. 커밋 (Lore Commit Protocol, 5절). amend 금지.
 3. git push -u origin claude/<task-name>
 4. gh pr create --base main
-   본문에 Summary, Test plan, 핸드오프(필요 시 FE/Ops 안내) 포함
+   본문에 Summary, Test plan, 외부 전달(필요 시 FE/Ops 안내) 포함
 5. 종료 보고:
    ✅ PR #NNN 생성 완료. 수동 리뷰 결과 확인 후 머지 여부 결정 부탁드립니다.
 ```

@@ -1,4 +1,4 @@
-# Frontend Handoff Guide
+# Frontend Delivery Guide
 
 프론트 팀 전달 기준 문서입니다. 프론트 전달 관련 내용은 이 문서 하나만 기준으로 관리합니다.
 
@@ -90,7 +90,7 @@ curl -X POST 'http://localhost:8080/api/v1/therapist-verifications' \
 ## 7) 프론트 전달용 메시지 템플릿
 
 ```text
-[Backend Handoff]
+[Backend → Frontend Delivery]
 - Base URL: <BASE_URL>
 - Swagger: <SWAGGER_URL>
 - OpenAPI JSON: <OPENAPI_URL 또는 파일>
