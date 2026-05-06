@@ -24,9 +24,10 @@
 - [BRANCH_OPERATIONS_GUIDE.md](./ops/BRANCH_OPERATIONS_GUIDE.md): 브랜치 운영 규칙
 - [ops-todo.md](./ops/ops-todo.md): 미완료 운영 작업 체크리스트
 
-## handoff/ — 인수인계
+## frontend-notes/ — 프론트엔드 전달
 
-- [FRONTEND_HANDOFF.md](./handoff/FRONTEND_HANDOFF.md): 프론트 전달 기준 문서 (템플릿 포함)
+- [FRONTEND_HANDOFF.md](./frontend-notes/FRONTEND_HANDOFF.md): 프론트 전달 기준 문서 (템플릿 포함)
+- [README.md](./frontend-notes/README.md): 디렉터리 목적 (외부 향, AI 세션 인수인계와 분리)
 
 ## product/ — 기획 & 정책
 

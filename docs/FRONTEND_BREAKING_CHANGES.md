@@ -5,7 +5,7 @@
 
 ## 개별 마이그레이션 문서
 
-- [2026-04-21 — 게시글 반응 리네임(LIKE/CURIOUS/USEFUL) + 목록·상세 카운트 노출](handoff/REACTIONS_RENAME_2026-04-21.md)
+- [2026-04-21 — 게시글 반응 리네임(LIKE/CURIOUS/USEFUL) + 목록·상세 카운트 노출](frontend-notes/REACTIONS_RENAME_2026-04-21.md)
 
 ---
 

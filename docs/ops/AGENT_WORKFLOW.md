@@ -75,15 +75,15 @@ git branch -d claude/<old-task>
 4. gh pr create --base main
    본문에 Summary, Test plan, 핸드오프(필요 시 FE/Ops 안내) 포함
 5. 종료 보고:
-   ✅ PR #NNN 생성 완료. GitHub Actions claude-review 자동 리뷰가 코멘트를 등록할 때까지
-      대기해 주세요. 리뷰 결과 확인 후 머지 여부 결정 부탁드립니다.
+   ✅ PR #NNN 생성 완료. 수동 리뷰 결과 확인 후 머지 여부 결정 부탁드립니다.
 ```
 
-AI는 다음 세 조건이 모두 충족되기 전까지 절대 머지하지 않는다.
+AI는 다음 두 조건이 모두 충족되기 전까지 절대 머지하지 않는다.
 
 1. 사용자의 명시적 머지 지시
-2. GitHub Actions claude-review의 자동 리뷰 코멘트 등록 완료
-3. 사용자 사인오프
+2. 사용자 사인오프 (수동 리뷰 통과)
+
+리뷰 운영 정책은 §7을 따른다.
 
 ## 5. Lore Commit Protocol
 
