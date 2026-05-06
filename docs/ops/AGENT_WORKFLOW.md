@@ -325,7 +325,7 @@ AI는 새 세션 시작 시 `main-session.md`의 `Recovery`, `Current Goal`, `Op
 
 #### checkpoint 운영
 
-- 자동 스냅샷은 §11.11이 정의한 hook 이벤트(`post-commit`, `pre-pr`, `pre-compact`, `post-compact`, `session-start`, `stop`, `pre-push`)마다 `<worktree>/harness/checkpoints/checkpoint_<event>_<timestamp>.md`로 저장한다. `<timestamp>` 형식은 §11.7 파일명 예시 참조 (`+09-00`).
+- 자동 스냅샷은 §11.11 목록의 상태 전이 이벤트마다 `<worktree>/harness/checkpoints/checkpoint_<event>_<timestamp>.md`로 저장한다. 이벤트 목록·트리거·hook 셋업은 §11.11이 단일 출처. `<timestamp>` 형식은 본 §11.7 파일명 예시 참조 (`+09-00`).
 - `checkpoint_*`는 작업 진행 중 안전망이며 영구 기록이 아니다.
 - 작업 종료(머지·중단·폐기) 시 유효한 마지막 checkpoint 내용은 `archive_*`에 흡수하고, 나머지 `checkpoint_*`는 삭제한다.
 - 영구 보존 대상은 `archive_*`와 `main-session.md`에 승격된 요약뿐이다.
