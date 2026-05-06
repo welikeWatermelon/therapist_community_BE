@@ -1,6 +1,7 @@
 {
   "//": "Claude Code local project settings 예시. 실제 활성화는 .claude/settings.local.json에 복사.",
   "//hookSchema": "hooks.<EventName>는 배열. 각 항목은 matcher / hooks 배열. 자세한 schema는 https://code.claude.com/docs/en/hooks 참조.",
+  "//cwd": "프로젝트 스크립트는 cwd가 repo root라는 보장이 없으므로 $CLAUDE_PROJECT_DIR 환경 변수로 절대 경로를 만든다 (Claude Code 공식 안내).",
   "hooks": {
     "PreCompact": [
       {
@@ -8,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh pre-compact"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/docs/ops/templates/claude-hooks/checkpoint-hook.sh\" pre-compact"
           }
         ]
       }
@@ -19,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh post-compact"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/docs/ops/templates/claude-hooks/checkpoint-hook.sh\" post-compact"
           }
         ]
       }
@@ -30,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh session-start"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/docs/ops/templates/claude-hooks/checkpoint-hook.sh\" session-start"
           }
         ]
       }
@@ -41,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh stop"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/docs/ops/templates/claude-hooks/checkpoint-hook.sh\" stop"
           }
         ]
       }

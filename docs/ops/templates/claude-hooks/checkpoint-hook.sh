@@ -24,8 +24,11 @@ HARNESS_DIR="harness"
 CHECKPOINTS_DIR="${HARNESS_DIR}/checkpoints"
 
 # Repo 루트로 이동 (workspace 어디서 호출되든)
+# 우선순위: 현재 cwd 기준 git toplevel → $CLAUDE_PROJECT_DIR fallback
 if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
   cd "$git_root" || exit 0
+elif [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "$CLAUDE_PROJECT_DIR" ]]; then
+  cd "$CLAUDE_PROJECT_DIR" || exit 0
 fi
 
 mkdir -p "$CHECKPOINTS_DIR" || { echo "[checkpoint-hook] mkdir failed: $CHECKPOINTS_DIR" >&2; exit 0; }
