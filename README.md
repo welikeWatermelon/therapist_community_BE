@@ -615,4 +615,4 @@ docker compose down -v
 | | [SERVER_CHECK_RUNBOOK.md](docs/ops/SERVER_CHECK_RUNBOOK.md) | 서버 점검 및 장애 구분 절차 |
 | | [BRANCH_OPERATIONS_GUIDE.md](docs/ops/BRANCH_OPERATIONS_GUIDE.md) | 브랜치 운영 규칙 |
 | **기획** | [정책 결정](docs/product/therapist_community_policy_decisions.md) | 서비스 정책 결정 배경 |
-| **인수인계** | [FRONTEND_HANDOFF.md](docs/handoff/FRONTEND_HANDOFF.md) | 프론트엔드 전달 문서 |
+| **프론트엔드 전달** | [FRONTEND_HANDOFF.md](docs/frontend-notes/FRONTEND_HANDOFF.md) | 프론트엔드 구현자 참고용 API/UX 변경 안내 |

@@ -66,6 +66,13 @@ harness/ARD.md
 harness/Architecture.md
 harness/Workflow.md
 
+# 컨텍스트 보존 — local-only (docs/ops/AGENT_WORKFLOW.md §11)
+harness/main-session.md
+harness/session-handoff.md
+harness/plan.md
+harness/anti-patterns.md
+harness/checkpoints/
+
 #aws docs
 docs/DEV_TUNNELS.md
 docs/AI_COMMENT_TESTING.md

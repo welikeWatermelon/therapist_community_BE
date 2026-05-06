@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Git pre-push hook — local-only checkpoint 자동 생성
+#
+# 설치:
+#   cp docs/ops/templates/git-hooks/pre-push.sample .git/hooks/pre-push
+#   chmod +x .git/hooks/pre-push
+#
+# 정책: docs/ops/AGENT_WORKFLOW.md §11.11
+# 동작: push 직전 harness/checkpoints/checkpoint_pre-push_<timestamp>.md 생성
+# 차단 X — exit 0 보장 (push 막지 않음).
+#
+# 주의: pre-push hook은 stdin으로 ref 정보를 받지만 본 스크립트는 사용하지 않는다.
+#       push 자체는 hook 종료 후 진행된다.
+
+set -uo pipefail
+
+# stdin을 그냥 흘려보내 push가 정상 동작하게 한다.
+cat > /dev/null
+
+TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/:\1/')"
+HARNESS_DIR="harness"
+CHECKPOINTS_DIR="${HARNESS_DIR}/checkpoints"
+
+if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  cd "$git_root" || exit 0
+fi
+
+mkdir -p "$CHECKPOINTS_DIR" || exit 0
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
+COMMIT_MSG="$(git log -1 --pretty=%s 2>/dev/null || echo none)"
+STATUS_LINES="$(git status --short 2>/dev/null | head -50)"
+AHEAD_BEHIND="$(git rev-list --left-right --count HEAD...@{u} 2>/dev/null || echo 'no upstream')"
+
+OUT="${CHECKPOINTS_DIR}/checkpoint_pre-push_${TS}.md"
+
+cat > "$OUT" <<EOF
+---
+last_writer: user
+created_at: ${TS}
+event: pre-push
+branch: ${BRANCH}
+short_sha: ${SHORT_SHA}
+---
+
+# Checkpoint: pre-push
+
+- 브랜치: \`${BRANCH}\`
+- 최신 commit: \`${SHORT_SHA}\` — ${COMMIT_MSG}
+- ahead/behind upstream: ${AHEAD_BEHIND}
+- working tree:
+
+\`\`\`
+${STATUS_LINES:-(clean)}
+\`\`\`
+EOF
+
+exit 0

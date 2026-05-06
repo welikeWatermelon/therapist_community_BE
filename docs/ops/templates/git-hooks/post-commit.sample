@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Git post-commit hook — local-only checkpoint 자동 생성
+#
+# 설치:
+#   cp docs/ops/templates/git-hooks/post-commit.sample .git/hooks/post-commit
+#   chmod +x .git/hooks/post-commit
+#
+# 정책: docs/ops/AGENT_WORKFLOW.md §11.11
+# 동작: 매 커밋 직후 harness/checkpoints/checkpoint_post-commit_<timestamp>_<short-sha>.md 생성
+# 차단 X — exit 0 보장.
+
+set -uo pipefail
+
+TS="$(date +%Y-%m-%dT%H-%M-%S%z | sed 's/\(..\)$/:\1/')"
+HARNESS_DIR="harness"
+CHECKPOINTS_DIR="${HARNESS_DIR}/checkpoints"
+
+if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  cd "$git_root" || exit 0
+fi
+
+mkdir -p "$CHECKPOINTS_DIR" || exit 0
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
+COMMIT_MSG="$(git log -1 --pretty=%s 2>/dev/null || echo none)"
+STATUS_LINES="$(git status --short 2>/dev/null | head -50)"
+
+OUT="${CHECKPOINTS_DIR}/checkpoint_post-commit_${TS}_${SHORT_SHA}.md"
+
+cat > "$OUT" <<EOF
+---
+last_writer: user
+created_at: ${TS}
+event: post-commit
+branch: ${BRANCH}
+short_sha: ${SHORT_SHA}
+---
+
+# Checkpoint: post-commit
+
+- 브랜치: \`${BRANCH}\`
+- commit: \`${SHORT_SHA}\` — ${COMMIT_MSG}
+- working tree (post-commit):
+
+\`\`\`
+${STATUS_LINES:-(clean)}
+\`\`\`
+EOF
+
+exit 0

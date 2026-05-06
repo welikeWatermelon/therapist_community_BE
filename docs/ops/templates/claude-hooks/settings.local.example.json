@@ -1,0 +1,50 @@
+{
+  "//": "Claude Code local project settings 예시. 실제 활성화는 .claude/settings.local.json에 복사.",
+  "//hookSchema": "hooks.<EventName>는 배열. 각 항목은 matcher / hooks 배열. 자세한 schema는 https://code.claude.com/docs/en/hooks 참조.",
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh pre-compact"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh post-compact"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh session-start"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash docs/ops/templates/claude-hooks/checkpoint-hook.sh stop"
+          }
+        ]
+      }
+    ]
+  }
+}
