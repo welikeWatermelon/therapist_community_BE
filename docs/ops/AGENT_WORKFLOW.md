@@ -175,14 +175,17 @@ git pull --ff-only origin main
 
 ### 외부 전달 문서 명명 정책
 
-외부 전달용 문서명에는 `handoff` 단어를 쓰지 않는다 (AI 세션 인수인계 — `harness/session-handoff.md` — 와 의미 충돌). 외부 전달은 "delivery", "전달 노트" 같은 표현을 쓴다.
+**신규/수정되는 외부 전달 문서명에는 `handoff` 단어를 쓰지 않는다** (AI 세션 인수인계 — `harness/session-handoff.md` — 와 의미 충돌). 외부 전달은 "delivery", "전달 노트" 같은 표현을 쓴다.
 
-본 PR(#103)의 적용 범위:
+기존 문서 중 본 PR(#103) 시점에 `handoff` 단어가 남은 항목은 후속 PR로 단계 정리한다 — 절대 금지가 아니라 마이그레이션 진행 중 상태.
 
-- ✅ FE 영역: `docs/handoff/` → `docs/frontend-notes/`, `FRONTEND_HANDOFF.md` → `FRONTEND_DELIVERY_GUIDE.md` 등
-- ⏳ Ops 영역: `docs/ops/CLOUD_HANDOFF_PACKAGE.md` rename(+ 본문 정리)은 **본 PR 범위 밖**, 후속 별 PR
+| 영역 | 상태 (2026-05-07 기준) |
+|---|---|
+| FE 영역 | ✅ 적용됨: `docs/handoff/` → `docs/frontend-notes/`, `FRONTEND_HANDOFF.md` → `FRONTEND_DELIVERY_GUIDE.md` 등 |
+| Ops cloud 문서 | ⏳ **예외(임시)**: `docs/ops/CLOUD_HANDOFF_PACKAGE.md` 그대로 유지. 본 PR 범위 밖, 후속 별 PR에서 `CLOUD_DELIVERY_PACKAGE.md`(또는 사용자 결정 명)로 rename + 본문 표현 통일 + 참조 grep 정리 |
+| 새로 추가되는 외부 전달 문서 | ❌ `handoff` 단어 사용 금지 (본 정책 즉시 적용) |
 
-후속 PR에서 `CLOUD_HANDOFF_PACKAGE.md` → `CLOUD_DELIVERY_PACKAGE.md`(또는 사용자 결정 명) rename + 본문 표현 통일 + 참조 grep 정리 진행.
+`harness/session-handoff.md`는 외부 전달이 아니라 AI 세션 인수인계 정책 파일이므로 본 정책 대상 아님(파일명 그대로 유지).
 
 ## 8. 문서 위치 정책
 
