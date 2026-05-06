@@ -319,7 +319,7 @@ archive 파일:
 ```yaml
 ---
 last_writer: claude | codex | user
-archived_at: <ISO 8601 with timezone>
+archived_at: <YYYY-MM-DDTHH-MM-SS+09-00>      # 파일명 안전 timestamp, hook 출력과 통일
 branch: <원본 브랜치명>
 pr: <PR 번호 또는 null>
 task_slug: <접두어 제거된 슬러그>
@@ -332,7 +332,7 @@ checkpoint 파일:
 ```yaml
 ---
 last_writer: claude | codex | user
-created_at: <ISO 8601 with timezone>
+created_at: <YYYY-MM-DDTHH-MM-SS+09-00>      # 파일명 안전 timestamp, hook 출력과 통일
 event: post-commit | pre-pr | pre-compact | post-compact | session-start | stop | pre-push
 branch: <원본 브랜치명>
 ---
