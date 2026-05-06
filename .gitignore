@@ -57,9 +57,14 @@ logs/
 docs/유사도기반검색진단.md
 docs/vector/*
 
-#CLAUDE
-CLAUDE.md
+# Claude Code 세션 데이터 (CLAUDE.md는 tracked)
 .claude/
+
+# 사용자 개인 기획 노트 (운영 룰은 docs/ops/, 컨벤션은 harness/TDD.md, harness/Secure-Coding.md, harness/domains/ 참조)
+harness/PRD.md
+harness/ARD.md
+harness/Architecture.md
+harness/Workflow.md
 
 #aws docs
 docs/DEV_TUNNELS.md
