@@ -64,3 +64,6 @@ CLAUDE.md
 #aws docs
 docs/DEV_TUNNELS.md
 docs/AI_COMMENT_TESTING.md
+
+.omc/
+.mcp.json
