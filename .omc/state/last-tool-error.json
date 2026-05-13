@@ -1,0 +1,7 @@
+{
+  "tool_name": "Read",
+  "tool_input_preview": "{\"file_path\":\"C:\\\\therapist_community_BE\\\\src\\\\main\\\\resources\\\\application-local.yaml\"}",
+  "error": "File does not exist. Note: your current working directory is C:\\therapist_community_BE.",
+  "timestamp": "2026-05-13T09:08:58.857Z",
+  "retry_count": 1
+}
