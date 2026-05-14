@@ -320,7 +320,7 @@ async function connectToNotificationStream(
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${accessToken}`,
   };
-  
+
   if (lastEventId) {
     headers['Last-Event-ID'] = lastEventId;
   }
@@ -386,7 +386,7 @@ async function connectToNotificationStream(
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${accessToken}`,
   };
-  
+
   if (lastEventId) {
     headers['Last-Event-ID'] = lastEventId;
   }
@@ -612,24 +612,24 @@ type NotificationType =
 
 export function getNotificationRoute(
   type: NotificationType,
-  referenceId?: number
+  referenceId?: number,
+  postId?: number
 ): string {
   switch (type) {
     case 'NEW_COMMENT':
     case 'NEW_POST_REACTION':
     case 'NEW_SCRAP':
       return `/posts/${referenceId}`;
-    
+
     case 'NEW_REPLY':
     case 'NEW_COMMENT_REACTION':
-      // referenceId는 댓글 ID, 게시글 ID를 별도로 알아야 함
-      // 또는 알림 클릭 시 상세 조회 후 결정
-      return `/posts/${referenceId}`;
-    
+      // postId를 사용하여 게시글 상세 페이지로 이동
+      return `/posts/${postId}`;
+
     case 'VERIFICATION_APPROVED':
     case 'VERIFICATION_REJECTED':
       return '/my-profile';
-    
+
     default:
       return '/notifications';
   }
@@ -639,7 +639,7 @@ export function NotificationItem({ notification }: { notification: NotificationR
   const navigate = useNavigate();
 
   const handleClick = () => {
-    const route = getNotificationRoute(notification.type, notification.referenceId);
+    const route = getNotificationRoute(notification.type, notification.referenceId, notification.postId);
     navigate(route);
   };
 
@@ -977,7 +977,7 @@ export function NotificationList() {
       markAsRead(notification.id);
     }
 
-    const route = getNotificationRoute(notification.type, notification.referenceId);
+    const route = getNotificationRoute(notification.type, notification.referenceId, notification.postId);
     navigate(route);
   };
 

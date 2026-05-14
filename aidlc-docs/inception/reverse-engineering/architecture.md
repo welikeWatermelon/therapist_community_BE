@@ -8,7 +8,7 @@ Spring Boot 3.5 기반 모놀리식 REST API. Java 17, PostgreSQL 16, Redis. JWT
 ```mermaid
 flowchart TD
     Client["Frontend (React)"]
-    
+
     subgraph Backend["Spring Boot Application"]
         Controllers["Controllers (REST API)"]
         Services["Services (Business Logic)"]
@@ -16,18 +16,18 @@ flowchart TD
         Security["Security (JWT Filter)"]
         EventListeners["Async Event Listeners"]
     end
-    
+
     subgraph DataStores["Data Stores"]
         PostgreSQL["PostgreSQL 16 + pgvector"]
         Redis["Redis (Cache)"]
         S3["AWS S3 (Files)"]
     end
-    
+
     subgraph External["External APIs"]
         OpenAI["OpenAI Embeddings"]
         Gemini["Google Gemini (Chat + Embedding)"]
     end
-    
+
     Client --> Security --> Controllers --> Services --> Repositories --> PostgreSQL
     Services --> Redis
     Services --> S3
@@ -64,7 +64,7 @@ sequenceDiagram
     participant PS as PostService
     participant PR as TherapyPostRepository
     participant RR as ReactionRepository
-    
+
     C->>PC: GET /api/v1/posts/feed?sort=POPULAR
     PC->>PS: getPostsFeed(size, cursor, role, POPULAR)
     PS->>PR: findFeedPopular(cursorScore, cursorId, pageable)

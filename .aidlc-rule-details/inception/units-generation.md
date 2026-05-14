@@ -133,7 +133,7 @@ If the analysis in step 7 reveals ANY ambiguous answers, you MUST:
 
 [AI-generated summary of units and decomposition created in bullet points]
 
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
+> **📋 <u>**REVIEW REQUIRED:**</u>**
 > Please examine the units generation artifacts at: `aidlc-docs/inception/application-design/`
 
 > **🚀 <u>**WHAT'S NEXT?**</u>**

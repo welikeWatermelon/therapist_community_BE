@@ -1,7 +1,7 @@
 # Backend Portfolio: Post & Notification 도메인 심층 분석
 
-> **프로젝트**: Therapist Community Backend  
-> **기술 스택**: Spring Boot 3.5 / Java 17 / PostgreSQL 16 / Redis / pgvector / SSE  
+> **프로젝트**: Therapist Community Backend
+> **기술 스택**: Spring Boot 3.5 / Java 17 / PostgreSQL 16 / Redis / pgvector / SSE
 > **작성자**: 김영준
 
 ---

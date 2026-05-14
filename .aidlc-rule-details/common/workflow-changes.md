@@ -153,7 +153,7 @@ Users may request changes to the execution plan or stage execution during the wo
 
 **Handling**:
 1. **Assess Current Progress**: Determine how far into workflow
-2. **Explain Impact**: 
+2. **Explain Impact**:
    - If before Units Planning: Minimal impact, just update decision
    - If after Units Planning: Must redo Units Planning, Units Generation, all per-unit design
    - If after Code Generation: Significant rework required

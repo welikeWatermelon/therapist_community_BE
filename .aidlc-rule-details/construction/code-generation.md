@@ -140,7 +140,7 @@ This stage generates code for each unit of work through two integrated parts:
      3. **Formatted Workflow Message** (mandatory): Always end with this exact format:
 
 ```markdown
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
+> **📋 <u>**REVIEW REQUIRED:**</u>**
 > Please examine the generated code at:
 > - **Application Code**: `[actual-workspace-path]`
 > - **Documentation**: `aidlc-docs/construction/[unit-name]/code/`
@@ -151,7 +151,7 @@ This stage generates code for each unit of work through two integrated parts:
 >
 > **You may:**
 >
-> 🔧 **Request Changes** - Ask for modifications to the generated code based on your review  
+> 🔧 **Request Changes** - Ask for modifications to the generated code based on your review
 > ✅ **Continue to Next Stage** - Approve code generation and proceed to **[next-unit/Build & Test]**
 
 ---

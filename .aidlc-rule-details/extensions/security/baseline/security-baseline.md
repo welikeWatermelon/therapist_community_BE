@@ -179,7 +179,7 @@ Verification items in this document are plain bullet points describing complianc
 
 **Rule**: Every project MUST manage its software supply chain:
 - **Dependency pinning**: All dependencies MUST use exact versions or lock files
-- **Vulnerability scanning**: A dependency vulnerability scanner MUST be configured 
+- **Vulnerability scanning**: A dependency vulnerability scanner MUST be configured
 - **No unused dependencies**: Remove packages that are not actively used
 - **Trusted sources only**: Dependencies MUST be pulled from official registries or verified private registries — no unvetted third-party sources
 - **SBOM**: Projects MUST generate a Software Bill of Materials for production deployments

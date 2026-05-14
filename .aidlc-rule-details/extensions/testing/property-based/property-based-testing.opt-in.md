@@ -15,5 +15,5 @@ B) Partial — enforce PBT rules only for pure functions and serialization round
 C) No — skip all PBT rules (suitable for simple CRUD applications, UI-only projects, or thin integration layers with no significant business logic)
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]:
 ```

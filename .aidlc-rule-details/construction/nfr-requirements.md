@@ -73,7 +73,7 @@ Determine non-functional requirements for the unit and make tech stack choices.
      3. **Formatted Workflow Message** (mandatory): Always end with this exact format:
 
 ```markdown
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
+> **📋 <u>**REVIEW REQUIRED:**</u>**
 > Please examine the NFR requirements at: `aidlc-docs/construction/[unit-name]/nfr-requirements/`
 
 
@@ -82,7 +82,7 @@ Determine non-functional requirements for the unit and make tech stack choices.
 >
 > **You may:**
 >
-> 🔧 **Request Changes** - Ask for modifications to the NFR requirements based on your review  
+> 🔧 **Request Changes** - Ask for modifications to the NFR requirements based on your review
 > ✅ **Continue to Next Stage** - Approve NFR requirements and proceed to **[next-stage-name]**
 
 ---

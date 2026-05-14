@@ -267,7 +267,7 @@
 
 **Error**: Required artifacts from previous stages are missing
 - **Cause**: Files deleted, moved, or never created
-- **Solution**: 
+- **Solution**:
   1. Identify which stage created the missing artifacts
   2. Check if stage was marked complete in aidlc-state.md
   3. If marked complete but artifacts missing: Regenerate that stage

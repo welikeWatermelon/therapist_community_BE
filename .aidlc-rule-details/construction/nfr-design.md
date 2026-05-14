@@ -69,7 +69,7 @@ Incorporate NFR requirements into unit design using patterns and logical compone
      3. **Formatted Workflow Message** (mandatory): Always end with this exact format:
 
 ```markdown
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
+> **📋 <u>**REVIEW REQUIRED:**</u>**
 > Please examine the NFR design at: `aidlc-docs/construction/[unit-name]/nfr-design/`
 
 
@@ -78,7 +78,7 @@ Incorporate NFR requirements into unit design using patterns and logical compone
 >
 > **You may:**
 >
-> 🔧 **Request Changes** - Ask for modifications to the NFR design based on your review  
+> 🔧 **Request Changes** - Ask for modifications to the NFR design based on your review
 > ✅ **Continue to Next Stage** - Approve NFR design and proceed to **[next-stage-name]**
 
 ---

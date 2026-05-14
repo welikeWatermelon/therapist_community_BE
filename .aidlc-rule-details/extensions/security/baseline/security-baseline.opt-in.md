@@ -14,5 +14,5 @@ A) Yes — enforce all SECURITY rules as blocking constraints (recommended for p
 B) No — skip all SECURITY rules (suitable for PoCs, prototypes, and experimental projects)
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]:
 ```

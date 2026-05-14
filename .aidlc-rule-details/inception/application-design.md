@@ -118,7 +118,7 @@ If the analysis in step 8 reveals ANY ambiguous answers, you MUST:
 
 [AI-generated summary of application design artifacts created in bullet points]
 
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
+> **📋 <u>**REVIEW REQUIRED:**</u>**
 > Please examine the application design artifacts at: `aidlc-docs/inception/application-design/`
 
 > **🚀 <u>**WHAT'S NEXT?**</u>**

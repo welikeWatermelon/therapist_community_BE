@@ -24,8 +24,8 @@
 ## Three-Phase Lifecycle
 
 ### INCEPTION PHASE
-**Purpose**: Planning and architectural decisions  
-**Focus**: Determine WHAT to build and WHY  
+**Purpose**: Planning and architectural decisions
+**Focus**: Determine WHAT to build and WHY
 **Location**: `inception/` directory
 
 **Stages**:
@@ -40,8 +40,8 @@
 **Outputs**: Requirements, user stories, architectural decisions, unit definitions
 
 ### CONSTRUCTION PHASE
-**Purpose**: Detailed design and implementation  
-**Focus**: Determine HOW to build it  
+**Purpose**: Detailed design and implementation
+**Focus**: Determine HOW to build it
 **Location**: `construction/` directory
 
 **Stages**:
@@ -55,8 +55,8 @@
 **Outputs**: Design artifacts, NFR implementations, code, tests
 
 ### OPERATIONS PHASE
-**Purpose**: Deployment and operational readiness  
-**Focus**: How to DEPLOY and RUN it  
+**Purpose**: Deployment and operational readiness
+**Focus**: How to DEPLOY and RUN it
 **Location**: `operations/` directory
 
 **Stages**:

@@ -294,7 +294,7 @@ Update `aidlc-docs/aidlc-state.md`:
 
 [AI-generated summary of key findings from analysis in the form of bullet points]
 
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
+> **📋 <u>**REVIEW REQUIRED:**</u>**
 > Please examine the reverse engineering artifacts at: `aidlc-docs/inception/reverse-engineering/`
 
 > **🚀 <u>**WHAT'S NEXT?**</u>**

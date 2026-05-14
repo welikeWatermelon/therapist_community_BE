@@ -18,7 +18,7 @@ Based on your aidlc-state.md, here's your current status:
 A) Continue where you left off ([Next step description])
 B) Review a previous stage ([Show available stages])
 
-[Answer]: 
+[Answer]:
 ```
 
 ## MANDATORY: Session Continuity Instructions
@@ -44,4 +44,4 @@ B) Review a previous stage ([Show available stages])
 9. **Asking questions**: ALWAYS ask clarification or user feedback questions by placing them in .md files. DO NOT place the multiple-choice questions in-line in the chat session.
 
 ## Error Handling
-If artifacts are missing or corrupted during session resumption, see [error-handling.md](error-handling.md) for guidance on recovery procedures. 
+If artifacts are missing or corrupted during session resumption, see [error-handling.md](error-handling.md) for guidance on recovery procedures.
