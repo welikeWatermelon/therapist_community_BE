@@ -41,6 +41,10 @@ public class MessageService {
         User sender = findUserOrThrow(senderId);
         User receiver = findUserOrThrow(request.getReceiverId());
 
+        if (receiver.isWithdrawn()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
         Message message = Message.create(sender, receiver, request.getContent());
         messageRepository.save(message);
 
@@ -59,9 +63,13 @@ public class MessageService {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
 
+        if (request.getTargetRole() == UserRole.ADMIN) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
         List<Long> receiverIds;
         if (request.getTargetRole() != null) {
-            receiverIds = userRepository.findIdsByRole(request.getTargetRole());
+            receiverIds = new ArrayList<>(userRepository.findIdsByRole(request.getTargetRole()));
         } else {
             receiverIds = userRepository.findIdsByRole(UserRole.USER);
             receiverIds = new ArrayList<>(receiverIds);

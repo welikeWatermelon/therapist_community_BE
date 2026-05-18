@@ -8,12 +8,16 @@ import com.therapyCommunity_Vol1.backend.message.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "쪽지", description = "1:1 쪽지 발송/조회/삭제")
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
@@ -46,8 +50,8 @@ public class MessageController {
     @GetMapping("/me/messages/received")
     public ResponseEntity<ApiResponse<PagedResponse<MessageResponse>>> getReceivedMessages(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
         PagedResponse<MessageResponse> response = messageService.getReceivedMessages(
                 userDetails.getUserId(), page, size);
@@ -58,8 +62,8 @@ public class MessageController {
     @GetMapping("/me/messages/sent")
     public ResponseEntity<ApiResponse<PagedResponse<MessageResponse>>> getSentMessages(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
         PagedResponse<MessageResponse> response = messageService.getSentMessages(
                 userDetails.getUserId(), page, size);
