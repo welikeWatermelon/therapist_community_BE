@@ -34,6 +34,9 @@ public class Notification extends BaseEntity {
     @Column(name = "reference_id")
     private Long referenceId;
 
+    @Column(name = "post_id")
+    private Long postId;
+
     @Column(name = "content", nullable = false, length = 500)
     private String content;
 
@@ -50,11 +53,23 @@ public class Notification extends BaseEntity {
             Long referenceId,
             String content
     ) {
+        return create(receiver, sender, type, referenceId, null, content);
+    }
+
+    public static Notification create(
+            User receiver,
+            User sender,
+            NotificationType type,
+            Long referenceId,
+            Long postId,
+            String content
+    ) {
         Notification n = new Notification();
         n.receiver = receiver;
         n.sender = sender;
         n.notificationType = type;
         n.referenceId = referenceId;
+        n.postId = postId;
         n.content = content;
         n.read = false;
         return n;
