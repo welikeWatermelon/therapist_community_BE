@@ -59,7 +59,7 @@ public class MessageService {
     }
 
     @Transactional
-    public void broadcastMessage(Long senderId, BroadcastMessageRequest request) {
+    public BroadcastResponse broadcastMessage(Long senderId, BroadcastMessageRequest request) {
         User sender = userService.findById(senderId);
 
         if (sender.getRole() != UserRole.ADMIN) {
@@ -100,6 +100,8 @@ public class MessageService {
                     senderId, msg.getReceiver().getId(),
                     NotificationType.NEW_MESSAGE, msg.getId()));
         }
+
+        return new BroadcastResponse(broadcastId, messages.size());
     }
 
     public PagedResponse<MessageResponse> getReceivedMessages(Long userId, int page, int size) {

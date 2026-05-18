@@ -2,6 +2,7 @@ package com.therapyCommunity_Vol1.backend.message.controller;
 
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
+import com.therapyCommunity_Vol1.backend.message.dto.BroadcastResponse;
 import com.therapyCommunity_Vol1.backend.message.dto.MessageResponse;
 import com.therapyCommunity_Vol1.backend.message.dto.UnreadCountResponse;
 import com.therapyCommunity_Vol1.backend.message.service.MessageService;
@@ -73,7 +74,7 @@ class MessageControllerTest {
         mockMvc.perform(post("/api/v1/messages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"receiverId\": 2, \"content\": \"안녕하세요\"}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content").value("안녕하세요"));
 
@@ -122,7 +123,7 @@ class MessageControllerTest {
         mockMvc.perform(post("/api/v1/messages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"receiverId\": 2, \"content\": \"" + maxContent + "\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         verify(messageService).sendMessage(eq(1L), any());
     }
@@ -172,8 +173,7 @@ class MessageControllerTest {
     @Test
     void 쪽지_삭제_성공() throws Exception {
         mockMvc.perform(delete("/api/v1/messages/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(status().isNoContent());
 
         verify(messageService).deleteMessage(1L, 1L);
     }
@@ -192,11 +192,15 @@ class MessageControllerTest {
 
     @Test
     void 공지_쪽지_발송_성공() throws Exception {
+        BroadcastResponse broadcastResponse = new BroadcastResponse(java.util.UUID.randomUUID(), 10);
+        when(messageService.broadcastMessage(eq(1L), any())).thenReturn(broadcastResponse);
+
         mockMvc.perform(post("/api/v1/admin/messages/broadcast")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\": \"공지사항입니다\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.recipientCount").value(10));
 
         verify(messageService).broadcastMessage(eq(1L), any());
     }

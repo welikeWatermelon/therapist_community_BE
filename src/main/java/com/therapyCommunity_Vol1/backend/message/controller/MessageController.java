@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -33,17 +34,18 @@ public class MessageController {
     ) {
         MessageResponse response = messageService.sendMessage(
                 userDetails.getUserId(), request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
     @Operation(summary = "관리자 공지 쪽지 발송", description = "targetRole이 null이면 전체 발송")
     @PostMapping("/admin/messages/broadcast")
-    public ResponseEntity<ApiResponse<Void>> broadcastMessage(
+    public ResponseEntity<ApiResponse<BroadcastResponse>> broadcastMessage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody BroadcastMessageRequest request
     ) {
-        messageService.broadcastMessage(userDetails.getUserId(), request);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        BroadcastResponse response = messageService.broadcastMessage(
+                userDetails.getUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
     @Operation(summary = "받은 쪽지함", description = "받은 쪽지 목록 (페이징)")
@@ -83,12 +85,12 @@ public class MessageController {
 
     @Operation(summary = "쪽지 삭제", description = "호출자 측에서만 삭제 (상대방에겐 유지)")
     @DeleteMapping("/messages/{messageId}")
-    public ResponseEntity<ApiResponse<Void>> deleteMessage(
+    public ResponseEntity<Void> deleteMessage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long messageId
     ) {
         messageService.deleteMessage(userDetails.getUserId(), messageId);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "안읽은 쪽지 수")
