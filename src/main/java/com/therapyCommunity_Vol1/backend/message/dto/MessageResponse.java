@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.message.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.therapyCommunity_Vol1.backend.message.domain.Message;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,8 +17,13 @@ public class MessageResponse {
     private Long receiverId;
     private String receiverNickname;
     private String content;
+
+    @JsonProperty("isRead")
     private boolean isRead;
+
+    @JsonProperty("isBroadcast")
     private boolean isBroadcast;
+
     private LocalDateTime createdAt;
 
     public static MessageResponse from(Message message) {
