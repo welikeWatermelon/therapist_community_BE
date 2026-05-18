@@ -46,6 +46,9 @@ public class Message extends BaseEntity {
     @Column(name = "broadcast_id")
     private UUID broadcastId;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     private Message(User sender, User receiver, String content, UUID broadcastId) {
         this.sender = sender;
         this.receiver = receiver;
@@ -77,6 +80,18 @@ public class Message extends BaseEntity {
 
     public void deleteByReceiver() {
         this.deletedByReceiver = true;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
+
+    public boolean isFullyDeleted() {
+        return this.deletedBySender && this.deletedByReceiver;
     }
 
     public boolean isSender(Long userId) {

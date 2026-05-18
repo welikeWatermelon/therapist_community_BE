@@ -129,6 +129,27 @@ class MessageRepositoryTest {
     }
 
     @Test
+    @Transactional(readOnly = true)
+    void findByIdWithUsers_쿼리_1회로_sender_receiver_로딩() {
+        entityManager.flush();
+        entityManager.clear();
+        statistics.clear();
+
+        Message result = messageRepository.findByIdWithUsers(
+                messageRepository.findReceivedMessages(receiver.getId(), PageRequest.of(0, 1))
+                        .getContent().get(0).getId()
+        ).orElseThrow();
+
+        statistics.clear();
+
+        // sender/receiver 접근 시 추가 쿼리 없어야 함
+        result.getSender().getDisplayNickname();
+        result.getReceiver().getDisplayNickname();
+
+        assertThat(statistics.getQueryExecutionCount()).isEqualTo(0);
+    }
+
+    @Test
     @Transactional
     void 삭제된_쪽지는_받은쪽지함에서_제외된다() {
         Message firstMessage = messageRepository.findReceivedMessages(receiver.getId(), PageRequest.of(0, 1))

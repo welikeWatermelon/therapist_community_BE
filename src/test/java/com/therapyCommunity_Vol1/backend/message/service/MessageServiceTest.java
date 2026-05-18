@@ -24,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 class MessageServiceTest {
@@ -112,7 +113,7 @@ class MessageServiceTest {
     @Test
     void 쪽지_상세_조회시_수신자면_읽음_처리() {
         Message message = Message.create(sender, receiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         MessageResponse response = messageService.getMessage(2L, 1L);
 
@@ -122,7 +123,7 @@ class MessageServiceTest {
     @Test
     void 쪽지_상세_조회시_발신자면_읽음_처리_안함() {
         Message message = Message.create(sender, receiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         MessageResponse response = messageService.getMessage(1L, 1L);
 
@@ -132,7 +133,7 @@ class MessageServiceTest {
     @Test
     void 참여자가_아닌_사용자가_쪽지_조회시_예외_발생() {
         Message message = Message.create(sender, receiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         assertThatThrownBy(() -> messageService.getMessage(999L, 1L))
                 .isInstanceOf(CustomException.class)
@@ -143,7 +144,7 @@ class MessageServiceTest {
     @Test
     void 발신자가_삭제하면_발신자측만_삭제() {
         Message message = Message.create(sender, receiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         messageService.deleteMessage(1L, 1L);
 
@@ -154,7 +155,7 @@ class MessageServiceTest {
     @Test
     void 수신자가_삭제하면_수신자측만_삭제() {
         Message message = Message.create(sender, receiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         messageService.deleteMessage(2L, 1L);
 
@@ -166,7 +167,7 @@ class MessageServiceTest {
     void 발신자가_삭제한_쪽지를_발신자가_조회하면_예외_발생() {
         Message message = Message.create(sender, receiver, "테스트");
         message.deleteBySender();
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         assertThatThrownBy(() -> messageService.getMessage(1L, 1L))
                 .isInstanceOf(CustomException.class)
@@ -196,7 +197,7 @@ class MessageServiceTest {
         messageService.broadcastMessage(100L, request);
 
         verify(messageRepository).saveAll(anyList());
-        verify(eventPublisher).publishEvent(any(NotificationEvent.class));
+        verify(eventPublisher, times(3)).publishEvent(any(NotificationEvent.class));
     }
 
     @Test
@@ -210,6 +211,55 @@ class MessageServiceTest {
         messageService.broadcastMessage(100L, request);
 
         verify(messageRepository).saveAll(anyList());
+    }
+
+    @Test
+    void 양쪽_삭제시_softDelete_처리() {
+        Message message = Message.create(sender, receiver, "테스트");
+        message.deleteBySender();
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
+
+        messageService.deleteMessage(2L, 1L);
+
+        assertThat(message.isDeletedBySender()).isTrue();
+        assertThat(message.isDeletedByReceiver()).isTrue();
+        assertThat(message.isFullyDeleted()).isTrue();
+        assertThat(message.isDeleted()).isTrue();
+        assertThat(message.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void 한쪽만_삭제시_softDelete_미처리() {
+        Message message = Message.create(sender, receiver, "테스트");
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
+
+        messageService.deleteMessage(1L, 1L);
+
+        assertThat(message.isDeletedBySender()).isTrue();
+        assertThat(message.isDeletedByReceiver()).isFalse();
+        assertThat(message.isDeleted()).isFalse();
+    }
+
+    @Test
+    void 페이지_크기가_100_초과시_100으로_제한() {
+        Page<Message> page = new PageImpl<>(List.of());
+        when(messageRepository.findReceivedMessages(eq(1L), any(Pageable.class))).thenReturn(page);
+
+        messageService.getReceivedMessages(1L, 0, 500);
+
+        verify(messageRepository).findReceivedMessages(eq(1L), argThat(pageable ->
+                pageable.getPageSize() == 100));
+    }
+
+    @Test
+    void 페이지_크기가_0_이하면_1로_보정() {
+        Page<Message> page = new PageImpl<>(List.of());
+        when(messageRepository.findSentMessages(eq(1L), any(Pageable.class))).thenReturn(page);
+
+        messageService.getSentMessages(1L, 0, 0);
+
+        verify(messageRepository).findSentMessages(eq(1L), argThat(pageable ->
+                pageable.getPageSize() == 1));
     }
 
     @Test

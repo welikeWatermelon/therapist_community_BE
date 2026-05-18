@@ -39,8 +39,11 @@ public class MessageService {
         }
 
         User sender = userService.findById(senderId);
-        User receiver = userService.findById(request.getReceiverId());
+        if (sender.isWithdrawn()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
 
+        User receiver = userService.findById(request.getReceiverId());
         if (receiver.isWithdrawn()) {
             throw new CustomException(ErrorCode.USER_NOT_FOUND);
         }
@@ -91,13 +94,18 @@ public class MessageService {
 
         messageRepository.saveAll(messages);
 
-        eventPublisher.publishEvent(NotificationEvent.of(
-                senderId, receiverIds,
-                NotificationType.NEW_MESSAGE, null));
+        // 수신자별 개별 알림 발행 (각 쪽지 ID를 referenceId로 전달하여 딥링크 지원)
+        for (Message msg : messages) {
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    senderId, msg.getReceiver().getId(),
+                    NotificationType.NEW_MESSAGE, msg.getId()));
+        }
     }
 
     public PagedResponse<MessageResponse> getReceivedMessages(Long userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 100));
+        Pageable pageable = PageRequest.of(safePage, safeSize);
         Page<Message> result = messageRepository.findReceivedMessages(userId, pageable);
 
         List<MessageResponse> items = result.getContent().stream()
@@ -108,7 +116,9 @@ public class MessageService {
     }
 
     public PagedResponse<MessageResponse> getSentMessages(Long userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 100));
+        Pageable pageable = PageRequest.of(safePage, safeSize);
         Page<Message> result = messageRepository.findSentMessages(userId, pageable);
 
         List<MessageResponse> items = result.getContent().stream()
@@ -157,6 +167,10 @@ public class MessageService {
         if (message.isReceiver(userId)) {
             message.deleteByReceiver();
         }
+
+        if (message.isFullyDeleted()) {
+            message.softDelete();
+        }
     }
 
     public UnreadCountResponse getUnreadCount(Long userId) {
@@ -165,7 +179,7 @@ public class MessageService {
     }
 
     private Message findMessageOrThrow(Long messageId) {
-        return messageRepository.findById(messageId)
+        return messageRepository.findByIdWithUsers(messageId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MESSAGE_NOT_FOUND));
     }
 }

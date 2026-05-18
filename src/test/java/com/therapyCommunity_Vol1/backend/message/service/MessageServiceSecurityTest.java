@@ -73,7 +73,7 @@ class MessageServiceSecurityTest {
     @Test
     void 참여자가_아닌_사용자가_쪽지_삭제시_예외_발생() {
         Message message = Message.create(sender, receiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         assertThatThrownBy(() -> messageService.deleteMessage(999L, 1L))
                 .isInstanceOf(CustomException.class)
@@ -85,7 +85,7 @@ class MessageServiceSecurityTest {
     void 수신자가_삭제한_쪽지를_수신자가_조회하면_예외_발생() {
         Message message = Message.create(sender, receiver, "테스트");
         message.deleteByReceiver();
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         assertThatThrownBy(() -> messageService.getMessage(2L, 1L))
                 .isInstanceOf(CustomException.class)
@@ -97,7 +97,7 @@ class MessageServiceSecurityTest {
     void 발신자가_삭제한_쪽지를_수신자는_여전히_조회_가능() {
         Message message = Message.create(sender, receiver, "테스트");
         message.deleteBySender();
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         MessageResponse response = messageService.getMessage(2L, 1L);
 
@@ -107,7 +107,7 @@ class MessageServiceSecurityTest {
 
     @Test
     void 존재하지_않는_쪽지_조회시_예외_발생() {
-        when(messageRepository.findById(999L)).thenReturn(Optional.empty());
+        when(messageRepository.findByIdWithUsers(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> messageService.getMessage(1L, 999L))
                 .isInstanceOf(CustomException.class)
@@ -117,7 +117,7 @@ class MessageServiceSecurityTest {
 
     @Test
     void 존재하지_않는_쪽지_삭제시_예외_발생() {
-        when(messageRepository.findById(999L)).thenReturn(Optional.empty());
+        when(messageRepository.findByIdWithUsers(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> messageService.deleteMessage(1L, 999L))
                 .isInstanceOf(CustomException.class)
@@ -131,7 +131,7 @@ class MessageServiceSecurityTest {
         withdrawnReceiver.withdraw();
 
         Message message = Message.create(sender, withdrawnReceiver, "테스트");
-        when(messageRepository.findById(1L)).thenReturn(Optional.of(message));
+        when(messageRepository.findByIdWithUsers(1L)).thenReturn(Optional.of(message));
 
         MessageResponse response = messageService.getMessage(1L, 1L);
 
@@ -149,6 +149,21 @@ class MessageServiceSecurityTest {
         MessageSendRequest request = new MessageSendRequest(3L, "테스트");
 
         assertThatThrownBy(() -> messageService.sendMessage(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Test
+    void 탈퇴한_발신자가_쪽지_발송시_예외_발생() {
+        User withdrawnSender = User.builder().id(5L).email("ws@test.com").nickname("탈퇴발신자").role(UserRole.THERAPIST).build();
+        withdrawnSender.withdraw();
+
+        when(userService.findById(5L)).thenReturn(withdrawnSender);
+
+        MessageSendRequest request = new MessageSendRequest(2L, "테스트");
+
+        assertThatThrownBy(() -> messageService.sendMessage(5L, request))
                 .isInstanceOf(CustomException.class)
                 .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.USER_NOT_FOUND));
