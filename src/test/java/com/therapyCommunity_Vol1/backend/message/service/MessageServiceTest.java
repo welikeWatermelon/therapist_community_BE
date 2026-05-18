@@ -9,7 +9,7 @@ import com.therapyCommunity_Vol1.backend.message.repository.MessageRepository;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 class MessageServiceTest {
 
     private MessageRepository messageRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private MessageService messageService;
 
@@ -39,9 +39,9 @@ class MessageServiceTest {
     @BeforeEach
     void setUp() {
         messageRepository = mock(MessageRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        messageService = new MessageService(messageRepository, userRepository, eventPublisher);
+        messageService = new MessageService(messageRepository, userService, eventPublisher);
 
         sender = User.builder().id(1L).email("sender@test.com").nickname("발신자").role(UserRole.THERAPIST).build();
         receiver = User.builder().id(2L).email("receiver@test.com").nickname("수신자").role(UserRole.THERAPIST).build();
@@ -49,8 +49,8 @@ class MessageServiceTest {
 
     @Test
     void 쪽지_발송_성공() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(userService.findById(1L)).thenReturn(sender);
+        when(userService.findById(2L)).thenReturn(receiver);
         when(messageRepository.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MessageSendRequest request = new MessageSendRequest(2L, "안녕하세요");
@@ -75,8 +75,8 @@ class MessageServiceTest {
 
     @Test
     void 존재하지_않는_수신자에게_쪽지_보내면_예외_발생() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userService.findById(1L)).thenReturn(sender);
+        when(userService.findById(999L)).thenThrow(new CustomException(ErrorCode.USER_NOT_FOUND));
 
         MessageSendRequest request = new MessageSendRequest(999L, "테스트");
 
@@ -186,10 +186,10 @@ class MessageServiceTest {
     @Test
     void 관리자_공지_쪽지_발송_성공() {
         User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
-        when(userRepository.findById(100L)).thenReturn(Optional.of(admin));
-        when(userRepository.findIdsByRole(UserRole.USER)).thenReturn(new ArrayList<>(List.of(1L, 2L)));
-        when(userRepository.findIdsByRole(UserRole.THERAPIST)).thenReturn(new ArrayList<>(List.of(3L)));
-        when(userRepository.findAllById(any())).thenReturn(List.of(sender, receiver,
+        when(userService.findById(100L)).thenReturn(admin);
+        when(userService.findUserIdsByRole(UserRole.USER)).thenReturn(new ArrayList<>(List.of(1L, 2L)));
+        when(userService.findUserIdsByRole(UserRole.THERAPIST)).thenReturn(new ArrayList<>(List.of(3L)));
+        when(userService.findUsersByIds(any())).thenReturn(List.of(sender, receiver,
                 User.builder().id(3L).email("t@t.com").nickname("치료사").role(UserRole.THERAPIST).build()));
 
         BroadcastMessageRequest request = new BroadcastMessageRequest("공지사항입니다", null);
@@ -202,9 +202,9 @@ class MessageServiceTest {
     @Test
     void 관리자_공지_특정_역할_발송_성공() {
         User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
-        when(userRepository.findById(100L)).thenReturn(Optional.of(admin));
-        when(userRepository.findIdsByRole(UserRole.THERAPIST)).thenReturn(new ArrayList<>(List.of(1L, 2L)));
-        when(userRepository.findAllById(any())).thenReturn(List.of(sender, receiver));
+        when(userService.findById(100L)).thenReturn(admin);
+        when(userService.findUserIdsByRole(UserRole.THERAPIST)).thenReturn(new ArrayList<>(List.of(1L, 2L)));
+        when(userService.findUsersByIds(any())).thenReturn(List.of(sender, receiver));
 
         BroadcastMessageRequest request = new BroadcastMessageRequest("치료사 공지", UserRole.THERAPIST);
         messageService.broadcastMessage(100L, request);
@@ -215,9 +215,9 @@ class MessageServiceTest {
     @Test
     void 수신대상이_없으면_예외_발생() {
         User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
-        when(userRepository.findById(100L)).thenReturn(Optional.of(admin));
-        when(userRepository.findIdsByRole(UserRole.USER)).thenReturn(new ArrayList<>());
-        when(userRepository.findIdsByRole(UserRole.THERAPIST)).thenReturn(new ArrayList<>());
+        when(userService.findById(100L)).thenReturn(admin);
+        when(userService.findUserIdsByRole(UserRole.USER)).thenReturn(new ArrayList<>());
+        when(userService.findUserIdsByRole(UserRole.THERAPIST)).thenReturn(new ArrayList<>());
 
         BroadcastMessageRequest request = new BroadcastMessageRequest("공지", null);
 

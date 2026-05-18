@@ -10,7 +10,7 @@ import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -29,7 +29,7 @@ import java.util.UUID;
 public class MessageService {
 
     private final MessageRepository messageRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -38,8 +38,8 @@ public class MessageService {
             throw new CustomException(ErrorCode.CANNOT_SEND_MESSAGE_TO_SELF);
         }
 
-        User sender = findUserOrThrow(senderId);
-        User receiver = findUserOrThrow(request.getReceiverId());
+        User sender = userService.findById(senderId);
+        User receiver = userService.findById(request.getReceiverId());
 
         if (receiver.isWithdrawn()) {
             throw new CustomException(ErrorCode.USER_NOT_FOUND);
@@ -57,7 +57,7 @@ public class MessageService {
 
     @Transactional
     public void broadcastMessage(Long senderId, BroadcastMessageRequest request) {
-        User sender = findUserOrThrow(senderId);
+        User sender = userService.findById(senderId);
 
         if (sender.getRole() != UserRole.ADMIN) {
             throw new CustomException(ErrorCode.FORBIDDEN);
@@ -69,11 +69,10 @@ public class MessageService {
 
         List<Long> receiverIds;
         if (request.getTargetRole() != null) {
-            receiverIds = new ArrayList<>(userRepository.findIdsByRole(request.getTargetRole()));
+            receiverIds = new ArrayList<>(userService.findUserIdsByRole(request.getTargetRole()));
         } else {
-            receiverIds = userRepository.findIdsByRole(UserRole.USER);
-            receiverIds = new ArrayList<>(receiverIds);
-            receiverIds.addAll(userRepository.findIdsByRole(UserRole.THERAPIST));
+            receiverIds = new ArrayList<>(userService.findUserIdsByRole(UserRole.USER));
+            receiverIds.addAll(userService.findUserIdsByRole(UserRole.THERAPIST));
         }
 
         // 발신자 자신 제외
@@ -84,7 +83,7 @@ public class MessageService {
         }
 
         UUID broadcastId = UUID.randomUUID();
-        List<User> receivers = userRepository.findAllById(receiverIds);
+        List<User> receivers = userService.findUsersByIds(receiverIds);
 
         List<Message> messages = receivers.stream()
                 .map(receiver -> Message.createBroadcast(sender, receiver, request.getContent(), broadcastId))
@@ -163,11 +162,6 @@ public class MessageService {
     public UnreadCountResponse getUnreadCount(Long userId) {
         long count = messageRepository.countUnreadMessages(userId);
         return new UnreadCountResponse(count);
-    }
-
-    private User findUserOrThrow(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 
     private Message findMessageOrThrow(Long messageId) {
