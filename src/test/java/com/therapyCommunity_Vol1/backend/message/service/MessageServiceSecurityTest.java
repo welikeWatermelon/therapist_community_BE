@@ -13,10 +13,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
+import com.therapyCommunity_Vol1.backend.message.dto.MessageSendRequest;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -133,5 +139,48 @@ class MessageServiceSecurityTest {
         MessageResponse response = messageService.getMessage(1L, 1L);
 
         assertThat(response.getReceiverNickname()).isEqualTo("탈퇴한 회원");
+    }
+
+    @Test
+    void 탈퇴한_사용자에게_쪽지_발송시_예외_발생() {
+        User withdrawnReceiver = User.builder().id(3L).email("w@test.com").nickname("탈퇴예정").role(UserRole.USER).build();
+        withdrawnReceiver.withdraw();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(withdrawnReceiver));
+
+        MessageSendRequest request = new MessageSendRequest(3L, "테스트");
+
+        assertThatThrownBy(() -> messageService.sendMessage(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Test
+    void ADMIN_역할_대상_공지_발송시_예외_발생() {
+        User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
+        when(userRepository.findById(100L)).thenReturn(Optional.of(admin));
+
+        BroadcastMessageRequest request = new BroadcastMessageRequest("공지", UserRole.ADMIN);
+
+        assertThatThrownBy(() -> messageService.broadcastMessage(100L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    void 불변_리스트_반환시에도_공지_발송_정상_동작() {
+        User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
+        when(userRepository.findById(100L)).thenReturn(Optional.of(admin));
+        // List.of()는 불변 리스트 — 이전 버그에서 UnsupportedOperationException 발생했던 시나리오
+        when(userRepository.findIdsByRole(UserRole.THERAPIST)).thenReturn(List.of(1L, 2L));
+        when(userRepository.findAllById(anyList())).thenReturn(List.of(sender, receiver));
+
+        BroadcastMessageRequest request = new BroadcastMessageRequest("공지", UserRole.THERAPIST);
+        messageService.broadcastMessage(100L, request);
+
+        // 예외 없이 성공하면 불변 리스트 버그가 수정된 것
     }
 }
