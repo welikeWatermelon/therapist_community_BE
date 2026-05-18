@@ -55,6 +55,10 @@ public class MessageService {
     public void broadcastMessage(Long senderId, BroadcastMessageRequest request) {
         User sender = findUserOrThrow(senderId);
 
+        if (sender.getRole() != UserRole.ADMIN) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
         List<Long> receiverIds;
         if (request.getTargetRole() != null) {
             receiverIds = userRepository.findIdsByRole(request.getTargetRole());

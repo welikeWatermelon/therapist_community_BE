@@ -11,11 +11,13 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     @Query("SELECT m FROM Message m " +
            "JOIN FETCH m.sender " +
+           "JOIN FETCH m.receiver " +
            "WHERE m.receiver.id = :receiverId AND m.deletedByReceiver = false " +
            "ORDER BY m.createdAt DESC")
     Page<Message> findReceivedMessages(@Param("receiverId") Long receiverId, Pageable pageable);
 
     @Query("SELECT m FROM Message m " +
+           "JOIN FETCH m.sender " +
            "JOIN FETCH m.receiver " +
            "WHERE m.sender.id = :senderId AND m.deletedBySender = false " +
            "ORDER BY m.createdAt DESC")
