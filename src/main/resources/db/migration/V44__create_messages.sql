@@ -33,12 +33,3 @@ CREATE INDEX idx_messages_broadcast_id
     ON messages (broadcast_id)
     WHERE broadcast_id IS NOT NULL;
 
--- [검증] partial index 사용 확인 쿼리 (PostgreSQL에서 실행):
--- EXPLAIN ANALYZE SELECT * FROM messages
---     WHERE receiver_id = 1 AND deleted_by_receiver = FALSE
---     ORDER BY created_at DESC LIMIT 20;
--- → idx_messages_receiver_inbox 사용 확인
---
--- EXPLAIN ANALYZE SELECT COUNT(*) FROM messages
---     WHERE receiver_id = 1 AND is_read = FALSE AND deleted_by_receiver = FALSE;
--- → idx_messages_receiver_unread 사용 확인

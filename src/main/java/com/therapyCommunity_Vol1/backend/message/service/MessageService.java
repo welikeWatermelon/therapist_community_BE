@@ -61,29 +61,9 @@ public class MessageService {
     @Transactional
     public BroadcastResponse broadcastMessage(Long senderId, BroadcastMessageRequest request) {
         User sender = userService.findById(senderId);
+        validateBroadcastPermission(sender, request.getTargetRole());
 
-        if (sender.getRole() != UserRole.ADMIN) {
-            throw new CustomException(ErrorCode.FORBIDDEN);
-        }
-
-        if (request.getTargetRole() == UserRole.ADMIN) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
-
-        List<Long> receiverIds;
-        if (request.getTargetRole() != null) {
-            receiverIds = new ArrayList<>(userService.findUserIdsByRole(request.getTargetRole()));
-        } else {
-            receiverIds = new ArrayList<>(userService.findUserIdsByRole(UserRole.USER));
-            receiverIds.addAll(userService.findUserIdsByRole(UserRole.THERAPIST));
-        }
-
-        // 발신자 자신 제외
-        receiverIds.remove(senderId);
-
-        if (receiverIds.isEmpty()) {
-            throw new CustomException(ErrorCode.BROADCAST_NO_RECIPIENTS);
-        }
+        List<Long> receiverIds = resolveBroadcastReceiverIds(request.getTargetRole(), senderId);
 
         UUID broadcastId = UUID.randomUUID();
         List<User> receivers = userService.findUsersByIds(receiverIds);
@@ -93,15 +73,43 @@ public class MessageService {
                 .toList();
 
         messageRepository.saveAll(messages);
+        publishBroadcastNotifications(messages, senderId);
 
-        // 수신자별 개별 알림 발행 (각 쪽지 ID를 referenceId로 전달하여 딥링크 지원)
+        return new BroadcastResponse(broadcastId, messages.size());
+    }
+
+    private void validateBroadcastPermission(User sender, UserRole targetRole) {
+        if (sender.getRole() != UserRole.ADMIN) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        if (targetRole == UserRole.ADMIN) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private List<Long> resolveBroadcastReceiverIds(UserRole targetRole, Long senderId) {
+        List<Long> receiverIds;
+        if (targetRole != null) {
+            receiverIds = new ArrayList<>(userService.findUserIdsByRole(targetRole));
+        } else {
+            receiverIds = new ArrayList<>(userService.findUserIdsByRole(UserRole.USER));
+            receiverIds.addAll(userService.findUserIdsByRole(UserRole.THERAPIST));
+        }
+
+        receiverIds.remove(senderId);
+
+        if (receiverIds.isEmpty()) {
+            throw new CustomException(ErrorCode.BROADCAST_NO_RECIPIENTS);
+        }
+        return receiverIds;
+    }
+
+    private void publishBroadcastNotifications(List<Message> messages, Long senderId) {
         for (Message msg : messages) {
             eventPublisher.publishEvent(NotificationEvent.of(
                     senderId, msg.getReceiver().getId(),
                     NotificationType.NEW_MESSAGE, msg.getId()));
         }
-
-        return new BroadcastResponse(broadcastId, messages.size());
     }
 
     public PagedResponse<MessageResponse> getReceivedMessages(Long userId, int page, int size) {
