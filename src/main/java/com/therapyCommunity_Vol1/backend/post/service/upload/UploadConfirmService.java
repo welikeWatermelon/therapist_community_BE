@@ -31,6 +31,7 @@ public class UploadConfirmService {
     private final MediaKindPolicy mediaKindPolicy;
     private final FileStorageService fileStorageService;
     private final UploadInitService uploadInitService;
+    private final MagicByteValidator magicByteValidator;
 
     private final PostImageService postImageService;
     private final PostAttachmentService postAttachmentService;
@@ -59,6 +60,9 @@ public class UploadConfirmService {
         if (meta == null) {
             throw new CustomException(ErrorCode.UPLOAD_NOT_FOUND_IN_S3);
         }
+
+        byte[] firstBytes = fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES);
+        magicByteValidator.validate(kind, firstBytes);
 
         String resolvedFilename = (originalFilename == null || originalFilename.isBlank())
                 ? parsed.filename()

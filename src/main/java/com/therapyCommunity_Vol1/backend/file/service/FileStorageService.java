@@ -62,4 +62,12 @@ public interface FileStorageService {
     default void copy(String fromKey, String toKey) {
         throw new UnsupportedOperationException("copy is not supported by this storage backend");
     }
+
+    /**
+     * 객체의 첫 maxBytes 바이트를 반환. magic byte 검증에 사용.
+     * 미지원/오류 시 빈 배열 반환 — 호출부가 UPLOAD_MIME_MISMATCH 로 처리.
+     */
+    default byte[] getFirstBytes(String storedPath, int maxBytes) {
+        return new byte[0];
+    }
 }
