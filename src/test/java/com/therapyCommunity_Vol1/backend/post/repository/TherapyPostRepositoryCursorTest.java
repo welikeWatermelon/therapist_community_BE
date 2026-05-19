@@ -91,18 +91,19 @@ class TherapyPostRepositoryCursorTest {
     }
 
     @Test
-    void 커서_피드_visibility_필터_PUBLIC만_조회() {
+    void 커서_피드_visibility_필터_PUBLIC_PRIVATE만_조회() {
         LocalDateTime now = LocalDateTime.of(2026, 4, 9, 12, 0, 0);
 
         createPost("공개글", Visibility.PUBLIC, now);
         createPost("비공개글", Visibility.PRIVATE, now.minusSeconds(1));
-        createPost("공개글2", Visibility.PUBLIC, now.minusSeconds(2));
+        createPost("팔로워전용", Visibility.FOLLOWERS_ONLY, now.minusSeconds(2));
+        createPost("공개글2", Visibility.PUBLIC, now.minusSeconds(3));
 
-        List<TherapyPost> publicOnly = therapyPostRepository.findFeedLatestByVisibility(
-                Visibility.PUBLIC, PageRequest.of(0, 10));
+        List<TherapyPost> result = therapyPostRepository.findFeedLatest(
+                List.of(Visibility.PUBLIC, Visibility.PRIVATE), PageRequest.of(0, 10));
 
-        assertThat(publicOnly).hasSize(2);
-        assertThat(publicOnly).allMatch(p -> p.getVisibility() == Visibility.PUBLIC);
+        assertThat(result).hasSize(3);
+        assertThat(result).noneMatch(p -> p.getVisibility() == Visibility.FOLLOWERS_ONLY);
     }
 
     @Test

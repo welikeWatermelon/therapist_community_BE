@@ -36,9 +36,6 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     Page<TherapyPost> findByAuthorIdAndDeletedAtIsNull(Long authorId, Pageable pageable);
 
-    @EntityGraph(attributePaths = "author")
-    Page<TherapyPost> findByDeletedAtIsNullAndVisibility(Visibility visibility, Pageable pageable);
-
     // 텍스트 검색 (searchText LIKE — GIN trigram 인덱스 idx_therapy_posts_search_text_trgm 활용)
     // LOWER() 제거: GIN trigram 인덱스는 bare LIKE만 가속, LOWER() 래핑 시 Seq Scan.
     // 한글 위주 서비스라 대소문자 구분 문제 없음. 영문 edge case는 /search ILIKE가 커버.
@@ -75,40 +72,6 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
-    // visibility 필터 포함 — 텍스트 검색 (searchText LIKE, LOWER 제거로 GIN 인덱스 활용)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND p.searchText LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
-              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
-              AND (:postType IS NULL OR p.postType = :postType)
-            """)
-    Page<TherapyPost> searchByKeywordAndVisibility(
-            @Param("keyword") String keyword,
-            @Param("therapyArea") TherapyArea therapyArea,
-            @Param("postType") PostType postType,
-            @Param("visibility") Visibility visibility,
-            Pageable pageable
-    );
-
-    // visibility 필터 포함 — 필터만
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
-              AND (:postType IS NULL OR p.postType = :postType)
-            """)
-    Page<TherapyPost> searchByFilterAndVisibility(
-            @Param("therapyArea") TherapyArea therapyArea,
-            @Param("postType") PostType postType,
-            @Param("visibility") Visibility visibility,
-            Pageable pageable
-    );
-
     // 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
@@ -134,36 +97,6 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             """)
     List<TherapyPost> findFeedLatest(
             @Param("visibilities") List<Visibility> visibilities,
-            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
-            @Param("cursorId") Long cursorId,
-            Pageable pageable
-    );
-
-    // 커서 피드 — visibility, 첫 페이지 (커서 없음)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
-    List<TherapyPost> findFeedLatestByVisibility(
-            @Param("visibility") Visibility visibility,
-            Pageable pageable
-    );
-
-    // 커서 피드 — visibility, 다음 페이지 (커서 있음)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND (p.createdAt < :cursorCreatedAt OR
-                   (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
-    List<TherapyPost> findFeedLatestByVisibility(
-            @Param("visibility") Visibility visibility,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
@@ -229,36 +162,6 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             """)
     List<TherapyPost> findFeedPopular(
             @Param("visibilities") List<Visibility> visibilities,
-            @Param("cursorScore") Long cursorScore,
-            @Param("cursorId") Long cursorId,
-            Pageable pageable
-    );
-
-    // 인기순 커서 피드 — visibility, 첫 페이지 (커서 없음)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-            ORDER BY p.popularityScore DESC, p.id DESC
-            """)
-    List<TherapyPost> findFeedPopularByVisibility(
-            @Param("visibility") Visibility visibility,
-            Pageable pageable
-    );
-
-    // 인기순 커서 피드 — visibility, 다음 페이지 (커서 있음)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND (p.popularityScore < :cursorScore OR
-                   (p.popularityScore = :cursorScore AND p.id < :cursorId))
-            ORDER BY p.popularityScore DESC, p.id DESC
-            """)
-    List<TherapyPost> findFeedPopularByVisibility(
-            @Param("visibility") Visibility visibility,
             @Param("cursorScore") Long cursorScore,
             @Param("cursorId") Long cursorId,
             Pageable pageable
