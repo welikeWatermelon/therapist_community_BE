@@ -89,7 +89,10 @@ public class FollowService {
         return new FollowCountResponse(followerCount, followingCount);
     }
 
+    private static final int MAX_PAGE_SIZE = 50;
+
     public PagedResponse<FollowUserResponse> getFollowers(Long userId, int page, int size) {
+        size = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt")));
         Page<Follow> result = followRepository.findFollowersByUserId(userId, pageable);
 
@@ -101,6 +104,7 @@ public class FollowService {
     }
 
     public PagedResponse<FollowUserResponse> getFollowings(Long userId, int page, int size) {
+        size = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt")));
         Page<Follow> result = followRepository.findFollowingsByUserId(userId, pageable);
 
