@@ -83,7 +83,8 @@ class TherapyPostSummaryResponseTest {
 
         // then
         assertThat(response.getContentPreview()).doesNotContain("<p>");
-        assertThat(response.getContentPreview().length()).isEqualTo(200);
+        assertThat(response.getContentPreview()).endsWith("...");
+        assertThat(response.getContentPreview().length()).isEqualTo(203);
     }
 
 }
