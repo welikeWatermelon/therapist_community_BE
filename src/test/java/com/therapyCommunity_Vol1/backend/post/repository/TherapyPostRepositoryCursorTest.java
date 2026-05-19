@@ -58,7 +58,7 @@ class TherapyPostRepositoryCursorTest {
         TherapyPost postB = createPost("글B", Visibility.PUBLIC, time1);
         TherapyPost postC = createPost("글C", Visibility.PUBLIC, time2);
 
-        List<TherapyPost> result = therapyPostRepository.findFeedLatest(PageRequest.of(0, 10));
+        List<TherapyPost> result = therapyPostRepository.findFeedLatest(List.of(Visibility.PUBLIC, Visibility.PRIVATE), PageRequest.of(0, 10));
 
         assertThat(result).hasSize(3);
         // 같은 createdAt일 때 id DESC로 tie-break
@@ -76,13 +76,13 @@ class TherapyPostRepositoryCursorTest {
         }
 
         // 첫 페이지: 2개 + 1 (hasNext 판단용)
-        List<TherapyPost> firstPage = therapyPostRepository.findFeedLatest(PageRequest.of(0, 3));
+        List<TherapyPost> firstPage = therapyPostRepository.findFeedLatest(List.of(Visibility.PUBLIC, Visibility.PRIVATE), PageRequest.of(0, 3));
         assertThat(firstPage).hasSize(3);
 
         // 두 번째 페이지: 첫 페이지 마지막(2번째) 항목 기준 커서
         TherapyPost lastOfFirst = firstPage.get(1); // size=2일 때 마지막
         List<TherapyPost> secondPage = therapyPostRepository.findFeedLatest(
-                lastOfFirst.getCreatedAt(), lastOfFirst.getId(), PageRequest.of(0, 3));
+                List.of(Visibility.PUBLIC, Visibility.PRIVATE), lastOfFirst.getCreatedAt(), lastOfFirst.getId(), PageRequest.of(0, 3));
 
         // 중복 없이 이어져야 함
         List<Long> firstIds = firstPage.subList(0, 2).stream().map(TherapyPost::getId).toList();
@@ -118,7 +118,7 @@ class TherapyPostRepositoryCursorTest {
         setPopularityScore(postA.getId(), 500L);
         setPopularityScore(postC.getId(), 500L);
 
-        List<TherapyPost> result = therapyPostRepository.findFeedPopular(PageRequest.of(0, 10));
+        List<TherapyPost> result = therapyPostRepository.findFeedPopular(List.of(Visibility.PUBLIC, Visibility.PRIVATE), PageRequest.of(0, 10));
 
         assertThat(result).hasSize(3);
         // 가장 높은 점수가 먼저

@@ -148,15 +148,15 @@ public class PostService {
         Pageable pageable = PageRequest.of(page, size, toSort(sortType));
 
         if (condition.isEmpty()) {
-            return therapyPostRepository.findByDeletedAtIsNull(pageable);
+            return therapyPostRepository.findByDeletedAtIsNullAndVisibilityIn(GENERAL_FEED_VISIBILITIES, pageable);
         } else if (condition.hasKeyword()) {
             String lowerKeyword = condition.getEscapedKeyword().trim().toLowerCase();
             return therapyPostRepository.searchByKeyword(
                     lowerKeyword, condition.getTherapyArea(),
-                    condition.getPostType(), pageable);
+                    condition.getPostType(), GENERAL_FEED_VISIBILITIES, pageable);
         } else {
             return therapyPostRepository.searchByFilter(
-                    condition.getTherapyArea(), condition.getPostType(), pageable);
+                    condition.getTherapyArea(), condition.getPostType(), GENERAL_FEED_VISIBILITIES, pageable);
         }
     }
 
@@ -191,6 +191,9 @@ public class PostService {
 
     private static final int FEED_MAX_SIZE = 50;
 
+    /** 일반 피드/검색에서 노출하는 visibility. FOLLOWERS_ONLY/VERIFIED_FOLLOWERS_ONLY는 팔로잉 피드 전용. */
+    private static final List<Visibility> GENERAL_FEED_VISIBILITIES = List.of(Visibility.PUBLIC, Visibility.PRIVATE);
+
     /**
      * 커서 기반 피드 조회 (무한스크롤용)
      *
@@ -217,10 +220,10 @@ public class PostService {
 
         List<TherapyPost> posts;
         if (postCursor == null) {
-            posts = therapyPostRepository.findFeedLatest(limit);
+            posts = therapyPostRepository.findFeedLatest(GENERAL_FEED_VISIBILITIES, limit);
         } else {
             posts = therapyPostRepository.findFeedLatest(
-                    postCursor.createdAt(), postCursor.id(), limit);
+                    GENERAL_FEED_VISIBILITIES, postCursor.createdAt(), postCursor.id(), limit);
         }
 
         List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate);
@@ -236,10 +239,10 @@ public class PostService {
 
         List<TherapyPost> posts;
         if (popCursor == null) {
-            posts = therapyPostRepository.findFeedPopular(limit);
+            posts = therapyPostRepository.findFeedPopular(GENERAL_FEED_VISIBILITIES, limit);
         } else {
             posts = therapyPostRepository.findFeedPopular(
-                    popCursor.score(), popCursor.id(), limit);
+                    GENERAL_FEED_VISIBILITIES, popCursor.score(), popCursor.id(), limit);
         }
 
         boolean hasNext = posts.size() > size;
