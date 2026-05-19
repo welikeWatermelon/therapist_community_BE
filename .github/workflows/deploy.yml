@@ -64,18 +64,21 @@ jobs:
       - name: Deploy to EC2 staging (SSM)
         if: github.ref == 'refs/heads/main'
         run: |
+          set -euo pipefail
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids i-0900290d4507a329a \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters 'commands=[
-              "set -e",
+              "set -euxo pipefail",
               "IMAGE=771338875653.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest",
+              "aws --version",
+              "docker --version",
               "aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 771338875653.dkr.ecr.ap-northeast-2.amazonaws.com",
               "docker pull $IMAGE",
               "docker rm -f builders-backend-new || true",
               "docker run -d --name builders-backend-new --env-file /etc/backend/backend.env -p 8081:8080 $IMAGE",
-              "for i in $(seq 1 12); do curl -sf http://localhost:8081/actuator/health && echo Health check passed && break || { [ $i -eq 12 ] && echo Health check failed && docker rm -f builders-backend-new && exit 1; }; sleep 5; done",
+              "for i in $(seq 1 12); do if curl -fsS http://localhost:8081/actuator/health; then echo Health check passed; break; fi; echo Health check attempt $i failed; if [ $i -eq 12 ]; then echo Health check failed; docker ps -a; docker logs builders-backend-new --tail 200 || true; docker rm -f builders-backend-new || true; exit 1; fi; sleep 5; done",
               "docker stop builders-backend || true",
               "docker rm builders-backend || true",
               "docker stop builders-backend-new && docker rm builders-backend-new",
@@ -96,7 +99,12 @@ jobs:
             if [ "$STATUS" = "Success" ]; then echo "Deploy succeeded!"; break
             elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
               echo "Deploy failed!"
-              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0900290d4507a329a --region ap-northeast-2 --query 'StandardErrorContent' --output text
+              echo "::group::SSM standard output"
+              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0900290d4507a329a --region ap-northeast-2 --query 'StandardOutputContent' --output text || true
+              echo "::endgroup::"
+              echo "::group::SSM standard error"
+              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0900290d4507a329a --region ap-northeast-2 --query 'StandardErrorContent' --output text || true
+              echo "::endgroup::"
               exit 1
             fi
             [ "$i" -eq 30 ] && echo "Timeout" && exit 1
@@ -116,18 +124,21 @@ jobs:
 
       - name: Deploy to EC2 prod (SSM)
         run: |
+          set -euo pipefail
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids i-0086047e1fd4f4743 \
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters 'commands=[
-              "set -e",
+              "set -euxo pipefail",
               "IMAGE=771338875653.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest",
+              "aws --version",
+              "docker --version",
               "aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 771338875653.dkr.ecr.ap-northeast-2.amazonaws.com",
               "docker pull $IMAGE",
               "docker rm -f builders-backend-new || true",
               "docker run -d --name builders-backend-new --env-file /etc/backend/backend.env -p 8081:8080 $IMAGE",
-              "for i in $(seq 1 12); do curl -sf http://localhost:8081/actuator/health && echo Health check passed && break || { [ $i -eq 12 ] && echo Health check failed && docker rm -f builders-backend-new && exit 1; }; sleep 5; done",
+              "for i in $(seq 1 12); do if curl -fsS http://localhost:8081/actuator/health; then echo Health check passed; break; fi; echo Health check attempt $i failed; if [ $i -eq 12 ]; then echo Health check failed; docker ps -a; docker logs builders-backend-new --tail 200 || true; docker rm -f builders-backend-new || true; exit 1; fi; sleep 5; done",
               "docker stop builders-backend || true",
               "docker rm builders-backend || true",
               "docker stop builders-backend-new && docker rm builders-backend-new",
@@ -148,7 +159,12 @@ jobs:
             if [ "$STATUS" = "Success" ]; then echo "Deploy succeeded!"; break
             elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
               echo "Deploy failed!"
-              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0086047e1fd4f4743 --region ap-northeast-2 --query 'StandardErrorContent' --output text
+              echo "::group::SSM standard output"
+              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0086047e1fd4f4743 --region ap-northeast-2 --query 'StandardOutputContent' --output text || true
+              echo "::endgroup::"
+              echo "::group::SSM standard error"
+              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0086047e1fd4f4743 --region ap-northeast-2 --query 'StandardErrorContent' --output text || true
+              echo "::endgroup::"
               exit 1
             fi
             [ "$i" -eq 30 ] && echo "Timeout" && exit 1
