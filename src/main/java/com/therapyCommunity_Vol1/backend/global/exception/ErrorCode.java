@@ -53,7 +53,11 @@ public enum ErrorCode {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_404", "알림을 찾을 수 없습니다."),
     SSE_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE_500", "SSE 연결 중 오류가 발생했습니다."),
 
-    INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "POST_400_SORT", "이 엔드포인트에서 지원하지 않는 정렬 방식입니다.");
+    INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "POST_400_SORT", "이 엔드포인트에서 지원하지 않는 정렬 방식입니다."),
+
+    FOLLOW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOLLOW_400_SELF", "자기 자신을 팔로우할 수 없습니다."),
+    FOLLOW_TARGET_NOT_THERAPIST(HttpStatus.BAD_REQUEST, "FOLLOW_400_TARGET", "치료사만 팔로우할 수 있습니다."),
+    FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW_404", "팔로우 관계를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
