@@ -5,7 +5,7 @@
 
 ## DB 스키마
 
-### messages 테이블 (V44 + V45)
+### messages 테이블 (V45 + V46)
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | BIGSERIAL PK | |
@@ -17,7 +17,7 @@
 | deleted_by_sender | BOOLEAN | 발신자 삭제 여부 |
 | deleted_by_receiver | BOOLEAN | 수신자 삭제 여부 |
 | broadcast_id | UUID | 공지 쪽지 그룹 (NULL이면 일반 쪽지) |
-| deleted_at | TIMESTAMP | 양쪽 삭제 시 soft delete 타임스탬프 (V45) |
+| deleted_at | TIMESTAMP | 양쪽 삭제 시 soft delete 타임스탬프 (V46) |
 | created_at | TIMESTAMP | 생성일 |
 | updated_at | TIMESTAMP | 수정일 |
 
@@ -26,10 +26,10 @@
 - `idx_messages_sender_outbox` — 보낸 쪽지함 (partial: deleted_by_sender = FALSE)
 - `idx_messages_receiver_unread` — 안읽은 쪽지 수 (partial: is_read = FALSE AND deleted_by_receiver = FALSE)
 - `idx_messages_broadcast_id` — 공지 그룹 조회 (partial: broadcast_id IS NOT NULL)
-- `idx_messages_soft_deleted` — 배치 정리용 (partial: deleted_at IS NOT NULL) (V45)
+- `idx_messages_soft_deleted` — 배치 정리용 (partial: deleted_at IS NOT NULL) (V46)
 
 ### 제약조건
-- `chk_no_self_message` — CHECK (sender_id != receiver_id) (V45)
+- `chk_no_self_message` — CHECK (sender_id != receiver_id) (V46)
 
 ## API 엔드포인트
 
@@ -67,7 +67,8 @@
 - 서비스 레벨 ADMIN 권한 검증 (SecurityConfig + 이중 방어)
 - 자기 자신 발송 차단 (서비스 검증 + DB CHECK 제약)
 - 탈퇴 사용자 발송/수신 차단
-- 공지 대상에 ADMIN 역할 차단
+- `targetRole`이 지정되면 해당 역할에게만 발송 (ADMIN 포함 가능)
+- `targetRole`이 null이면 USER + THERAPIST에게 발송 (ADMIN 제외)
 - 페이징 size 제한 (@Min(1) @Max(100) + 서비스 레벨 Math.max/Math.min 보정)
 
 ## 제한사항 (초기 버전)
