@@ -32,14 +32,8 @@ public class MyPageFacade {
     private final FollowService followService;
 
     public CurrentUserResponse getCurrentUser(Long userId) {
-        CurrentUserResponse base = userService.getCurrentUser(userId);
         FollowCountResponse counts = followService.getFollowCounts(userId);
-        return new CurrentUserResponse(
-                base.id(), base.email(), base.nickname(), base.profileImageUrl(),
-                base.role(), base.canAccessCommunity(), base.communityAccessLevel(),
-                base.therapistVerification(),
-                counts.getFollowerCount(), counts.getFollowingCount()
-        );
+        return userService.getCurrentUser(userId, counts.getFollowerCount(), counts.getFollowingCount());
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
@@ -63,7 +57,8 @@ public class MyPageFacade {
     }
 
     public CurrentUserResponse updateProfile(Long userId, UpdateProfileRequest request) {
-        return userService.updateProfile(userId, request);
+        FollowCountResponse counts = followService.getFollowCounts(userId);
+        return userService.updateProfile(userId, request, counts.getFollowerCount(), counts.getFollowingCount());
     }
 
     public String uploadProfileImage(Long userId, MultipartFile file) {
