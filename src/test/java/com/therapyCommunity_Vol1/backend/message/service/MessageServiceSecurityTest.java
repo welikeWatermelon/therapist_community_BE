@@ -170,19 +170,6 @@ class MessageServiceSecurityTest {
     }
 
     @Test
-    void ADMIN_역할_대상_공지_발송시_예외_발생() {
-        User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
-        when(userService.findById(100L)).thenReturn(admin);
-
-        BroadcastMessageRequest request = new BroadcastMessageRequest("공지", UserRole.ADMIN);
-
-        assertThatThrownBy(() -> messageService.broadcastMessage(100L, request))
-                .isInstanceOf(CustomException.class)
-                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_INPUT));
-    }
-
-    @Test
     void 불변_리스트_반환시에도_공지_발송_정상_동작() {
         User admin = User.builder().id(100L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
         when(userService.findById(100L)).thenReturn(admin);

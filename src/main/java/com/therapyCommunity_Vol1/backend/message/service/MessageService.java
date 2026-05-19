@@ -61,7 +61,7 @@ public class MessageService {
     @Transactional
     public BroadcastResponse broadcastMessage(Long senderId, BroadcastMessageRequest request) {
         User sender = userService.findById(senderId);
-        validateBroadcastPermission(sender, request.getTargetRole());
+        validateBroadcastPermission(sender);
 
         List<Long> receiverIds = resolveBroadcastReceiverIds(request.getTargetRole(), senderId);
 
@@ -78,12 +78,9 @@ public class MessageService {
         return new BroadcastResponse(broadcastId, messages.size());
     }
 
-    private void validateBroadcastPermission(User sender, UserRole targetRole) {
+    private void validateBroadcastPermission(User sender) {
         if (sender.getRole() != UserRole.ADMIN) {
             throw new CustomException(ErrorCode.FORBIDDEN);
-        }
-        if (targetRole == UserRole.ADMIN) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
     }
 
