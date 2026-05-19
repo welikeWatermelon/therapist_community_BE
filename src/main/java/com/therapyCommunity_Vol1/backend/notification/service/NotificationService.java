@@ -151,7 +151,7 @@ public class NotificationService {
 
             Notification notification = Notification.create(
                     receiver, sender,
-                    event.getType(), event.getReferenceId(), content
+                    event.getType(), event.getReferenceId(), event.getPostId(), content
             );
             Notification saved = notificationRepository.save(notification);
 

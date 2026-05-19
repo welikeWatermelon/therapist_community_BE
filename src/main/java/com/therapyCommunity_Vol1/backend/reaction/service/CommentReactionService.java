@@ -59,6 +59,7 @@ public class CommentReactionService {
                     eventPublisher.publishEvent(NotificationEvent.of(
                             currentUserId, comment.getAuthor().getId(),
                             NotificationType.NEW_COMMENT_REACTION, commentId,
+                            comment.getPost().getId(),
                             request.getReactionType().getLabel()));
                 });
         return getReactionStatus(currentUserId, commentId);

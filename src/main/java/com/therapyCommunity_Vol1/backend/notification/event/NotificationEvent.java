@@ -15,6 +15,7 @@ public class NotificationEvent {
     private final List<Long> receiverIds;
     private final NotificationType type;
     private final Long referenceId;
+    private final Long postId;
     private final List<String> extraParams;
 
     public static NotificationEvent of(
@@ -37,6 +38,20 @@ public class NotificationEvent {
                 .receiverIds(List.of(receiverId))
                 .type(type)
                 .referenceId(referenceId)
+                .extraParams(List.of(extraParams))
+                .build();
+    }
+
+    public static NotificationEvent of(
+            Long senderId, Long receiverId,
+            NotificationType type, Long referenceId,
+            Long postId, String... extraParams) {
+        return NotificationEvent.builder()
+                .senderId(senderId)
+                .receiverIds(List.of(receiverId))
+                .type(type)
+                .referenceId(referenceId)
+                .postId(postId)
                 .extraParams(List.of(extraParams))
                 .build();
     }

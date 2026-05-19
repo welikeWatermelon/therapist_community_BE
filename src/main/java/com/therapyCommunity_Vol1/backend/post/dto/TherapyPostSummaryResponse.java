@@ -139,12 +139,15 @@ public class TherapyPostSummaryResponse {
         }
 
         String plainText = htmlContent
+                .replaceAll("<br\\s*/?>", "\n")
+                .replaceAll("</p>\\s*<p[^>]*>", "\n")
                 .replaceAll("<[^>]*>", " ")
-                .replaceAll("\\s+", " ")
+                .replaceAll("[^\\S\\n]+", " ")
+                .replaceAll("\\n{3,}", "\n\n")
                 .trim();
 
         return plainText.length() > 200
-                ? plainText.substring(0,200)
+                ? plainText.substring(0, 200) + "..."
                 : plainText;
     }
 }
