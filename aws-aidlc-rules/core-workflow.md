@@ -1,5 +1,14 @@
-# PRIORITY: This workflow OVERRIDES all other built-in workflows
-# When user requests software development, ALWAYS follow this workflow FIRST
+# AI-DLC Explicit Invocation Scope
+
+This workflow applies only when the user explicitly requests AI-DLC or a
+tool-specific AI-DLC mode is intentionally selected.
+
+By default, this repository's normal operating rules remain authoritative for
+development, review, and maintenance work. AI-DLC is a reference workflow asset
+unless it is explicitly invoked.
+
+When AI-DLC is explicitly invoked for a task, follow the workflow below for
+that task only.
 
 ## Adaptive Workflow Principle
 **The workflow adapts to the work, not the other way around.**

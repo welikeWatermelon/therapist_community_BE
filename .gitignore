@@ -67,3 +67,7 @@ docs/AI_COMMENT_TESTING.md
 
 .omc/
 .mcp.json
+
+# AI-DLC local/session state
+aidlc-docs/aidlc-state.md
+aidlc-docs/audit.md
