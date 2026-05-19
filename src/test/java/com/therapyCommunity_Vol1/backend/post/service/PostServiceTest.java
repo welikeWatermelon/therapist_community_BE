@@ -112,7 +112,8 @@ class PostServiceTest {
                 profileImageUrlAssembler,
                 postImageService,
                 postAttachmentService,
-                postVideoService
+                postVideoService,
+                mock(com.therapyCommunity_Vol1.backend.follow.service.FollowService.class)
         );
     }
 

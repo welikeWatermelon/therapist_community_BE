@@ -68,6 +68,7 @@ public class PostService {
     private final PostImageService postImageService;
     private final PostAttachmentService postAttachmentService;
     private final PostVideoService postVideoService;
+    private final com.therapyCommunity_Vol1.backend.follow.service.FollowService followService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -85,9 +86,7 @@ public class PostService {
             UserRole currentUserRole,
             CreateTherapyPostRequest request
     ) {
-        if (request.getVisibility() == Visibility.PRIVATE) {
-            visibilityPolicy.checkCanWritePrivate(currentUserRole);
-        }
+        visibilityPolicy.checkCanWriteVisibility(request.getVisibility(), currentUserRole);
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         TherapyPost post = TherapyPost.create(
@@ -257,6 +256,36 @@ public class PostService {
         return new CursorPagedResponse<>(dtos, nextCursor, hasNext, size);
     }
 
+    public CursorPagedResponse<TherapyPostSummaryResponse> getFollowingFeed(
+            Long currentUserId, UserRole currentUserRole, int size, String cursor) {
+        size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
+
+        List<Long> followingIds = followService.getFollowingIds(currentUserId);
+        if (followingIds.isEmpty()) {
+            return new CursorPagedResponse<>(List.of(), null, false, size);
+        }
+
+        List<Visibility> visibilities = visibilityPolicy.canViewPrivate(currentUserRole)
+                ? List.of(Visibility.PUBLIC, Visibility.PRIVATE, Visibility.FOLLOWERS_ONLY, Visibility.VERIFIED_FOLLOWERS_ONLY)
+                : List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY);
+
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
+
+        List<TherapyPost> posts;
+        if (postCursor == null) {
+            posts = therapyPostRepository.findFollowingFeed(followingIds, visibilities, limit);
+        } else {
+            posts = therapyPostRepository.findFollowingFeed(
+                    followingIds, visibilities, postCursor.createdAt(), postCursor.id(), limit);
+        }
+
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, true);
+
+        return CursorPagedResponse.of(dtos, size, item ->
+                new PostCursor(item.getCreatedAt(), item.getId()).encode());
+    }
+
     private Sort toSort(PostSortType sortType) {
         return switch (sortType) {
             case MOST_VIEWED -> Sort.by(
@@ -280,7 +309,7 @@ public class PostService {
             boolean isScrapped
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         boolean firstView = postViewCountService.isFirstView(postId, currentUserId);
         if (firstView) {
@@ -339,12 +368,10 @@ public class PostService {
             UpdateTherapyPostRequest request
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        if (request.getVisibility() == Visibility.PRIVATE) {
-            visibilityPolicy.checkCanWritePrivate(currentUserRole);
-        }
+        visibilityPolicy.checkCanWriteVisibility(request.getVisibility(), currentUserRole);
 
         String oldSearchText = post.getSearchText();
 
@@ -374,7 +401,7 @@ public class PostService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();

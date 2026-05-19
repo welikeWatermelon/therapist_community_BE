@@ -76,7 +76,7 @@ public class PostReactionService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         postReactionRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresentOrElse(existing -> {
@@ -121,7 +121,7 @@ public class PostReactionService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         // 내 반응 타입 조회
         PostReactionType myReactionType = postReactionRepository

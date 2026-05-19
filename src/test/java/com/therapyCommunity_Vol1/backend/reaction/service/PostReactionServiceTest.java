@@ -203,7 +203,7 @@ class PostReactionServiceTest {
         TherapyPost privatePost = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PRIVATE, user);
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), anyLong());
 
         assertThatThrownBy(() -> postReactionService.toggleReaction(
                 1L, UserRole.USER, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
@@ -280,7 +280,7 @@ class PostReactionServiceTest {
         TherapyPost privatePost = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PRIVATE, user);
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), anyLong());
 
         assertThatThrownBy(() -> postReactionService.getReactionStatus(1L, UserRole.USER, 10L))
                 .isInstanceOf(CustomException.class)
