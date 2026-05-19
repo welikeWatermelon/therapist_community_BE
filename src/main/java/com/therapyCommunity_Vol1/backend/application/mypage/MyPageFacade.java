@@ -4,6 +4,9 @@ import com.therapyCommunity_Vol1.backend.application.mypage.dto.MyCommentRespons
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.follow.dto.FollowCountResponse;
+import com.therapyCommunity_Vol1.backend.follow.dto.FollowUserResponse;
+import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
@@ -26,9 +29,17 @@ public class MyPageFacade {
     private final UserService userService;
     private final PostService postService;
     private final CommentService commentService;
+    private final FollowService followService;
 
     public CurrentUserResponse getCurrentUser(Long userId) {
-        return userService.getCurrentUser(userId);
+        CurrentUserResponse base = userService.getCurrentUser(userId);
+        FollowCountResponse counts = followService.getFollowCounts(userId);
+        return new CurrentUserResponse(
+                base.id(), base.email(), base.nickname(), base.profileImageUrl(),
+                base.role(), base.canAccessCommunity(), base.communityAccessLevel(),
+                base.therapistVerification(),
+                counts.getFollowerCount(), counts.getFollowingCount()
+        );
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
@@ -61,6 +72,18 @@ public class MyPageFacade {
 
     public StoredFileResource loadProfileImage(String filename) {
         return userService.loadProfileImage(filename);
+    }
+
+    public FollowCountResponse getFollowCounts(Long userId) {
+        return followService.getFollowCounts(userId);
+    }
+
+    public PagedResponse<FollowUserResponse> getMyFollowers(Long userId, int page, int size) {
+        return followService.getFollowers(userId, page, size);
+    }
+
+    public PagedResponse<FollowUserResponse> getMyFollowings(Long userId, int page, int size) {
+        return followService.getFollowings(userId, page, size);
     }
 
     public void withdraw(Long userId) {

@@ -4,6 +4,8 @@ import com.therapyCommunity_Vol1.backend.application.mypage.MyPageFacade;
 import com.therapyCommunity_Vol1.backend.application.mypage.dto.MyCommentResponse;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
+import com.therapyCommunity_Vol1.backend.follow.dto.FollowCountResponse;
+import com.therapyCommunity_Vol1.backend.follow.dto.FollowUserResponse;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
@@ -109,6 +111,37 @@ public class UserController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.inline().filename(storedFile.getOriginalFilename()).build().toString())
                 .body(storedFile.getResource());
+    }
+
+    @Operation(summary = "내 팔로워 수/팔로잉 수", description = "본인의 팔로워/팔로잉 카운트 조회")
+    @GetMapping("/follow-counts")
+    public ResponseEntity<ApiResponse<FollowCountResponse>> getFollowCounts(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        FollowCountResponse response = myPageFacade.getFollowCounts(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 팔로워 목록", description = "나를 팔로우하는 사용자 목록 (페이징). 본인만 조회 가능")
+    @GetMapping("/followers")
+    public ResponseEntity<ApiResponse<PagedResponse<FollowUserResponse>>> getMyFollowers(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PagedResponse<FollowUserResponse> response = myPageFacade.getMyFollowers(userDetails.getUserId(), page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 팔로잉 목록", description = "내가 팔로우하는 치료사 목록 (페이징). 본인만 조회 가능")
+    @GetMapping("/followings")
+    public ResponseEntity<ApiResponse<PagedResponse<FollowUserResponse>>> getMyFollowings(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PagedResponse<FollowUserResponse> response = myPageFacade.getMyFollowings(userDetails.getUserId(), page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @Operation(summary = "프로필 수정", description = "닉네임(2~20자) 변경. null이면 기존 값 유지")

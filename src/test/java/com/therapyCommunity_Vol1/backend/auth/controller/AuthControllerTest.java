@@ -73,7 +73,8 @@ class AuthControllerTest {
                         "USER",
                         false,
                         "PUBLIC_ONLY",
-                        new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
+                        new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null),
+                        0, 0
                 ),
                 new LoginResponse.Tokens("access-token", 1800L)
         );
@@ -117,7 +118,8 @@ class AuthControllerTest {
                 "USER",
                 false,
                 "PUBLIC_ONLY",
-                new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
+                new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null),
+                0, 0
         );
         given(tokenService.refresh("refresh-cookie", "JUnit", "127.0.0.1"))
                 .willReturn(new TokenService.RefreshResult(
