@@ -108,6 +108,12 @@ jobs:
     if: github.ref == 'refs/heads/deploy'
     environment: production
     steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::771338875653:role/GitHubActionsMelonneCommunityDeployRole
+          aws-region: ap-northeast-2
+
       - name: Deploy to EC2 prod (SSM)
         run: |
           COMMAND_ID=$(aws ssm send-command \
