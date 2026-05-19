@@ -28,6 +28,6 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
            countQuery = "SELECT COUNT(f) FROM Follow f WHERE f.follower.id = :userId AND f.following.deletedAt IS NULL")
     Page<Follow> findFollowingsByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT f.following.id FROM Follow f WHERE f.follower.id = :followerId")
+    @Query("SELECT f.following.id FROM Follow f WHERE f.follower.id = :followerId AND f.following.deletedAt IS NULL")
     List<Long> findFollowingIdsByFollowerId(@Param("followerId") Long followerId);
 }
