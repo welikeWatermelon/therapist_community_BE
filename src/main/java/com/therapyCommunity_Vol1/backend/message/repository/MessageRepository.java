@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
-    @Query("SELECT m FROM Message m JOIN FETCH m.sender JOIN FETCH m.receiver WHERE m.id = :id")
+    @Query("SELECT m FROM Message m JOIN FETCH m.sender JOIN FETCH m.receiver WHERE m.id = :id AND m.deletedAt IS NULL")
     Optional<Message> findByIdWithUsers(@Param("id") Long id);
 
     @Query(value = "SELECT m FROM Message m " +

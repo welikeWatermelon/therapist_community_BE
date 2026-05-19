@@ -105,6 +105,10 @@ public class MessageService {
         return receiverIds;
     }
 
+    // TODO: 현재 수신자별로 이벤트를 개별 발행하므로 유저 수에 비례해 async 태스크가 증가한다.
+    //  bulk 오버로드(NotificationEvent.of(senderId, List<Long>, ...))가 있으나
+    //  referenceId가 메시지별로 달라 단순 전환이 불가하다.
+    //  관리자 전용 공지 알림 페이지가 만들어지면 공지 알림 로직을 그쪽으로 이전할 것.
     private void publishBroadcastNotifications(List<Message> messages, Long senderId) {
         for (Message msg : messages) {
             eventPublisher.publishEvent(NotificationEvent.of(
