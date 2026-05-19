@@ -83,6 +83,8 @@ jobs:
               "docker rm builders-backend || true",
               "docker stop builders-backend-new && docker rm builders-backend-new",
               "docker run -d --name builders-backend --env-file /etc/backend/backend.env -p 8080:8080 --restart unless-stopped $IMAGE",
+              "docker image prune -f",
+              "docker container prune -f",
               "echo Zero-downtime deploy complete"
             ]' \
             --query 'Command.CommandId' \
@@ -147,6 +149,8 @@ jobs:
               "docker rm builders-backend || true",
               "docker stop builders-backend-new && docker rm builders-backend-new",
               "docker run -d --name builders-backend --env-file /etc/backend/backend.env -p 8080:8080 --restart unless-stopped $IMAGE",
+              "docker image prune -f",
+              "docker container prune -f",
               "echo Zero-downtime deploy complete"
             ]' \
             --query 'Command.CommandId' \
