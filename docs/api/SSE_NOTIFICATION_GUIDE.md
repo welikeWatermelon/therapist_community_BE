@@ -593,6 +593,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 | `NEW_POST_REACTION` | 게시글 반응 | 게시글 ID | `/posts/{referenceId}` |
 | `NEW_COMMENT_REACTION` | 댓글 반응 | 댓글 ID | `/posts/{postId}` (댓글 스크롤) |
 | `NEW_SCRAP` | 게시글 스크랩 | 게시글 ID | `/posts/{referenceId}` |
+| `NEW_MESSAGE` | 새 쪽지 수신 | 쪽지 ID | `/messages/{referenceId}` |
 | `VERIFICATION_APPROVED` | 치료사 인증 승인 | - | `/my-profile` |
 | `VERIFICATION_REJECTED` | 치료사 인증 거절 | - | `/my-profile` |
 
@@ -607,6 +608,7 @@ type NotificationType =
   | 'NEW_POST_REACTION'
   | 'NEW_COMMENT_REACTION'
   | 'NEW_SCRAP'
+  | 'NEW_MESSAGE'
   | 'VERIFICATION_APPROVED'
   | 'VERIFICATION_REJECTED';
 
@@ -625,6 +627,9 @@ export function getNotificationRoute(
     case 'NEW_COMMENT_REACTION':
       // postId를 사용하여 게시글 상세 페이지로 이동
       return `/posts/${postId}`;
+
+    case 'NEW_MESSAGE':
+      return `/messages/${referenceId}`;
 
     case 'VERIFICATION_APPROVED':
     case 'VERIFICATION_REJECTED':
