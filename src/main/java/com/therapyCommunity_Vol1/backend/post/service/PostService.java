@@ -24,6 +24,7 @@ import com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
+import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -68,7 +69,7 @@ public class PostService {
     private final PostImageService postImageService;
     private final PostAttachmentService postAttachmentService;
     private final PostVideoService postVideoService;
-    private final com.therapyCommunity_Vol1.backend.follow.service.FollowService followService;
+    private final FollowService followService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
