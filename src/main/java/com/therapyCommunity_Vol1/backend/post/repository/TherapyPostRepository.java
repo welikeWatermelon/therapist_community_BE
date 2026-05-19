@@ -151,6 +151,40 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             Pageable pageable
     );
 
+    // 팔로잉 피드 — 첫 페이지
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.author.id IN :authorIds
+              AND p.visibility IN :visibilities
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<TherapyPost> findFollowingFeed(
+            @Param("authorIds") List<Long> authorIds,
+            @Param("visibilities") List<Visibility> visibilities,
+            Pageable pageable
+    );
+
+    // 팔로잉 피드 — 다음 페이지 (커서 있음)
+    @EntityGraph(attributePaths = "author")
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.author.id IN :authorIds
+              AND p.visibility IN :visibilities
+              AND (p.createdAt < :cursorCreatedAt OR
+                   (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<TherapyPost> findFollowingFeed(
+            @Param("authorIds") List<Long> authorIds,
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
+
     // RELEVANCE 검색 — pg_trgm <% (word_similarity) 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
     // 인기순 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
