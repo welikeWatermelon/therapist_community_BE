@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.follow.repository.FollowRepository;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
@@ -50,8 +51,12 @@ public class FollowService {
         if (!alreadyExists) {
             User follower = userService.findUserOrThrow(currentUserId);
 
-            Follow follow = Follow.create(follower, target);
-            followRepository.save(follow);
+            try {
+                Follow follow = Follow.create(follower, target);
+                followRepository.save(follow);
+            } catch (DataIntegrityViolationException e) {
+                return new FollowStatusResponse(targetUserId, true);
+            }
 
             eventPublisher.publishEvent(NotificationEvent.of(
                     currentUserId, targetUserId,
