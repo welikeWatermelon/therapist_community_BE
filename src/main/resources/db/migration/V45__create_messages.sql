@@ -32,4 +32,3 @@ CREATE INDEX idx_messages_receiver_unread
 CREATE INDEX idx_messages_broadcast_id
     ON messages (broadcast_id)
     WHERE broadcast_id IS NOT NULL;
-
