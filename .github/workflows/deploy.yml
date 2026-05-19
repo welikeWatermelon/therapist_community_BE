@@ -70,7 +70,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters 'commands=[
-              "set -euxo pipefail",
+              "set -eux",
               "IMAGE=771338875653.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest",
               "aws --version",
               "docker --version",
@@ -130,7 +130,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --region ap-northeast-2 \
             --parameters 'commands=[
-              "set -euxo pipefail",
+              "set -eux",
               "IMAGE=771338875653.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest",
               "aws --version",
               "docker --version",
