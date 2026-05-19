@@ -53,7 +53,12 @@ public enum ErrorCode {
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_404", "알림을 찾을 수 없습니다."),
     SSE_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "SSE_500", "SSE 연결 중 오류가 발생했습니다."),
 
-    INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "POST_400_SORT", "이 엔드포인트에서 지원하지 않는 정렬 방식입니다.");
+    INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "POST_400_SORT", "이 엔드포인트에서 지원하지 않는 정렬 방식입니다."),
+
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MESSAGE_404", "쪽지를 찾을 수 없습니다."),
+    MESSAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "MESSAGE_403", "쪽지에 대한 권한이 없습니다."),
+    CANNOT_SEND_MESSAGE_TO_SELF(HttpStatus.BAD_REQUEST, "MESSAGE_400_SELF", "자기 자신에게 쪽지를 보낼 수 없습니다."),
+    BROADCAST_NO_RECIPIENTS(HttpStatus.BAD_REQUEST, "MESSAGE_400_BROADCAST", "공지 쪽지 수신 대상이 없습니다.");
 
     private final HttpStatus status;
     private final String code;
