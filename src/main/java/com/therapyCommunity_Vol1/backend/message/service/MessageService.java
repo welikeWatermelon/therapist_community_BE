@@ -58,6 +58,10 @@ public class MessageService {
         return MessageResponse.from(message);
     }
 
+    // TODO: 공지 전용 테이블 분리 (broadcast_notice + broadcast_read_status)
+    //  현재는 쪽지(Message)로 공지를 발송하므로 유저 수만큼 INSERT가 발생한다.
+    //  유저 규모가 커지면 공지 1행 + 읽음 상태만 lazy 기록하는 구조로 전환할 것.
+    //  분리 시 공지는 쪽지함에서 빠지므로, 관리자 공지 전용 알림/조회 페이지가 별도로 필요하다.
     @Transactional
     public BroadcastResponse broadcastMessage(Long senderId, BroadcastMessageRequest request) {
         User sender = userService.findById(senderId);
