@@ -87,4 +87,42 @@ class TherapyPostSummaryResponseTest {
         assertThat(response.getContentPreview().length()).isEqualTo(203);
     }
 
+    @Test
+    void 줄바꿈이_포함된_본문은_contentPreview에서_줄바꿈이_유지된다() {
+        TherapyPost post = publicPost("첫 번째 줄\n두 번째 줄\n세 번째 줄");
+
+        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, false);
+
+        assertThat(r.getContentPreview()).contains("\n");
+        assertThat(r.getContentPreview()).isEqualTo("첫 번째 줄\n두 번째 줄\n세 번째 줄");
+    }
+
+    @Test
+    void HTML_br태그는_줄바꿈으로_변환된다() {
+        TherapyPost post = publicPost("첫 번째 줄<br>두 번째 줄<br/>세 번째 줄");
+
+        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, false);
+
+        assertThat(r.getContentPreview()).isEqualTo("첫 번째 줄\n두 번째 줄\n세 번째 줄");
+    }
+
+    @Test
+    void 연속_줄바꿈_3개_이상은_2개로_축소된다() {
+        TherapyPost post = publicPost("첫 번째 줄\n\n\n\n두 번째 줄");
+
+        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, false);
+
+        assertThat(r.getContentPreview()).isEqualTo("첫 번째 줄\n\n두 번째 줄");
+    }
+
+    @Test
+    void 본문이_200자_이하면_말줄임이_붙지_않는다() {
+        TherapyPost post = publicPost("짧은 글");
+
+        TherapyPostSummaryResponse r = TherapyPostSummaryResponse.from(post, false);
+
+        assertThat(r.getContentPreview()).isEqualTo("짧은 글");
+        assertThat(r.getContentPreview()).doesNotEndWith("...");
+    }
+
 }
