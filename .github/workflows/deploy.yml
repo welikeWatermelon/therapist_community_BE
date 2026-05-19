@@ -55,120 +55,90 @@ jobs:
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
-      - name: Deploy to EC2 (zero-downtime)
+      - name: Deploy to EC2 staging (SSM)
         if: github.ref == 'refs/heads/main'
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-
-            IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest"
-
-            # 1. ECR 로그인 & 이미지 풀
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
-              docker login --username AWS --password-stdin \
-              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-            docker pull "$IMAGE"
-
-            # 2. 새 컨테이너를 임시 포트(8081)로 실행
-            docker rm -f builders-backend-new || true
-            docker run -d \
-              --name builders-backend-new \
-              --env-file /etc/backend/backend.env \
-              -p 8081:8080 \
-              "$IMAGE"
-
-            # 3. 헬스체크 (최대 60초, 5초 간격)
-            echo "Waiting for new container health check..."
-            for i in $(seq 1 12); do
-              if curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
-                echo "Health check passed on attempt $i"
-                break
-              fi
-              if [ "$i" -eq 12 ]; then
-                echo "Health check failed after 60s — rolling back"
-                echo "Container status before rollback:"
-                docker ps -a --filter "name=builders-backend-new" || true
-                docker inspect builders-backend-new \
-                  --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' || true
-                echo "Recent container logs:"
-                docker logs builders-backend-new || true
-                docker rm -f builders-backend-new || true
-                exit 1
-              fi
-              sleep 5
-            done
-
-            # 4. 기존 컨테이너 종료
-            docker stop builders-backend || true
-            docker rm builders-backend || true
-
-            # 5. 새 컨테이너를 정식 포트(8080)로 교체
-            docker stop builders-backend-new
-            docker rm builders-backend-new
-            docker run -d \
-              --name builders-backend \
-              --env-file /etc/backend/backend.env \
-              -p 8080:8080 \
-              --restart unless-stopped \
-              "$IMAGE"
-
-            echo "Zero-downtime deploy complete"
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids i-0900290d4507a329a \
+            --document-name "AWS-RunShellScript" \
+            --region ap-northeast-2 \
+            --parameters 'commands=[
+              "set -e",
+              "IMAGE=771338875653.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest",
+              "aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 771338875653.dkr.ecr.ap-northeast-2.amazonaws.com",
+              "docker pull $IMAGE",
+              "docker rm -f builders-backend-new || true",
+              "docker run -d --name builders-backend-new --env-file /etc/backend/backend.env -p 8081:8080 $IMAGE",
+              "for i in $(seq 1 12); do curl -sf http://localhost:8081/actuator/health && echo Health check passed && break || { [ $i -eq 12 ] && echo Health check failed && docker rm -f builders-backend-new && exit 1; }; sleep 5; done",
+              "docker stop builders-backend || true",
+              "docker rm builders-backend || true",
+              "docker stop builders-backend-new && docker rm builders-backend-new",
+              "docker run -d --name builders-backend --env-file /etc/backend/backend.env -p 8080:8080 --restart unless-stopped $IMAGE",
+              "echo Zero-downtime deploy complete"
+            ]' \
+            --query 'Command.CommandId' \
+            --output text)
+          echo "SSM Command ID: $COMMAND_ID"
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id $COMMAND_ID \
+              --instance-id i-0900290d4507a329a \
+              --region ap-northeast-2 \
+              --query 'Status' \
+              --output text 2>/dev/null || echo "Pending")
+            echo "Status: $STATUS"
+            if [ "$STATUS" = "Success" ]; then echo "Deploy succeeded!"; break
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "Deploy failed!"
+              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0900290d4507a329a --region ap-northeast-2 --query 'StandardErrorContent' --output text
+              exit 1
+            fi
+            [ "$i" -eq 30 ] && echo "Timeout" && exit 1
+            sleep 10
+          done
   deploy-prod:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/deploy'
     environment: production
     steps:
-      - name: Deploy to EC2 prod (zero-downtime)
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_PROD_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_PROD_SSH_KEY }}
-          script: |
-            set -e
-            IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/therapist-community-backend:latest"
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
-              docker login --username AWS --password-stdin \
-              ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
-            docker pull "$IMAGE"
-            docker rm -f builders-backend-new || true
-            docker run -d \
-              --name builders-backend-new \
-              --env-file /etc/backend/backend.env \
-              -p 8081:8080 \
-              "$IMAGE"
-            echo "Waiting for new container health check..."
-            for i in $(seq 1 12); do
-              if curl -sf http://localhost:8081/actuator/health > /dev/null 2>&1; then
-                echo "Health check passed on attempt $i"
-                break
-              fi
-              if [ "$i" -eq 12 ]; then
-                echo "Health check failed after 60s — rolling back"
-                echo "Container status before rollback:"
-                docker ps -a --filter "name=builders-backend-new" || true
-                docker inspect builders-backend-new \
-                  --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' || true
-                echo "Recent container logs:"
-                docker logs builders-backend-new || true
-                docker rm -f builders-backend-new || true
-                exit 1
-              fi
-              sleep 5
-            done
-            docker stop builders-backend || true
-            docker rm builders-backend || true
-            docker stop builders-backend-new
-            docker rm builders-backend-new
-            docker run -d \
-              --name builders-backend \
-              --env-file /etc/backend/backend.env \
-              -p 8080:8080 \
-              --restart unless-stopped \
-              "$IMAGE"
-            echo "Zero-downtime deploy complete"
+      - name: Deploy to EC2 prod (SSM)
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids i-0086047e1fd4f4743 \
+            --document-name "AWS-RunShellScript" \
+            --region ap-northeast-2 \
+            --parameters 'commands=[
+              "set -e",
+              "IMAGE=771338875653.dkr.ecr.ap-northeast-2.amazonaws.com/therapist-community-backend:latest",
+              "aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 771338875653.dkr.ecr.ap-northeast-2.amazonaws.com",
+              "docker pull $IMAGE",
+              "docker rm -f builders-backend-new || true",
+              "docker run -d --name builders-backend-new --env-file /etc/backend/backend.env -p 8081:8080 $IMAGE",
+              "for i in $(seq 1 12); do curl -sf http://localhost:8081/actuator/health && echo Health check passed && break || { [ $i -eq 12 ] && echo Health check failed && docker rm -f builders-backend-new && exit 1; }; sleep 5; done",
+              "docker stop builders-backend || true",
+              "docker rm builders-backend || true",
+              "docker stop builders-backend-new && docker rm builders-backend-new",
+              "docker run -d --name builders-backend --env-file /etc/backend/backend.env -p 8080:8080 --restart unless-stopped $IMAGE",
+              "echo Zero-downtime deploy complete"
+            ]' \
+            --query 'Command.CommandId' \
+            --output text)
+          echo "SSM Command ID: $COMMAND_ID"
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id $COMMAND_ID \
+              --instance-id i-0086047e1fd4f4743 \
+              --region ap-northeast-2 \
+              --query 'Status' \
+              --output text 2>/dev/null || echo "Pending")
+            echo "Status: $STATUS"
+            if [ "$STATUS" = "Success" ]; then echo "Deploy succeeded!"; break
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "Deploy failed!"
+              aws ssm get-command-invocation --command-id $COMMAND_ID --instance-id i-0086047e1fd4f4743 --region ap-northeast-2 --query 'StandardErrorContent' --output text
+              exit 1
+            fi
+            [ "$i" -eq 30 ] && echo "Timeout" && exit 1
+            sleep 10
+          done

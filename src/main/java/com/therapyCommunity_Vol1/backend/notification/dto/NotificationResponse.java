@@ -15,6 +15,7 @@ public class NotificationResponse {
     private NotificationType type;
     private String content;
     private Long referenceId;
+    private Long postId;
     private Long senderId;
     private String senderNickname;
     private boolean read;
@@ -27,6 +28,7 @@ public class NotificationResponse {
                 notification.getNotificationType(),
                 notification.getContent(),
                 notification.getReferenceId(),
+                notification.getPostId(),
                 notification.getSender() != null ? notification.getSender().getId() : null,
                 notification.getSender() != null ? notification.getSender().getDisplayNickname() : null,
                 notification.isRead(),
