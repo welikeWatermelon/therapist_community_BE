@@ -16,9 +16,11 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     boolean existsByFollowerIdAndFollowingId(Long followerId, Long followingId);
 
-    long countByFollowingId(Long followingId);
+    @Query("SELECT COUNT(f) FROM Follow f WHERE f.following.id = :followingId AND f.follower.deletedAt IS NULL")
+    long countByFollowingId(@Param("followingId") Long followingId);
 
-    long countByFollowerId(Long followerId);
+    @Query("SELECT COUNT(f) FROM Follow f WHERE f.follower.id = :followerId AND f.following.deletedAt IS NULL")
+    long countByFollowerId(@Param("followerId") Long followerId);
 
     @Query(value = "SELECT f FROM Follow f JOIN FETCH f.follower WHERE f.following.id = :userId AND f.follower.deletedAt IS NULL",
            countQuery = "SELECT COUNT(f) FROM Follow f WHERE f.following.id = :userId AND f.follower.deletedAt IS NULL")
