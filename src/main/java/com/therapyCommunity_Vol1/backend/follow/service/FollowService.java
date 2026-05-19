@@ -12,7 +12,7 @@ import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -30,7 +30,7 @@ import java.util.List;
 public class FollowService {
 
     private final FollowRepository followRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -39,8 +39,7 @@ public class FollowService {
             throw new CustomException(ErrorCode.FOLLOW_SELF_NOT_ALLOWED);
         }
 
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User target = userService.findUserOrThrow(targetUserId);
 
         if (target.getRole() != UserRole.THERAPIST) {
             throw new CustomException(ErrorCode.FOLLOW_TARGET_NOT_THERAPIST);
@@ -49,8 +48,7 @@ public class FollowService {
         boolean alreadyExists = followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
 
         if (!alreadyExists) {
-            User follower = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            User follower = userService.findUserOrThrow(currentUserId);
 
             Follow follow = Follow.create(follower, target);
             followRepository.save(follow);

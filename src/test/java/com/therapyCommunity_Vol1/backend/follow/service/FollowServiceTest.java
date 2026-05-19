@@ -10,7 +10,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 class FollowServiceTest {
 
     private FollowRepository followRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private FollowService followService;
 
@@ -37,9 +37,9 @@ class FollowServiceTest {
     @BeforeEach
     void setUp() {
         followRepository = mock(FollowRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        followService = new FollowService(followRepository, userRepository, eventPublisher);
+        followService = new FollowService(followRepository, userService, eventPublisher);
 
         userFollower = User.builder()
                 .id(1L).email("user@test.com").nickname("유저").role(UserRole.USER).build();
@@ -49,9 +49,9 @@ class FollowServiceTest {
 
     @Test
     void 팔로우_성공() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(therapistTarget));
+        when(userService.findUserOrThrow(2L)).thenReturn(therapistTarget);
         when(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).thenReturn(false);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(userFollower));
+        when(userService.findUserOrThrow(1L)).thenReturn(userFollower);
         when(followRepository.save(any(Follow.class))).thenAnswer(inv -> inv.getArgument(0));
 
         FollowStatusResponse response = followService.follow(1L, 2L);
@@ -64,7 +64,7 @@ class FollowServiceTest {
 
     @Test
     void 이미_팔로우중이면_멱등응답() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(therapistTarget));
+        when(userService.findUserOrThrow(2L)).thenReturn(therapistTarget);
         when(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).thenReturn(true);
 
         FollowStatusResponse response = followService.follow(1L, 2L);
@@ -86,7 +86,7 @@ class FollowServiceTest {
     void 치료사가_아닌_대상_팔로우_불가() {
         User normalUser = User.builder()
                 .id(3L).email("normal@test.com").nickname("일반유저").role(UserRole.USER).build();
-        when(userRepository.findById(3L)).thenReturn(Optional.of(normalUser));
+        when(userService.findUserOrThrow(3L)).thenReturn(normalUser);
 
         assertThatThrownBy(() -> followService.follow(1L, 3L))
                 .isInstanceOf(CustomException.class)
