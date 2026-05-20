@@ -50,6 +50,41 @@ class Mp4DurationParserTest {
         assertThat(parser.parse(null, null)).isEmpty();
     }
 
+    @Test
+    void parse_truncatesFractionalSeconds_byDesign() {
+        // 300.999초 → 300 (정수 내림). 인코딩 오차 흡수를 위해 약간의 초과는 의도적으로 허용.
+        byte[] head = concat(box("ftyp", new byte[8]), box("moov", mvhdV0(1000, 300_999)));
+        assertThat(parser.parse(head, new byte[0])).hasValue(300);
+    }
+
+    @Test
+    void parse_durationOverBoundary_returnsCeiledInteger() {
+        // 301.0초 → 301 (정책 거부는 MediaKindPolicy 계층에서 수행)
+        byte[] head = concat(box("ftyp", new byte[8]), box("moov", mvhdV0(1000, 301_000)));
+        assertThat(parser.parse(head, new byte[0])).hasValue(301);
+    }
+
+    @Test
+    void parse_zeroDuration_returnsEmpty() {
+        byte[] head = concat(box("ftyp", new byte[8]), box("moov", mvhdV0(1000, 0)));
+        assertThat(parser.parse(head, new byte[0])).isEmpty();
+    }
+
+    @Test
+    void parse_unsupportedVersion_returnsEmpty() {
+        byte[] p = new byte[100];
+        p[0] = 2; // version 2 (미지원)
+        byte[] head = concat(box("ftyp", new byte[8]), box("moov", box("mvhd", p)));
+        assertThat(parser.parse(head, new byte[0])).isEmpty();
+    }
+
+    @Test
+    void parse_truncatedMvhd_returnsEmpty() {
+        // mvhd 시그니처는 있으나 payload 가 잘려 timescale/duration 을 못 읽음
+        byte[] head = concat(box("ftyp", new byte[8]), box("moov", box("mvhd", new byte[4])));
+        assertThat(parser.parse(head, new byte[0])).isEmpty();
+    }
+
     // --- ISO BMFF fixtures ---
 
     private static byte[] box(String type, byte[] payload) {

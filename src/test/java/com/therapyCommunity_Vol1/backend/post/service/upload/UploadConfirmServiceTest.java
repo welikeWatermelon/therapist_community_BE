@@ -154,6 +154,29 @@ class UploadConfirmServiceTest {
 
         assertThat(response.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(response.getVideo()).isNotNull();
+        // 파싱된 실측 duration(120)이 그대로 영속화 경로로 전달되는지 검증
+        verify(postVideoService).confirmUpload(eq(post), anyString(), eq("v.mp4"), eq("video/mp4"), eq(100 * MB), eq(120));
+        // 비-faststart 대비 tail 도 읽는지 (계약)
+        verify(fileStorageService).getLastBytes(eq(storedKey), anyInt());
+    }
+
+    @Test
+    void confirm_video_throwsWhenNotMp4MagicBytes_beforeParsing() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/videos/7/v.mp4";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("video/mp4", 100 * MB));
+        // 영상으로 위장한 PDF
+        when(fileStorageService.getFirstBytes(eq(storedKey), anyInt())).thenReturn(PDF_MAGIC);
+
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, storedKey, "v.mp4"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_MIME_MISMATCH);
+
+        // magic byte 검증이 duration 파싱보다 먼저 — 파싱은 호출되지 않아야 함
+        verify(mp4DurationParser, never()).parse(any(), any());
+        verify(fileStorageService, never()).copy(anyString(), anyString());
     }
 
     @Test
