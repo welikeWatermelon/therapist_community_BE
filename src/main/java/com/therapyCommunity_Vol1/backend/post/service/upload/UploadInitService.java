@@ -44,7 +44,8 @@ public class UploadInitService {
             MediaKind kind,
             String originalFilename,
             String contentType,
-            long sizeBytes
+            long sizeBytes,
+            Integer durationSec
     ) {
         uploadRateLimiter.checkAndIncrement(currentUserId);
 
@@ -54,6 +55,9 @@ public class UploadInitService {
                 post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         mediaKindPolicy.validateInit(kind, originalFilename, contentType, sizeBytes);
+        if (kind == MediaKind.VIDEO) {
+            mediaKindPolicy.validateVideoDuration(durationSec);
+        }
 
         if (currentCount(kind, postId) >= mediaKindPolicy.perPostLimit(kind)) {
             throw new CustomException(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);

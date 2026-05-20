@@ -46,7 +46,8 @@ public class PostUploadController {
                 request.getKind(),
                 request.getOriginalFilename(),
                 request.getContentType(),
-                request.getSizeBytes()
+                request.getSizeBytes(),
+                request.getDurationSec()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }

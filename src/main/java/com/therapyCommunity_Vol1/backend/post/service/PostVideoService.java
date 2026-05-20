@@ -91,14 +91,16 @@ public class PostVideoService {
             String storedPath,
             String originalFilename,
             String contentType,
-            long sizeBytes
+            long sizeBytes,
+            Integer durationSeconds
     ) {
         TherapyPostVideo video = TherapyPostVideo.create(
                 post,
                 storedPath,
                 originalFilename,
                 contentType,
-                sizeBytes
+                sizeBytes,
+                durationSeconds
         );
         TherapyPostVideo saved = therapyPostVideoRepository.save(video);
         return toResponse(saved);

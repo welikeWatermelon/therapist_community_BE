@@ -18,12 +18,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.OptionalInt;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UploadConfirmService {
+
+    private static final int MP4_PROBE_BYTES = 1024 * 1024;
 
     private final ActivePostFinder activePostFinder;
     private final PostVisibilityAccessPolicy visibilityPolicy;
@@ -32,6 +35,7 @@ public class UploadConfirmService {
     private final FileStorageService fileStorageService;
     private final UploadInitService uploadInitService;
     private final MagicByteValidator magicByteValidator;
+    private final Mp4DurationParser mp4DurationParser;
 
     private final PostImageService postImageService;
     private final PostAttachmentService postAttachmentService;
@@ -61,7 +65,8 @@ public class UploadConfirmService {
             throw new CustomException(ErrorCode.UPLOAD_NOT_FOUND_IN_S3);
         }
 
-        byte[] firstBytes = fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES);
+        int firstBytesLen = kind == MediaKind.VIDEO ? MP4_PROBE_BYTES : MagicByteValidator.READ_BYTES;
+        byte[] firstBytes = fileStorageService.getFirstBytes(storedKey, firstBytesLen);
         magicByteValidator.validate(kind, firstBytes);
 
         String resolvedFilename = (originalFilename == null || originalFilename.isBlank())
@@ -70,6 +75,17 @@ public class UploadConfirmService {
 
         // S3 의 실제 size/contentType 으로 정책 재검증 (클라가 init 에서 신고한 값 위·변조 방어).
         mediaKindPolicy.validateInit(kind, resolvedFilename, meta.contentType(), meta.sizeBytes());
+
+        Integer durationSeconds = null;
+        if (kind == MediaKind.VIDEO) {
+            byte[] lastBytes = fileStorageService.getLastBytes(storedKey, MP4_PROBE_BYTES);
+            OptionalInt parsedDuration = mp4DurationParser.parse(firstBytes, lastBytes);
+            if (parsedDuration.isEmpty()) {
+                throw new CustomException(ErrorCode.UPLOAD_VIDEO_DURATION_INVALID);
+            }
+            mediaKindPolicy.validateVideoDuration(parsedDuration.getAsInt());
+            durationSeconds = parsedDuration.getAsInt();
+        }
 
         if (uploadInitService.currentCount(kind, postId) >= mediaKindPolicy.perPostLimit(kind)) {
             throw new CustomException(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);
@@ -87,7 +103,7 @@ public class UploadConfirmService {
                 case ATTACHMENT -> UploadConfirmResponse.ofAttachment(
                         postAttachmentService.confirmUpload(post, finalKey, resolvedFilename, meta.contentType(), meta.sizeBytes()));
                 case VIDEO -> UploadConfirmResponse.ofVideo(
-                        postVideoService.confirmUpload(post, finalKey, resolvedFilename, meta.contentType(), meta.sizeBytes()));
+                        postVideoService.confirmUpload(post, finalKey, resolvedFilename, meta.contentType(), meta.sizeBytes(), durationSeconds));
             };
         } catch (RuntimeException e) {
             safeDelete(finalKey);

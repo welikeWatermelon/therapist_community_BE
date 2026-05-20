@@ -70,4 +70,12 @@ public interface FileStorageService {
     default byte[] getFirstBytes(String storedPath, int maxBytes) {
         return new byte[0];
     }
+
+    /**
+     * 객체의 마지막 maxBytes 바이트를 반환. MP4 mvhd 가 파일 끝에 있는 비-faststart 영상에서 사용.
+     * 미지원/오류 시 빈 배열 반환.
+     */
+    default byte[] getLastBytes(String storedPath, int maxBytes) {
+        return new byte[0];
+    }
 }

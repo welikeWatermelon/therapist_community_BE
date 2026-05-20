@@ -78,7 +78,7 @@ class PostUploadControllerTest {
 
     @Test
     void init_returns201_withUploadUrlAndStoredKey() throws Exception {
-        when(uploadInitService.init(anyLong(), any(), anyLong(), any(), any(), any(), anyLong()))
+        when(uploadInitService.init(anyLong(), any(), anyLong(), any(), any(), any(), anyLong(), any()))
                 .thenReturn(new UploadInitResponse(
                         "https://s3.example.com/signed",
                         "uploads-pending/images/10/abc.jpg",
@@ -98,7 +98,7 @@ class PostUploadControllerTest {
                 .andExpect(jsonPath("$.data.storedKey").value("uploads-pending/images/10/abc.jpg"));
 
         verify(uploadInitService).init(1L, UserRole.THERAPIST, 10L, MediaKind.IMAGE,
-                "photo.jpg", "image/jpeg", 102400L);
+                "photo.jpg", "image/jpeg", 102400L, null);
     }
 
     @Test

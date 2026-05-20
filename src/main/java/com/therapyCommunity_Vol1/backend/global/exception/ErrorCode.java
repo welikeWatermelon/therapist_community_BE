@@ -50,6 +50,8 @@ public enum ErrorCode {
     UPLOAD_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "UPLOAD_429_RATE", "업로드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     UPLOAD_DAILY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "UPLOAD_429_DAILY", "오늘의 업로드 한도를 초과했습니다."),
     UPLOAD_MIME_MISMATCH(HttpStatus.BAD_REQUEST, "UPLOAD_400_MIME", "파일 내용과 선언된 타입이 일치하지 않습니다."),
+    UPLOAD_VIDEO_DURATION_EXCEEDED(HttpStatus.BAD_REQUEST, "UPLOAD_400_VIDEO_DURATION", "영상 길이가 5분 제한을 초과했습니다."),
+    UPLOAD_VIDEO_DURATION_INVALID(HttpStatus.BAD_REQUEST, "UPLOAD_400_VIDEO_DURATION_INVALID", "영상 길이 정보를 확인할 수 없습니다."),
 
     ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429", "로그인 시도가 너무 많습니다. 30분 후 다시 시도해주세요."),
 

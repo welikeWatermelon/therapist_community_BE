@@ -24,10 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.OptionalInt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,6 +48,7 @@ class UploadConfirmServiceTest {
     private FileStorageService fileStorageService;
     private UploadInitService uploadInitService;
     private MagicByteValidator magicByteValidator;
+    private Mp4DurationParser mp4DurationParser;
     private PostImageService postImageService;
     private PostAttachmentService postAttachmentService;
     private PostVideoService postVideoService;
@@ -73,6 +76,7 @@ class UploadConfirmServiceTest {
         fileStorageService = mock(FileStorageService.class);
         uploadInitService = mock(UploadInitService.class);
         magicByteValidator = new MagicByteValidator();
+        mp4DurationParser = mock(Mp4DurationParser.class);
         postImageService = mock(PostImageService.class);
         postAttachmentService = mock(PostAttachmentService.class);
         postVideoService = mock(PostVideoService.class);
@@ -85,6 +89,7 @@ class UploadConfirmServiceTest {
                 fileStorageService,
                 uploadInitService,
                 magicByteValidator,
+                mp4DurationParser,
                 postImageService,
                 postAttachmentService,
                 postVideoService
@@ -137,16 +142,54 @@ class UploadConfirmServiceTest {
         String storedKey = "uploads-pending/videos/7/v.mp4";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("video/mp4", 100 * MB));
-        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(MP4_MAGIC);
+        when(fileStorageService.getFirstBytes(eq(storedKey), anyInt())).thenReturn(MP4_MAGIC);
+        when(fileStorageService.getLastBytes(eq(storedKey), anyInt())).thenReturn(new byte[0]);
+        when(mp4DurationParser.parse(any(), any())).thenReturn(OptionalInt.of(120));
         when(uploadInitService.currentCount(MediaKind.VIDEO, 7L)).thenReturn(0);
-        when(postVideoService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
-                .thenReturn(new PostVideoResponse(300L, "url", null, "v.mp4", "video/mp4", 100L, null, LocalDateTime.now()));
+        when(postVideoService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong(), any(Integer.class)))
+                .thenReturn(new PostVideoResponse(300L, "url", null, "v.mp4", "video/mp4", 100L, 120, LocalDateTime.now()));
 
         UploadConfirmResponse response = service.confirm(
                 1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, storedKey, "v.mp4");
 
         assertThat(response.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(response.getVideo()).isNotNull();
+    }
+
+    @Test
+    void confirm_video_rejectsWhenDurationParseFails() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/videos/7/v.mp4";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("video/mp4", 100 * MB));
+        when(fileStorageService.getFirstBytes(eq(storedKey), anyInt())).thenReturn(MP4_MAGIC);
+        when(fileStorageService.getLastBytes(eq(storedKey), anyInt())).thenReturn(new byte[0]);
+        when(mp4DurationParser.parse(any(), any())).thenReturn(OptionalInt.empty());
+
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, storedKey, "v.mp4"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_INVALID);
+
+        verify(fileStorageService, never()).copy(anyString(), anyString());
+    }
+
+    @Test
+    void confirm_video_rejectsWhenActualDurationOver300() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/videos/7/v.mp4";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("video/mp4", 100 * MB));
+        when(fileStorageService.getFirstBytes(eq(storedKey), anyInt())).thenReturn(MP4_MAGIC);
+        when(fileStorageService.getLastBytes(eq(storedKey), anyInt())).thenReturn(new byte[0]);
+        when(mp4DurationParser.parse(any(), any())).thenReturn(OptionalInt.of(301));
+
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, storedKey, "v.mp4"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_EXCEEDED);
+
+        verify(fileStorageService, never()).copy(anyString(), anyString());
     }
 
     @Test

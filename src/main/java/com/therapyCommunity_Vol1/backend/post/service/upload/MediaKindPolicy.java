@@ -23,12 +23,13 @@ public class MediaKindPolicy {
             "application/octet-stream"
     );
 
-    private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "mov", "webm");
-    private static final Set<String> VIDEO_MIME_TYPES = Set.of("video/mp4", "video/quicktime", "video/webm");
+    private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "mov");
+    private static final Set<String> VIDEO_MIME_TYPES = Set.of("video/mp4", "video/quicktime");
 
     private static final long IMAGE_MAX_BYTES = 10 * MB;
     private static final long ATTACHMENT_MAX_BYTES = 50 * MB;
-    private static final long VIDEO_MAX_BYTES = 200 * MB;
+    private static final long VIDEO_MAX_BYTES = 512 * MB;
+    private static final int VIDEO_MAX_DURATION_SEC = 300;
 
     private static final int IMAGE_PER_POST_LIMIT = 10;
     private static final int ATTACHMENT_PER_POST_LIMIT = 5;
@@ -98,6 +99,15 @@ public class MediaKindPolicy {
             case ATTACHMENT -> ATTACHMENT_MAX_BYTES;
             case VIDEO -> VIDEO_MAX_BYTES;
         };
+    }
+
+    public void validateVideoDuration(Integer durationSec) {
+        if (durationSec == null || durationSec <= 0) {
+            throw new CustomException(ErrorCode.UPLOAD_VIDEO_DURATION_INVALID);
+        }
+        if (durationSec > VIDEO_MAX_DURATION_SEC) {
+            throw new CustomException(ErrorCode.UPLOAD_VIDEO_DURATION_EXCEEDED);
+        }
     }
 
     public String extractExtension(String originalFilename) {

@@ -43,13 +43,15 @@ public class TherapyPostVideo extends BaseEntity {
             String storedPath,
             String originalFilename,
             String contentType,
-            long sizeBytes
+            long sizeBytes,
+            Integer durationSeconds
     ) {
         this.post = post;
         this.storedPath = storedPath;
         this.originalFilename = originalFilename;
         this.contentType = contentType;
         this.sizeBytes = sizeBytes;
+        this.durationSeconds = durationSeconds;
     }
 
     public static TherapyPostVideo create(
@@ -57,8 +59,9 @@ public class TherapyPostVideo extends BaseEntity {
             String storedPath,
             String originalFilename,
             String contentType,
-            long sizeBytes
+            long sizeBytes,
+            Integer durationSeconds
     ) {
-        return new TherapyPostVideo(post, storedPath, originalFilename, contentType, sizeBytes);
+        return new TherapyPostVideo(post, storedPath, originalFilename, contentType, sizeBytes, durationSeconds);
     }
 }

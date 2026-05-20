@@ -20,7 +20,7 @@ public class MagicByteValidator {
         boolean valid = switch (kind) {
             case IMAGE -> isJpeg(firstBytes) || isPng(firstBytes) || isWebP(firstBytes);
             case ATTACHMENT -> isPdf(firstBytes) || isZipBased(firstBytes) || isOleCompound(firstBytes) || isHwp5(firstBytes);
-            case VIDEO -> isMp4orMov(firstBytes) || isWebM(firstBytes);
+            case VIDEO -> isMp4orMov(firstBytes);
         };
         if (!valid) {
             throw new CustomException(ErrorCode.UPLOAD_MIME_MISMATCH);
@@ -69,10 +69,5 @@ public class MagicByteValidator {
     // ftyp box at offset 4: MP4 / MOV
     private boolean isMp4orMov(byte[] b) {
         return b.length >= 8 && b[4] == 0x66 && b[5] == 0x74 && b[6] == 0x79 && b[7] == 0x70;
-    }
-
-    // EBML header: 1A 45 DF A3
-    private boolean isWebM(byte[] b) {
-        return b[0] == 0x1A && b[1] == 0x45 && b[2] == (byte) 0xDF && b[3] == (byte) 0xA3;
     }
 }

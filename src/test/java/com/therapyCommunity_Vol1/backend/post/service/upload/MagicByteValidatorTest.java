@@ -88,8 +88,10 @@ class MagicByteValidatorTest {
     }
 
     @Test
-    void validate_webm_passes() {
-        assertThatCode(() -> validator.validate(MediaKind.VIDEO, WEBM)).doesNotThrowAnyException();
+    void validate_webm_throws() {
+        assertThatThrownBy(() -> validator.validate(MediaKind.VIDEO, WEBM))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_MIME_MISMATCH);
     }
 
     @Test

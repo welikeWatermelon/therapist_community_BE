@@ -70,10 +70,16 @@ class MediaKindPolicyTest {
     }
 
     @Test
-    void validateInit_video_accepts_mp4_mov_webm() {
+    void validateInit_video_accepts_mp4_mov() {
         policy.validateInit(MediaKind.VIDEO, "v.mp4", "video/mp4", 100 * MB);
         policy.validateInit(MediaKind.VIDEO, "v.mov", "video/quicktime", 100 * MB);
-        policy.validateInit(MediaKind.VIDEO, "v.webm", "video/webm", 100 * MB);
+    }
+
+    @Test
+    void validateInit_video_rejects_webm() {
+        assertThatThrownBy(() -> policy.validateInit(MediaKind.VIDEO, "v.webm", "video/webm", 100 * MB))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_POST_VIDEO);
     }
 
     @Test
@@ -84,10 +90,38 @@ class MediaKindPolicyTest {
     }
 
     @Test
-    void validateInit_video_rejects_size_over_200mb() {
-        assertThatThrownBy(() -> policy.validateInit(MediaKind.VIDEO, "v.mp4", "video/mp4", 201 * MB))
+    void validateInit_video_accepts_size_up_to_512mb() {
+        policy.validateInit(MediaKind.VIDEO, "v.mp4", "video/mp4", 512 * MB);
+    }
+
+    @Test
+    void validateInit_video_rejects_size_over_512mb() {
+        assertThatThrownBy(() -> policy.validateInit(MediaKind.VIDEO, "v.mp4", "video/mp4", 513 * MB))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_POST_VIDEO);
+    }
+
+    @Test
+    void validateVideoDuration_accepts_up_to_300s() {
+        policy.validateVideoDuration(1);
+        policy.validateVideoDuration(300);
+    }
+
+    @Test
+    void validateVideoDuration_rejects_over_300s() {
+        assertThatThrownBy(() -> policy.validateVideoDuration(301))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_EXCEEDED);
+    }
+
+    @Test
+    void validateVideoDuration_rejects_null_or_zero() {
+        assertThatThrownBy(() -> policy.validateVideoDuration(null))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_INVALID);
+        assertThatThrownBy(() -> policy.validateVideoDuration(0))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_INVALID);
     }
 
     @Test
@@ -120,7 +154,7 @@ class MediaKindPolicyTest {
     @CsvSource({
             "IMAGE,10",
             "ATTACHMENT,50",
-            "VIDEO,200"
+            "VIDEO,512"
     })
     void perFileLimitMatchesPolicy(String kind, long mb) {
         assertThat(policy.perFileLimitBytes(MediaKind.valueOf(kind))).isEqualTo(mb * MB);

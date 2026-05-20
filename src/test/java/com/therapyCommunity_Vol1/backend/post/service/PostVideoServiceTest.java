@@ -93,10 +93,11 @@ class PostVideoServiceTest {
             return v;
         });
 
-        PostVideoResponse response = service.confirmUpload(post, "post-videos/x.mp4", "v.mp4", "video/mp4", 100L);
+        PostVideoResponse response = service.confirmUpload(post, "post-videos/x.mp4", "v.mp4", "video/mp4", 100L, 120);
 
         assertThat(response.getId()).isEqualTo(999L);
         assertThat(response.getOriginalFilename()).isEqualTo("v.mp4");
+        assertThat(response.getDurationSeconds()).isEqualTo(120);
         verify(videoRepository).save(any(TherapyPostVideo.class));
     }
 
@@ -134,7 +135,7 @@ class PostVideoServiceTest {
     }
 
     private TherapyPostVideo video(Long id, TherapyPost post) {
-        TherapyPostVideo v = TherapyPostVideo.create(post, "post-videos/v.mp4", "v.mp4", "video/mp4", 100L);
+        TherapyPostVideo v = TherapyPostVideo.create(post, "post-videos/v.mp4", "v.mp4", "video/mp4", 100L, 120);
         ReflectionTestUtils.setField(v, "id", id);
         return v;
     }

@@ -82,7 +82,7 @@ class UploadInitServiceTest {
                 .thenReturn("https://s3.example.com/signed");
 
         UploadInitResponse response = service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "photo.jpg", "image/jpeg", 5 * MB);
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "photo.jpg", "image/jpeg", 5 * MB, null);
 
         assertThat(response.getUploadUrl()).isEqualTo("https://s3.example.com/signed");
         assertThat(response.getStoredKey()).startsWith("uploads-pending/images/7/");
@@ -99,7 +99,7 @@ class UploadInitServiceTest {
                 .validateAuthorOrAdmin(anyLong(), anyLong(), eq(UserRole.THERAPIST), eq(ErrorCode.POST_ACCESS_DENIED));
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.POST_ACCESS_DENIED);
 
@@ -114,7 +114,7 @@ class UploadInitServiceTest {
                 .when(visibilityPolicy).checkAccess(post, UserRole.USER);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.USER, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                1L, UserRole.USER, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
     }
@@ -125,7 +125,7 @@ class UploadInitServiceTest {
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 11 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 11 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_POST_IMAGE);
     }
@@ -136,7 +136,7 @@ class UploadInitServiceTest {
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.gif", "image/gif", 1 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.gif", "image/gif", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_POST_IMAGE);
     }
@@ -148,7 +148,7 @@ class UploadInitServiceTest {
         when(imageRepository.countByPostId(7L)).thenReturn(10);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);
     }
@@ -160,9 +160,48 @@ class UploadInitServiceTest {
         when(videoRepository.countByPostId(7L)).thenReturn(1);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, "v.mp4", "video/mp4", 100 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, "v.mp4", "video/mp4", 100 * MB, 120))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    void init_video_rejectsWhenDurationNull() {
+        TherapyPost post = post(7L, user(1L));
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+
+        assertThatThrownBy(() -> service.init(
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, "v.mp4", "video/mp4", 100 * MB, null))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_INVALID);
+
+        verify(fileStorageService, never()).presignPut(anyString(), anyString(), org.mockito.ArgumentMatchers.any(Duration.class));
+    }
+
+    @Test
+    void init_video_rejectsWhenDurationOver300() {
+        TherapyPost post = post(7L, user(1L));
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+
+        assertThatThrownBy(() -> service.init(
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, "v.mp4", "video/mp4", 100 * MB, 301))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_VIDEO_DURATION_EXCEEDED);
+    }
+
+    @Test
+    void init_video_acceptsValidDuration() {
+        TherapyPost post = post(7L, user(1L));
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(videoRepository.countByPostId(7L)).thenReturn(0);
+        when(fileStorageService.presignPut(anyString(), eq("video/mp4"), eq(UploadInitService.UPLOAD_PRESIGN_TTL)))
+                .thenReturn("https://signed");
+
+        UploadInitResponse response = service.init(
+                1L, UserRole.THERAPIST, 7L, MediaKind.VIDEO, "v.mp4", "video/mp4", 100 * MB, 300);
+
+        assertThat(response.getUploadUrl()).isEqualTo("https://signed");
+        assertThat(response.getStoredKey()).startsWith("uploads-pending/videos/7/");
     }
 
     @Test
@@ -174,7 +213,7 @@ class UploadInitServiceTest {
                 .thenReturn(null);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.FILE_STORAGE_ERROR);
     }
@@ -188,7 +227,7 @@ class UploadInitServiceTest {
                 .thenReturn("https://signed");
 
         UploadInitResponse response = service.init(
-                1L, UserRole.THERAPIST, 99L, MediaKind.ATTACHMENT, "doc.pdf", "application/pdf", 1 * MB);
+                1L, UserRole.THERAPIST, 99L, MediaKind.ATTACHMENT, "doc.pdf", "application/pdf", 1 * MB, null);
 
         assertThat(response.getStoredKey()).matches("uploads-pending/attachments/99/[A-Fa-f0-9-]+\\.pdf");
     }
@@ -199,7 +238,7 @@ class UploadInitServiceTest {
                 .when(uploadRateLimiter).checkAndIncrement(1L);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_RATE_LIMIT_EXCEEDED);
 
@@ -212,7 +251,7 @@ class UploadInitServiceTest {
                 .when(uploadRateLimiter).checkAndIncrement(1L);
 
         assertThatThrownBy(() -> service.init(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_DAILY_LIMIT_EXCEEDED);
     }

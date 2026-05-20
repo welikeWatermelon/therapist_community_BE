@@ -242,6 +242,23 @@ public class S3FileStorageService implements FileStorageService {
         }
     }
 
+    @Override
+    public byte[] getLastBytes(String storedPath, int maxBytes) {
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(storedPath)
+                    .range("bytes=-" + maxBytes)
+                    .build();
+            return s3Client.getObjectAsBytes(request).asByteArray();
+        } catch (NoSuchKeyException e) {
+            return new byte[0];
+        } catch (Exception e) {
+            log.warn("S3 getLastBytes failed: storedPath={}", storedPath, e);
+            return new byte[0];
+        }
+    }
+
     private StoredFileInfo store(MultipartFile file, String directory) {
         String originalFilename = file.getOriginalFilename() != null
                 ? file.getOriginalFilename()
