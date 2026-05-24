@@ -46,6 +46,9 @@ public class UploadConfirmService {
             String storedKey,
             String originalFilename
     ) {
+        log.info("upload confirm received: userId={}, postId={}, kind={}, storedKey={}",
+                currentUserId, postId, kind, storedKey);
+
         UploadKey parsed = UploadKey.parse(storedKey);
         if (parsed.kind() != kind || !parsed.postId().equals(postId)) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
@@ -97,6 +100,9 @@ public class UploadConfirmService {
         // pending 객체는 lifecycle rule(24h) 이 정리하지만, 정상 케이스는 즉시 삭제해 비용/혼선 방지.
         // delete 실패는 best-effort.
         safeDelete(storedKey);
+
+        log.info("upload confirm success: userId={}, postId={}, kind={}, storedKey={}, finalKey={}",
+                currentUserId, postId, kind, storedKey, finalKey);
 
         return response;
     }
