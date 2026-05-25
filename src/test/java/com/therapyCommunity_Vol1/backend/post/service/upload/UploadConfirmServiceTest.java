@@ -21,9 +21,11 @@ import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -111,6 +113,72 @@ class UploadConfirmServiceTest {
         assertThat(response.getVideo()).isNull();
         verify(fileStorageService).copy(eq(storedKey), anyString());
         verify(fileStorageService).delete(storedKey);
+    }
+
+    @Test
+    void confirm_image_idempotent_returnsExistingAndSkipsS3WhenAlreadyConfirmed() {
+        // 같은 storedKey 로 confirm 재시도 (첫 성공 후 응답 유실 → FE 재시도).
+        // finalKey 는 storedKey 의 filename 으로 결정적 생성: post-images/abc.jpg
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        PostImageResponse existing = new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now());
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.of(existing));
+
+        UploadConfirmResponse response = service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg");
+
+        // 첫 성공과 동일한 결과를 에러·중복 없이 반환
+        assertThat(response.getKind()).isEqualTo(MediaKind.IMAGE);
+        assertThat(response.getImage()).isEqualTo(existing);
+        // S3 미접근 + persist 미호출 (pending 이 이미 삭제됐어도 안전)
+        verify(fileStorageService, never()).headObject(anyString());
+        verify(fileStorageService, never()).copy(anyString(), anyString());
+        verify(postImageService, never()).confirmUpload(any(), anyString(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    void confirm_image_race_returnsExistingWhenUniqueViolationOnInsert() {
+        // 동시 confirm: 조기 조회는 miss(아직 영속 전) → copy/persist 진행 → 다른 요청이 같은
+        // finalKey 로 먼저 INSERT 해 유니크 위반(DataIntegrityViolation) → finalKey 삭제 없이
+        // 기존 레코드 재조회해 멱등 반환.
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
+        when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
+        PostImageResponse winner = new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now());
+        // 조기 조회 miss → race 후 재조회 hit
+        when(postImageService.findByStoredPath("post-images/abc.jpg"))
+                .thenReturn(Optional.empty(), Optional.of(winner));
+        when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
+                .thenThrow(new DataIntegrityViolationException("duplicate stored_path"));
+
+        UploadConfirmResponse response = service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg");
+
+        assertThat(response.getImage()).isEqualTo(winner);
+        // finalKey 는 winner 레코드가 참조하므로 삭제하면 안 됨
+        verify(fileStorageService, never()).delete("post-images/abc.jpg");
+    }
+
+    @Test
+    void confirm_image_usesDeterministicFinalKeyFromStoredKeyFilename() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
+        when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
+        when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
+                .thenReturn(new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now()));
+
+        service.confirm(1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg");
+
+        // 결정적: post-images/{storedKey filename} (random UUID 아님)
+        verify(fileStorageService).copy(storedKey, "post-images/abc.jpg");
+        verify(postImageService).confirmUpload(any(), eq("post-images/abc.jpg"), anyString(), anyString(), anyLong());
     }
 
     @Test

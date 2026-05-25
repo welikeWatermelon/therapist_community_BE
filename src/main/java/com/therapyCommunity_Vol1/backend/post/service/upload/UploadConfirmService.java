@@ -6,6 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
+import com.therapyCommunity_Vol1.backend.post.dto.PostImageResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UploadConfirmResponse;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.post.service.PostAttachmentService;
@@ -15,10 +16,11 @@ import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -59,6 +61,20 @@ public class UploadConfirmService {
         resourceAccessValidator.validateAuthorOrAdmin(
                 post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
+        // finalKey 는 storedKey 의 filename 으로 결정적 생성 → 같은 storedKey 재시도 시 항상 동일.
+        String finalKey = mediaKindPolicy.finalDirectory(kind) + "/" + parsed.filename();
+
+        // 멱등: 이미 confirm 되어 finalKey 가 영속됐으면 S3·persist 스킵하고 기존 결과 반환.
+        // (성공 후 pending 이 삭제된 상태의 재시도를 에러 없이 처리.)
+        if (kind == MediaKind.IMAGE) {
+            Optional<PostImageResponse> existing = postImageService.findByStoredPath(finalKey);
+            if (existing.isPresent()) {
+                log.info("upload confirm idempotent hit: userId={}, postId={}, kind={}, storedKey={}, finalKey={}",
+                        currentUserId, postId, kind, storedKey, finalKey);
+                return UploadConfirmResponse.ofImage(existing.get());
+            }
+        }
+
         S3ObjectMeta meta = fileStorageService.headObject(storedKey);
         if (meta == null) {
             throw new CustomException(ErrorCode.UPLOAD_NOT_FOUND_IN_S3);
@@ -78,8 +94,6 @@ public class UploadConfirmService {
             throw new CustomException(ErrorCode.POST_MEDIA_LIMIT_EXCEEDED);
         }
 
-        String finalKey = mediaKindPolicy.finalDirectory(kind) + "/" + UUID.randomUUID() + extOrEmpty(parsed.filename());
-
         fileStorageService.copy(storedKey, finalKey);
 
         UploadConfirmResponse response;
@@ -92,6 +106,20 @@ public class UploadConfirmService {
                 case VIDEO -> UploadConfirmResponse.ofVideo(
                         postVideoService.confirmUpload(post, finalKey, resolvedFilename, meta.contentType(), meta.sizeBytes()));
             };
+        } catch (DataIntegrityViolationException e) {
+            // 동시 confirm race — 다른 요청이 같은 finalKey 로 먼저 persist(stored_path 유니크 위반).
+            // finalKey 는 그 레코드가 참조하므로 삭제하지 않고, 기존 결과를 재조회해 멱등 반환.
+            if (kind == MediaKind.IMAGE) {
+                Optional<PostImageResponse> existing = postImageService.findByStoredPath(finalKey);
+                if (existing.isPresent()) {
+                    log.info("upload confirm idempotent (race): userId={}, postId={}, kind={}, storedKey={}, finalKey={}",
+                            currentUserId, postId, kind, storedKey, finalKey);
+                    safeDelete(storedKey);
+                    return UploadConfirmResponse.ofImage(existing.get());
+                }
+            }
+            safeDelete(finalKey);
+            throw e;
         } catch (RuntimeException e) {
             safeDelete(finalKey);
             throw e;
@@ -105,14 +133,6 @@ public class UploadConfirmService {
                 currentUserId, postId, kind, storedKey, finalKey);
 
         return response;
-    }
-
-    private String extOrEmpty(String filename) {
-        int idx = filename.lastIndexOf('.');
-        if (idx < 0 || idx == filename.length() - 1) {
-            return "";
-        }
-        return filename.substring(idx);
     }
 
     private void safeDelete(String key) {
