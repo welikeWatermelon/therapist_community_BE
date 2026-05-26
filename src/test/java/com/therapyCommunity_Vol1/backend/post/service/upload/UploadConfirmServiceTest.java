@@ -138,28 +138,26 @@ class UploadConfirmServiceTest {
     }
 
     @Test
-    void confirm_image_race_returnsExistingWhenUniqueViolationOnInsert() {
-        // 동시 confirm: 조기 조회는 miss(아직 영속 전) → copy/persist 진행 → 다른 요청이 같은
-        // finalKey 로 먼저 INSERT 해 유니크 위반(DataIntegrityViolation) → finalKey 삭제 없이
-        // 기존 레코드 재조회해 멱등 반환.
+    void confirm_image_uniqueConflict_rethrowsAndPreservesSharedFinalKey() {
+        // 거의 불가능한 동시 race: 진입 단락 miss 후 persist 중 다른 요청이 같은 finalKey 로 먼저
+        // INSERT → stored_path 유니크 위반. PG는 위반 후 트랜잭션을 abort 하므로 같은 tx 안 재조회는
+        // 불가 → 흡수하지 않고 깔끔히 실패시킨다(중복 0). 단 finalKey 는 승자 레코드가 참조하므로
+        // 절대 삭제하면 안 된다. 이 클라의 재시도는 진입부 findByStoredPath 단락으로 멱등 복구.
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty()); // 진입 단락 miss
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
         when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
-        PostImageResponse winner = new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now());
-        // 조기 조회 miss → race 후 재조회 hit
-        when(postImageService.findByStoredPath("post-images/abc.jpg"))
-                .thenReturn(Optional.empty(), Optional.of(winner));
         when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
                 .thenThrow(new DataIntegrityViolationException("duplicate stored_path"));
 
-        UploadConfirmResponse response = service.confirm(
-                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg");
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg"))
+                .isInstanceOf(DataIntegrityViolationException.class);
 
-        assertThat(response.getImage()).isEqualTo(winner);
-        // finalKey 는 winner 레코드가 참조하므로 삭제하면 안 됨
+        // 공유 finalKey(승자 레코드가 참조) 는 삭제 금지
         verify(fileStorageService, never()).delete("post-images/abc.jpg");
     }
 

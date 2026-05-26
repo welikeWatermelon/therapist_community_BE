@@ -107,18 +107,12 @@ public class UploadConfirmService {
                         postVideoService.confirmUpload(post, finalKey, resolvedFilename, meta.contentType(), meta.sizeBytes()));
             };
         } catch (DataIntegrityViolationException e) {
-            // 동시 confirm race — 다른 요청이 같은 finalKey 로 먼저 persist(stored_path 유니크 위반).
-            // finalKey 는 그 레코드가 참조하므로 삭제하지 않고, 기존 결과를 재조회해 멱등 반환.
-            if (kind == MediaKind.IMAGE) {
-                Optional<PostImageResponse> existing = postImageService.findByStoredPath(finalKey);
-                if (existing.isPresent()) {
-                    log.info("upload confirm idempotent (race): userId={}, postId={}, kind={}, storedKey={}, finalKey={}",
-                            currentUserId, postId, kind, storedKey, finalKey);
-                    safeDelete(storedKey);
-                    return UploadConfirmResponse.ofImage(existing.get());
-                }
-            }
-            safeDelete(finalKey);
+            // 거의 불가능한 동시 race: 다른 요청이 같은 finalKey 로 먼저 저장해 stored_path 유니크 위반.
+            // finalKey 는 그 레코드(승자)가 참조하므로 절대 삭제하지 않고 그대로 실패시킨다(중복 0 보장).
+            // PG는 위반 후 트랜잭션을 abort 하므로 같은 tx 안에서 재조회로 흡수하지 않는다.
+            // 이 클라이언트가 재시도하면 진입부 findByStoredPath 단락으로 멱등 복구된다.
+            log.warn("upload confirm unique conflict (concurrent retry?): postId={}, kind={}, storedKey={}, finalKey={}",
+                    postId, kind, storedKey, finalKey);
             throw e;
         } catch (RuntimeException e) {
             safeDelete(finalKey);
