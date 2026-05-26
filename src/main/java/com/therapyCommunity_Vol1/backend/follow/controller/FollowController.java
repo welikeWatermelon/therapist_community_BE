@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.follow.controller;
 
 import com.therapyCommunity_Vol1.backend.follow.dto.FollowStatusResponse;
+import com.therapyCommunity_Vol1.backend.follow.service.FollowFacade;
 import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class FollowController {
 
     private final FollowService followService;
+    private final FollowFacade followFacade;
 
     @Operation(summary = "팔로우 상태 조회")
     @GetMapping
@@ -49,7 +51,7 @@ public class FollowController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long userId
     ) {
-        FollowStatusResponse response = followService.unfollow(
+        FollowStatusResponse response = followFacade.unfollow(
                 userDetails.getUserId(), userId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

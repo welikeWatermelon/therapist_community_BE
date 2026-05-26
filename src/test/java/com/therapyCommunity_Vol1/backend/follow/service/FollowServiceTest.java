@@ -11,7 +11,6 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
-import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,7 +28,6 @@ class FollowServiceTest {
 
     private FollowRepository followRepository;
     private UserService userService;
-    private ScrapService scrapService;
     private ApplicationEventPublisher eventPublisher;
     private FollowService followService;
 
@@ -40,9 +38,8 @@ class FollowServiceTest {
     void setUp() {
         followRepository = mock(FollowRepository.class);
         userService = mock(UserService.class);
-        scrapService = mock(ScrapService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        followService = new FollowService(followRepository, userService, scrapService, eventPublisher);
+        followService = new FollowService(followRepository, userService, eventPublisher);
 
         userFollower = User.builder()
                 .id(1L).email("user@test.com").nickname("유저").role(UserRole.USER).build();

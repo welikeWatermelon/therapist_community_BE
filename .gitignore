@@ -71,3 +71,6 @@ docs/AI_COMMENT_TESTING.md
 # AI-DLC local/session state
 aidlc-docs/aidlc-state.md
 aidlc-docs/audit.md
+
+# Decision records (local only)
+docs/decisions/
