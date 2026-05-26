@@ -49,7 +49,7 @@ public class FollowService {
         boolean alreadyExists = followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId);
 
         if (!alreadyExists) {
-            User follower = userService.findUserOrThrow(currentUserId);
+            User follower = userService.getReferenceById(currentUserId);
 
             try {
                 Follow follow = Follow.create(follower, target);
