@@ -40,7 +40,7 @@ public class FollowService {
             throw new CustomException(ErrorCode.FOLLOW_SELF_NOT_ALLOWED);
         }
 
-        User target = userService.findUserOrThrow(targetUserId);
+        User target = userService.findById(targetUserId);
 
         if (target.getRole() != UserRole.THERAPIST) {
             throw new CustomException(ErrorCode.FOLLOW_TARGET_NOT_THERAPIST);

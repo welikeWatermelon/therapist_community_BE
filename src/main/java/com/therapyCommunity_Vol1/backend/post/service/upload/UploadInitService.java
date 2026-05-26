@@ -31,6 +31,7 @@ public class UploadInitService {
     private final ResourceAccessValidator resourceAccessValidator;
     private final MediaKindPolicy mediaKindPolicy;
     private final FileStorageService fileStorageService;
+    private final UploadRateLimiter uploadRateLimiter;
 
     private final TherapyPostImageRepository imageRepository;
     private final TherapyPostAttachmentRepository attachmentRepository;
@@ -45,6 +46,8 @@ public class UploadInitService {
             String contentType,
             long sizeBytes
     ) {
+        uploadRateLimiter.checkAndIncrement(currentUserId);
+
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole);
         resourceAccessValidator.validateAuthorOrAdmin(
@@ -76,7 +79,7 @@ public class UploadInitService {
     int currentCount(MediaKind kind, Long postId) {
         return switch (kind) {
             case IMAGE -> imageRepository.countByPostId(postId);
-            case ATTACHMENT -> attachmentRepository.findByPostIdOrderByCreatedAtAsc(postId).size();
+            case ATTACHMENT -> attachmentRepository.countByPostId(postId);
             case VIDEO -> videoRepository.countByPostId(postId);
         };
     }

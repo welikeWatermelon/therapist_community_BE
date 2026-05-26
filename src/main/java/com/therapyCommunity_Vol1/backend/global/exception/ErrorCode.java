@@ -47,6 +47,9 @@ public enum ErrorCode {
     THERAPIST_VERIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "AUTH_403_THERAPIST", "치료사 인증이 필요합니다."),
 
     FILE_STORAGE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_500", "파일 저장/삭제 중 오류가 발생했습니다."),
+    UPLOAD_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "UPLOAD_429_RATE", "업로드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+    UPLOAD_DAILY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "UPLOAD_429_DAILY", "오늘의 업로드 한도를 초과했습니다."),
+    UPLOAD_MIME_MISMATCH(HttpStatus.BAD_REQUEST, "UPLOAD_400_MIME", "파일 내용과 선언된 타입이 일치하지 않습니다."),
 
     ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429", "로그인 시도가 너무 많습니다. 30분 후 다시 시도해주세요."),
 
@@ -57,7 +60,12 @@ public enum ErrorCode {
 
     FOLLOW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOLLOW_400_SELF", "자기 자신을 팔로우할 수 없습니다."),
     FOLLOW_TARGET_NOT_THERAPIST(HttpStatus.BAD_REQUEST, "FOLLOW_400_TARGET", "치료사만 팔로우할 수 있습니다."),
-    FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW_404", "팔로우 관계를 찾을 수 없습니다.");
+    FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW_404", "팔로우 관계를 찾을 수 없습니다."),
+
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MESSAGE_404", "쪽지를 찾을 수 없습니다."),
+    MESSAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "MESSAGE_403", "쪽지에 대한 권한이 없습니다."),
+    CANNOT_SEND_MESSAGE_TO_SELF(HttpStatus.BAD_REQUEST, "MESSAGE_400_SELF", "자기 자신에게 쪽지를 보낼 수 없습니다."),
+    BROADCAST_NO_RECIPIENTS(HttpStatus.BAD_REQUEST, "MESSAGE_400_BROADCAST", "공지 쪽지 수신 대상이 없습니다.");
 
     private final HttpStatus status;
     private final String code;

@@ -45,6 +45,7 @@ class UploadConfirmServiceTest {
     private MediaKindPolicy mediaKindPolicy;
     private FileStorageService fileStorageService;
     private UploadInitService uploadInitService;
+    private MagicByteValidator magicByteValidator;
     private PostImageService postImageService;
     private PostAttachmentService postAttachmentService;
     private PostVideoService postVideoService;
@@ -52,6 +53,16 @@ class UploadConfirmServiceTest {
     private UploadConfirmService service;
 
     private static final long MB = 1024L * 1024L;
+
+    // JPEG magic bytes: FF D8 FF + padding
+    private static final byte[] JPEG_MAGIC = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // PDF magic bytes: %PDF
+    private static final byte[] PDF_MAGIC = {0x25, 0x50, 0x44, 0x46, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // MP4 magic bytes: ftyp at offset 4
+    private static final byte[] MP4_MAGIC = {0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70,
+            0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x00, 0x00};
 
     @BeforeEach
     void setUp() {
@@ -61,6 +72,7 @@ class UploadConfirmServiceTest {
         mediaKindPolicy = new MediaKindPolicy();
         fileStorageService = mock(FileStorageService.class);
         uploadInitService = mock(UploadInitService.class);
+        magicByteValidator = new MagicByteValidator();
         postImageService = mock(PostImageService.class);
         postAttachmentService = mock(PostAttachmentService.class);
         postVideoService = mock(PostVideoService.class);
@@ -72,6 +84,7 @@ class UploadConfirmServiceTest {
                 mediaKindPolicy,
                 fileStorageService,
                 uploadInitService,
+                magicByteValidator,
                 postImageService,
                 postAttachmentService,
                 postVideoService
@@ -84,6 +97,7 @@ class UploadConfirmServiceTest {
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 5 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(2);
         when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
                 .thenReturn(new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now()));
@@ -105,6 +119,7 @@ class UploadConfirmServiceTest {
         String storedKey = "uploads-pending/attachments/7/file.pdf";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("application/pdf", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(PDF_MAGIC);
         when(uploadInitService.currentCount(MediaKind.ATTACHMENT, 7L)).thenReturn(0);
         when(postAttachmentService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
                 .thenReturn(new PostAttachmentResponse(200L, "doc.pdf", "application/pdf", 1024L, "pdf", "url", LocalDateTime.now()));
@@ -122,6 +137,7 @@ class UploadConfirmServiceTest {
         String storedKey = "uploads-pending/videos/7/v.mp4";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("video/mp4", 100 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(MP4_MAGIC);
         when(uploadInitService.currentCount(MediaKind.VIDEO, 7L)).thenReturn(0);
         when(postVideoService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
                 .thenReturn(new PostVideoResponse(300L, "url", null, "v.mp4", "video/mp4", 100L, null, LocalDateTime.now()));
@@ -131,6 +147,37 @@ class UploadConfirmServiceTest {
 
         assertThat(response.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(response.getVideo()).isNotNull();
+    }
+
+    @Test
+    void confirm_throwsWhenMagicBytesMismatch() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        // 실제 파일은 PDF (클라가 image/jpeg 라고 속임)
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(PDF_MAGIC);
+
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_MIME_MISMATCH);
+
+        verify(fileStorageService, never()).copy(anyString(), anyString());
+    }
+
+    @Test
+    void confirm_throwsWhenMagicBytesEmpty() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(new byte[0]);
+
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_MIME_MISMATCH);
     }
 
     @Test
@@ -178,6 +225,7 @@ class UploadConfirmServiceTest {
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         // 클라가 init 시 1MB 신고했지만 실제 PUT 한 객체는 11MB
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 11 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
 
         assertThatThrownBy(() -> service.confirm(
                 1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg"))
@@ -193,6 +241,7 @@ class UploadConfirmServiceTest {
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(10);
 
         assertThatThrownBy(() -> service.confirm(
@@ -207,6 +256,7 @@ class UploadConfirmServiceTest {
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
         when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
                 .thenThrow(new RuntimeException("DB down"));

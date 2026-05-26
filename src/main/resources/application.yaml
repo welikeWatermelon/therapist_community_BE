@@ -7,6 +7,11 @@ spring:
     time-zone: Asia/Seoul
   jpa:
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -49,7 +54,7 @@ management:
         include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
   health:
     db:
       enabled: false
