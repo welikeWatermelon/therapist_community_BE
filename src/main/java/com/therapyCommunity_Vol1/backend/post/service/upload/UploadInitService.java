@@ -49,7 +49,7 @@ public class UploadInitService {
         uploadRateLimiter.checkAndIncrement(currentUserId);
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(
                 post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 

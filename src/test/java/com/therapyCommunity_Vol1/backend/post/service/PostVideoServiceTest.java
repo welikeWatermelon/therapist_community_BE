@@ -79,7 +79,7 @@ class PostVideoServiceTest {
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         when(videoRepository.findByIdAndPostId(100L, 7L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.loadVideo(7L, 100L, UserRole.THERAPIST))
+        assertThatThrownBy(() -> service.loadVideo(7L, 100L, UserRole.THERAPIST, 1L))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.POST_VIDEO_NOT_FOUND);
     }
