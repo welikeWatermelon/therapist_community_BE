@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,4 +29,11 @@ public interface TherapyPostScrapRepository extends JpaRepository<TherapyPostScr
 
     @EntityGraph(attributePaths = {"post", "post.author"})
     Page<TherapyPostScrap> findByUserIdAndPost_DeletedAtIsNullAndPost_Visibility(Long userId, Visibility visibility, Pageable pageable);
+
+    @Modifying
+    @Query("DELETE FROM TherapyPostScrap s WHERE s.user.id = :userId AND s.post.author.id = :authorId AND s.post.visibility IN :visibilities")
+    void deleteByUserIdAndPostAuthorIdAndPostVisibilityIn(
+            @Param("userId") Long userId,
+            @Param("authorId") Long authorId,
+            @Param("visibilities") List<Visibility> visibilities);
 }

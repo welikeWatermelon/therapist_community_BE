@@ -46,7 +46,7 @@ public class PostImageService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostImage(file);
@@ -90,9 +90,9 @@ public class PostImageService {
         return toResponse(saved);
     }
 
-    public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole) {
+    public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole, Long currentUserId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         return getImagesForPostUnchecked(postId);
     }
@@ -134,9 +134,9 @@ public class PostImageService {
         return PostImageResponse.from(image);
     }
 
-    public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole) {
+    public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole, Long currentUserId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         TherapyPostImage image = therapyPostImageRepository.findById(imageId)
                 .filter(i -> i.getPost().getId().equals(postId))
@@ -157,7 +157,7 @@ public class PostImageService {
             Long imageId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         TherapyPostImage image = therapyPostImageRepository.findById(imageId)

@@ -14,6 +14,7 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserService userService;
+    private final ScrapService scrapService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -53,7 +55,7 @@ public class FollowService {
 
             try {
                 Follow follow = Follow.create(follower, target);
-                followRepository.save(follow);
+                followRepository.saveAndFlush(follow);
             } catch (DataIntegrityViolationException e) {
                 return new FollowStatusResponse(targetUserId, true);
             }
@@ -69,7 +71,10 @@ public class FollowService {
     @Transactional
     public FollowStatusResponse unfollow(Long currentUserId, Long targetUserId) {
         followRepository.findByFollowerIdAndFollowingId(currentUserId, targetUserId)
-                .ifPresent(followRepository::delete);
+                .ifPresent(follow -> {
+                    followRepository.delete(follow);
+                    scrapService.deleteScrapsByUnfollow(currentUserId, targetUserId);
+                });
 
         return new FollowStatusResponse(targetUserId, false);
     }

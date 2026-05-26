@@ -11,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.scrap.service.ScrapService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -28,6 +29,7 @@ class FollowServiceTest {
 
     private FollowRepository followRepository;
     private UserService userService;
+    private ScrapService scrapService;
     private ApplicationEventPublisher eventPublisher;
     private FollowService followService;
 
@@ -38,8 +40,9 @@ class FollowServiceTest {
     void setUp() {
         followRepository = mock(FollowRepository.class);
         userService = mock(UserService.class);
+        scrapService = mock(ScrapService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        followService = new FollowService(followRepository, userService, eventPublisher);
+        followService = new FollowService(followRepository, userService, scrapService, eventPublisher);
 
         userFollower = User.builder()
                 .id(1L).email("user@test.com").nickname("유저").role(UserRole.USER).build();
@@ -49,22 +52,22 @@ class FollowServiceTest {
 
     @Test
     void 팔로우_성공() {
-        when(userService.findUserOrThrow(2L)).thenReturn(therapistTarget);
+        when(userService.findById(2L)).thenReturn(therapistTarget);
         when(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).thenReturn(false);
-        when(userService.findUserOrThrow(1L)).thenReturn(userFollower);
-        when(followRepository.save(any(Follow.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userService.getReferenceById(1L)).thenReturn(userFollower);
+        when(followRepository.saveAndFlush(any(Follow.class))).thenAnswer(inv -> inv.getArgument(0));
 
         FollowStatusResponse response = followService.follow(1L, 2L);
 
         assertThat(response.getUserId()).isEqualTo(2L);
         assertThat(response.isFollowing()).isTrue();
-        verify(followRepository).save(any(Follow.class));
+        verify(followRepository).saveAndFlush(any(Follow.class));
         verify(eventPublisher).publishEvent(any(Object.class));
     }
 
     @Test
     void 이미_팔로우중이면_멱등응답() {
-        when(userService.findUserOrThrow(2L)).thenReturn(therapistTarget);
+        when(userService.findById(2L)).thenReturn(therapistTarget);
         when(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).thenReturn(true);
 
         FollowStatusResponse response = followService.follow(1L, 2L);
@@ -86,7 +89,7 @@ class FollowServiceTest {
     void 치료사가_아닌_대상_팔로우_불가() {
         User normalUser = User.builder()
                 .id(3L).email("normal@test.com").nickname("일반유저").role(UserRole.USER).build();
-        when(userService.findUserOrThrow(3L)).thenReturn(normalUser);
+        when(userService.findById(3L)).thenReturn(normalUser);
 
         assertThatThrownBy(() -> followService.follow(1L, 3L))
                 .isInstanceOf(CustomException.class)

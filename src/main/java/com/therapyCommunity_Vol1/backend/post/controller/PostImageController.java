@@ -58,7 +58,7 @@ public class PostImageController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId
     ) {
-        List<PostImageResponse> response = postImageService.getImages(postId, userDetails.getUserRole());
+        List<PostImageResponse> response = postImageService.getImages(postId, userDetails.getUserRole(), userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -69,7 +69,7 @@ public class PostImageController {
             @PathVariable Long postId,
             @PathVariable Long imageId
     ) {
-        StoredFileResource storedFile = postImageService.loadImage(postId, imageId, userDetails.getUserRole());
+        StoredFileResource storedFile = postImageService.loadImage(postId, imageId, userDetails.getUserRole(), userDetails.getUserId());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(storedFile.getContentType()))
                 .header(

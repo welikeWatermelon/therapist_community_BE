@@ -125,4 +125,11 @@ public class ScrapService {
 
         return PagedResponse.from(result, scraps);
     }
+
+    @Transactional
+    public void deleteScrapsByUnfollow(Long userId, Long unfollowedAuthorId) {
+        scrapRepository.deleteByUserIdAndPostAuthorIdAndPostVisibilityIn(
+                userId, unfollowedAuthorId,
+                List.of(Visibility.FOLLOWERS_ONLY, Visibility.VERIFIED_FOLLOWERS_ONLY));
+    }
 }

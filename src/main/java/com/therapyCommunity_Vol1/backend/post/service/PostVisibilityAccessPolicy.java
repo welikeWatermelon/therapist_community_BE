@@ -15,10 +15,6 @@ public class PostVisibilityAccessPolicy {
 
     private final FollowService followService;
 
-    public void checkAccess(TherapyPost post, UserRole role) {
-        checkAccess(post, role, null);
-    }
-
     /**
      * 게시글 접근 권한 검증.
      *
