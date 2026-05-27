@@ -62,6 +62,9 @@ public class PostAttachmentService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        if (post.getPostType() == PostType.CONCERN_CARD) {
+            throw new CustomException(ErrorCode.CONCERN_CARD_UPLOAD_NOT_ALLOWED);
+        }
         visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
