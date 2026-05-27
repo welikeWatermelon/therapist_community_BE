@@ -35,7 +35,7 @@ jobs:
 
       # 로컬 테스트 후 푸시 권장, CI 속도 우선. 추후 별도 test job 추가 예정
       - name: Build JAR
-        run: ./gradlew bootJar -x test
+        run: ./gradlew clean bootJar -x test
 
       - name: Debug OIDC token sub
         run: |
