@@ -62,7 +62,7 @@ public class PostAttachmentService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostAttachment(file);
@@ -135,7 +135,7 @@ public class PostAttachmentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_ATTACHMENT_NOT_FOUND));
 
@@ -170,7 +170,7 @@ public class PostAttachmentService {
             Long attachmentId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         TherapyPostAttachment attachment = therapyPostAttachmentRepository.findByIdAndPostId(attachmentId, postId)

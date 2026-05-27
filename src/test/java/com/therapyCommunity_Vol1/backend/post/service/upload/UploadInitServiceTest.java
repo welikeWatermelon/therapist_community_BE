@@ -23,6 +23,7 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -111,7 +112,7 @@ class UploadInitServiceTest {
         TherapyPost post = post(7L, user(1L));
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(post, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(post), eq(UserRole.USER), any());
 
         assertThatThrownBy(() -> service.init(
                 1L, UserRole.USER, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))

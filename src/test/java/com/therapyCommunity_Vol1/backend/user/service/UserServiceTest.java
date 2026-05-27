@@ -151,7 +151,7 @@ class UserServiceTest {
                 .thenReturn(Optional.empty());
 
         UpdateProfileRequest request = new UpdateProfileRequest("newNick");
-        userService.updateProfile(1L, request);
+        userService.updateProfile(1L, request, 0, 0);
 
         assertThat(user.getNickname()).isEqualTo("newNick");
         // 프로필 이미지 변경 경로는 PATCH 에서 제거됨 → 기존 값 그대로

@@ -59,7 +59,7 @@ public class ScrapService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         boolean alreadyExists = scrapRepository.existsByPostIdAndUserId(postId,currentUserId);
 
@@ -87,7 +87,7 @@ public class ScrapService {
     @Transactional
     public ScrapStatusResponse removeScrap(Long currentUserId, UserRole currentUserRole, Long postId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         scrapRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(scrap -> {
@@ -99,7 +99,7 @@ public class ScrapService {
 
     public ScrapStatusResponse getScrapStatus(Long currentUserId, UserRole currentUserRole, Long postId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         boolean scrapped = scrapRepository.existsByPostIdAndUserId(postId, currentUserId);
 
         return new ScrapStatusResponse(postId, scrapped);
@@ -124,5 +124,12 @@ public class ScrapService {
                 .toList();
 
         return PagedResponse.from(result, scraps);
+    }
+
+    @Transactional
+    public void deleteScrapsByUnfollow(Long userId, Long unfollowedAuthorId) {
+        scrapRepository.deleteByUserIdAndPostAuthorIdAndPostVisibilityIn(
+                userId, unfollowedAuthorId,
+                List.of(Visibility.FOLLOWERS_ONLY, Visibility.VERIFIED_FOLLOWERS_ONLY));
     }
 }

@@ -58,6 +58,10 @@ public enum ErrorCode {
 
     INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "POST_400_SORT", "이 엔드포인트에서 지원하지 않는 정렬 방식입니다."),
 
+    FOLLOW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOLLOW_400_SELF", "자기 자신을 팔로우할 수 없습니다."),
+    FOLLOW_TARGET_NOT_THERAPIST(HttpStatus.BAD_REQUEST, "FOLLOW_400_TARGET", "치료사만 팔로우할 수 있습니다."),
+    FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "FOLLOW_404", "팔로우 관계를 찾을 수 없습니다."),
+
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MESSAGE_404", "쪽지를 찾을 수 없습니다."),
     MESSAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "MESSAGE_403", "쪽지에 대한 권한이 없습니다."),
     CANNOT_SEND_MESSAGE_TO_SELF(HttpStatus.BAD_REQUEST, "MESSAGE_400_SELF", "자기 자신에게 쪽지를 보낼 수 없습니다."),

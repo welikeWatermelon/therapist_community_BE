@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -57,18 +58,18 @@ public class UploadConfirmService {
         }
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(
                 post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        // finalKey 는 storedKey 의 filename 으로 결정적 생성 → 같은 storedKey 재시도 시 항상 동일.
-        String finalKey = mediaKindPolicy.finalDirectory(kind) + "/" + parsed.filename();
+        String finalKey = finalKeyFor(kind, parsed.filename());
 
-        // 멱등: 이미 confirm 되어 finalKey 가 영속됐으면 S3·persist 스킵하고 기존 결과 반환.
+        // IMAGE 멱등: 이미 confirm 되어 finalKey 가 영속됐으면 S3·persist 스킵하고 기존 결과 반환.
         // (성공 후 pending 이 삭제된 상태의 재시도를 에러 없이 처리.)
         if (kind == MediaKind.IMAGE) {
             Optional<PostImageResponse> existing = postImageService.findByStoredPath(finalKey);
             if (existing.isPresent()) {
+                safeDelete(storedKey);
                 log.info("upload confirm idempotent hit: userId={}, postId={}, kind={}, storedKey={}, finalKey={}",
                         currentUserId, postId, kind, storedKey, finalKey);
                 return UploadConfirmResponse.ofImage(existing.get());
@@ -135,5 +136,21 @@ public class UploadConfirmService {
         } catch (Exception e) {
             log.warn("Failed to delete object during upload confirm cleanup: key={}", key, e);
         }
+    }
+
+    private String finalKeyFor(MediaKind kind, String filename) {
+        String directory = mediaKindPolicy.finalDirectory(kind);
+        if (kind == MediaKind.IMAGE) {
+            return directory + "/" + filename;
+        }
+        return directory + "/" + UUID.randomUUID() + extOrEmpty(filename);
+    }
+
+    private String extOrEmpty(String filename) {
+        int idx = filename.lastIndexOf('.');
+        if (idx < 0 || idx == filename.length() - 1) {
+            return "";
+        }
+        return filename.substring(idx);
     }
 }

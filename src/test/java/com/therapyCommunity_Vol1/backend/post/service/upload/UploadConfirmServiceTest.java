@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -98,6 +99,7 @@ class UploadConfirmServiceTest {
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty());
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 5 * MB));
         when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(2);
@@ -131,9 +133,10 @@ class UploadConfirmServiceTest {
         // 첫 성공과 동일한 결과를 에러·중복 없이 반환
         assertThat(response.getKind()).isEqualTo(MediaKind.IMAGE);
         assertThat(response.getImage()).isEqualTo(existing);
-        // S3 미접근 + persist 미호출 (pending 이 이미 삭제됐어도 안전)
+        // S3 head/copy 미접근 + persist 미호출. pending 잔재가 있으면 best-effort로 정리.
         verify(fileStorageService, never()).headObject(anyString());
         verify(fileStorageService, never()).copy(anyString(), anyString());
+        verify(fileStorageService).delete(storedKey);
         verify(postImageService, never()).confirmUpload(any(), anyString(), anyString(), anyString(), anyLong());
     }
 
@@ -166,6 +169,7 @@ class UploadConfirmServiceTest {
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty());
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
         when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
@@ -195,6 +199,10 @@ class UploadConfirmServiceTest {
 
         assertThat(response.getKind()).isEqualTo(MediaKind.ATTACHMENT);
         assertThat(response.getAttachment()).isNotNull();
+        verify(fileStorageService).copy(
+                eq(storedKey),
+                argThat(key -> key.startsWith("post-attachments/") && key.endsWith(".pdf") && !key.equals("post-attachments/file.pdf"))
+        );
     }
 
     @Test
@@ -213,6 +221,10 @@ class UploadConfirmServiceTest {
 
         assertThat(response.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(response.getVideo()).isNotNull();
+        verify(fileStorageService).copy(
+                eq(storedKey),
+                argThat(key -> key.startsWith("post-videos/") && key.endsWith(".mp4") && !key.equals("post-videos/v.mp4"))
+        );
     }
 
     @Test
@@ -220,6 +232,7 @@ class UploadConfirmServiceTest {
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty());
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
         // 실제 파일은 PDF (클라가 image/jpeg 라고 속임)
         when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(PDF_MAGIC);
@@ -333,6 +346,7 @@ class UploadConfirmServiceTest {
 
         // copy 는 호출, finalKey delete 도 호출 (롤백), pending key delete 는 호출 안 됨
         verify(fileStorageService).copy(eq(storedKey), anyString());
+        verify(fileStorageService).delete("post-images/abc.jpg");
         verify(fileStorageService, never()).delete(storedKey);
     }
 

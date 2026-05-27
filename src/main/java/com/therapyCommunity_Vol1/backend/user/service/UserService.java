@@ -34,12 +34,18 @@ public class UserService {
     private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
     public CurrentUserResponse getCurrentUser(Long currentUserId) {
+        return getCurrentUser(currentUserId, 0, 0);
+    }
+
+    public CurrentUserResponse getCurrentUser(Long currentUserId, long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
                 therapistVerificationService.findVerificationStatusByUserId(currentUserId),
-                profileImageUrlAssembler
+                profileImageUrlAssembler,
+                followerCount,
+                followingCount
         );
     }
 
@@ -63,7 +69,8 @@ public class UserService {
     }
 
     @Transactional
-    public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request) {
+    public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request,
+                                             long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         if (request.getNickname() != null
@@ -72,12 +79,14 @@ public class UserService {
         }
 
         user.updateProfile(request.getNickname(), null);
-        userCacheService.evict(currentUserId);  // 프로필 변경 → 캐시 무효화
+        userCacheService.evict(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
                 therapistVerificationService.findVerificationStatusByUserId(currentUserId),
-                profileImageUrlAssembler
+                profileImageUrlAssembler,
+                followerCount,
+                followingCount
         );
     }
 
@@ -93,6 +102,10 @@ public class UserService {
     public User findById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    public User getReferenceById(Long userId) {
+        return userRepository.getReferenceById(userId);
     }
 
     public List<Long> findUserIdsByRole(UserRole role) {
