@@ -50,6 +50,7 @@ public enum ErrorCode {
     UPLOAD_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "UPLOAD_429_RATE", "업로드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     UPLOAD_DAILY_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "UPLOAD_429_DAILY", "오늘의 업로드 한도를 초과했습니다."),
     UPLOAD_MIME_MISMATCH(HttpStatus.BAD_REQUEST, "UPLOAD_400_MIME", "파일 내용과 선언된 타입이 일치하지 않습니다."),
+    UPLOAD_CONFIRM_CONFLICT(HttpStatus.CONFLICT, "UPLOAD_409_CONFIRM", "업로드 confirm이 이미 처리 중이거나 완료되었습니다. 같은 storedKey로 다시 시도해주세요."),
 
     ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429", "로그인 시도가 너무 많습니다. 30분 후 다시 시도해주세요."),
 

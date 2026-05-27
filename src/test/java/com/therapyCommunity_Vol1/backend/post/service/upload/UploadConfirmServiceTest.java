@@ -21,15 +21,18 @@ import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -96,6 +99,7 @@ class UploadConfirmServiceTest {
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty());
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 5 * MB));
         when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
         when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(2);
@@ -114,6 +118,73 @@ class UploadConfirmServiceTest {
     }
 
     @Test
+    void confirm_image_idempotent_returnsExistingAndSkipsS3WhenAlreadyConfirmed() {
+        // 같은 storedKey 로 confirm 재시도 (첫 성공 후 응답 유실 → FE 재시도).
+        // finalKey 는 storedKey 의 filename 으로 결정적 생성: post-images/abc.jpg
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        PostImageResponse existing = new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now());
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.of(existing));
+
+        UploadConfirmResponse response = service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg");
+
+        // 첫 성공과 동일한 결과를 에러·중복 없이 반환
+        assertThat(response.getKind()).isEqualTo(MediaKind.IMAGE);
+        assertThat(response.getImage()).isEqualTo(existing);
+        // S3 head/copy 미접근 + persist 미호출. pending 잔재가 있으면 best-effort로 정리.
+        verify(fileStorageService, never()).headObject(anyString());
+        verify(fileStorageService, never()).copy(anyString(), anyString());
+        verify(fileStorageService).delete(storedKey);
+        verify(postImageService, never()).confirmUpload(any(), anyString(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    void confirm_image_uniqueConflict_returnsConflictAndPreservesSharedFinalKey() {
+        // 거의 불가능한 동시 race: 진입 단락 miss 후 persist 중 다른 요청이 같은 finalKey 로 먼저
+        // INSERT → stored_path 유니크 위반. PG는 위반 후 트랜잭션을 abort 하므로 같은 tx 안 재조회는
+        // 불가 → 흡수하지 않고 깔끔히 실패시킨다(중복 0). 단 finalKey 는 승자 레코드가 참조하므로
+        // 절대 삭제하면 안 된다. 이 클라의 재시도는 진입부 findByStoredPath 단락으로 멱등 복구.
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty()); // 진입 단락 miss
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
+        when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
+        when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
+                .thenThrow(new DataIntegrityViolationException("duplicate stored_path"));
+
+        assertThatThrownBy(() -> service.confirm(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg"))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_CONFIRM_CONFLICT);
+
+        // 공유 finalKey(승자 레코드가 참조) 는 삭제 금지
+        verify(fileStorageService, never()).delete("post-images/abc.jpg");
+    }
+
+    @Test
+    void confirm_image_usesDeterministicFinalKeyFromStoredKeyFilename() {
+        TherapyPost post = post(7L, user(1L));
+        String storedKey = "uploads-pending/images/7/abc.jpg";
+        when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty());
+        when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
+        when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(JPEG_MAGIC);
+        when(uploadInitService.currentCount(MediaKind.IMAGE, 7L)).thenReturn(0);
+        when(postImageService.confirmUpload(any(), anyString(), anyString(), anyString(), anyLong()))
+                .thenReturn(new PostImageResponse(100L, "https://signed", "abc.jpg", 0, LocalDateTime.now()));
+
+        service.confirm(1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg");
+
+        // 결정적: post-images/{storedKey filename} (random UUID 아님)
+        verify(fileStorageService).copy(storedKey, "post-images/abc.jpg");
+        verify(postImageService).confirmUpload(any(), eq("post-images/abc.jpg"), anyString(), anyString(), anyLong());
+    }
+
+    @Test
     void confirm_attachment_delegatesToAttachmentService() {
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/attachments/7/file.pdf";
@@ -129,6 +200,10 @@ class UploadConfirmServiceTest {
 
         assertThat(response.getKind()).isEqualTo(MediaKind.ATTACHMENT);
         assertThat(response.getAttachment()).isNotNull();
+        verify(fileStorageService).copy(
+                eq(storedKey),
+                argThat(key -> key.startsWith("post-attachments/") && key.endsWith(".pdf") && !key.equals("post-attachments/file.pdf"))
+        );
     }
 
     @Test
@@ -147,6 +222,10 @@ class UploadConfirmServiceTest {
 
         assertThat(response.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(response.getVideo()).isNotNull();
+        verify(fileStorageService).copy(
+                eq(storedKey),
+                argThat(key -> key.startsWith("post-videos/") && key.endsWith(".mp4") && !key.equals("post-videos/v.mp4"))
+        );
     }
 
     @Test
@@ -154,6 +233,7 @@ class UploadConfirmServiceTest {
         TherapyPost post = post(7L, user(1L));
         String storedKey = "uploads-pending/images/7/abc.jpg";
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
+        when(postImageService.findByStoredPath("post-images/abc.jpg")).thenReturn(Optional.empty());
         when(fileStorageService.headObject(storedKey)).thenReturn(new S3ObjectMeta("image/jpeg", 1 * MB));
         // 실제 파일은 PDF (클라가 image/jpeg 라고 속임)
         when(fileStorageService.getFirstBytes(storedKey, MagicByteValidator.READ_BYTES)).thenReturn(PDF_MAGIC);
@@ -267,6 +347,7 @@ class UploadConfirmServiceTest {
 
         // copy 는 호출, finalKey delete 도 호출 (롤백), pending key delete 는 호출 안 됨
         verify(fileStorageService).copy(eq(storedKey), anyString());
+        verify(fileStorageService).delete("post-images/abc.jpg");
         verify(fileStorageService, never()).delete(storedKey);
     }
 

@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -86,8 +87,19 @@ public class PostImageService {
                 sizeBytes,
                 nextOrder
         );
-        TherapyPostImage saved = therapyPostImageRepository.save(image);
+        // saveAndFlush: stored_path 유니크 위반을 이 호출(=UploadConfirmService try-catch) 안에서
+        // 동기적으로 터뜨린다. IDENTITY 전략이라 어차피 즉시 INSERT 되지만, 전략이 바뀌어도(SEQUENCE 등)
+        // 타이밍이 commit 으로 밀리지 않도록 명시적으로 flush.
+        TherapyPostImage saved = therapyPostImageRepository.saveAndFlush(image);
         return toResponse(saved);
+    }
+
+    /**
+     * 멱등 confirm 판정용 — finalKey(stored_path) 로 이미 영속된 이미지가 있으면 응답으로 매핑.
+     * UploadConfirmService 가 재시도 단락에 사용.
+     */
+    public Optional<PostImageResponse> findByStoredPath(String storedPath) {
+        return therapyPostImageRepository.findByStoredPath(storedPath).map(this::toResponse);
     }
 
     public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole, Long currentUserId) {
