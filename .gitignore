@@ -74,3 +74,8 @@ aidlc-docs/audit.md
 
 # Decision records (local only)
 docs/decisions/
+
+# 벤치마크 테스트 (로컬 전용)
+searchTest.md
+docs/0526.md
+src/test/java/com/therapyCommunity_Vol1/backend/post/service/search/SearchBenchmarkTest.java
