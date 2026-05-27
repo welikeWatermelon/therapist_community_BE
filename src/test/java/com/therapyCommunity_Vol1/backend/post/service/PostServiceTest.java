@@ -76,6 +76,9 @@ class PostServiceTest {
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
+        when(visibilityPolicy.canViewConcernCardSensitiveFields(UserRole.THERAPIST)).thenReturn(true);
+        when(visibilityPolicy.canViewConcernCardSensitiveFields(UserRole.ADMIN)).thenReturn(true);
+        when(visibilityPolicy.canViewConcernCardSensitiveFields(UserRole.USER)).thenReturn(false);
         when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
         when(therapyPostReactionRepository.countByPostIdInAndReactionType(anyList(), any()))
                 .thenReturn(List.of());
@@ -974,6 +977,96 @@ class PostServiceTest {
         // then — COMMUNITY 게시글이므로 diagnoses는 반영되지 않아야 함
         assertThat(communityPost.getPostType()).isEqualTo(PostType.COMMUNITY);
         assertThat(communityPost.getDiagnoses()).isNullOrEmpty();
+    }
+
+    @Test
+    void 비고민카드_생성시_고민카드_필드_null_보장() {
+        // COMMUNITY 게시글 생성 시 요청에 diagnoses/ageGroup/otherNotes가 포함되어도 무시되어야 함
+        Long userId = 1L;
+
+        CreateTherapyPostRequest request = new CreateTherapyPostRequest(
+                "<p>일반 글</p>",
+                null, // postType = null → COMMUNITY
+                TherapyArea.SPEECH,
+                AgeGroup.AGE_6_12,       // 무시되어야 함
+                List.of("ADHD"),         // 무시되어야 함
+                "메모",                   // 무시되어야 함
+                Visibility.PUBLIC,
+                null
+        );
+
+        User author = User.builder()
+                .id(userId)
+                .email("test@test.com")
+                .nickname("tester")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(author));
+        when(therapyPostRepository.save(any(TherapyPost.class))).thenAnswer(invocation -> {
+            TherapyPost post = invocation.getArgument(0);
+            ReflectionTestUtils.setField(post, "id", 100L);
+            ReflectionTestUtils.setField(post, "viewCount", 0L);
+            ReflectionTestUtils.setField(post, "createdAt", LocalDateTime.now());
+            ReflectionTestUtils.setField(post, "updatedAt", LocalDateTime.now());
+            return post;
+        });
+
+        // when
+        TherapyPostDetailResponse response = postService.createPost(userId, UserRole.THERAPIST, request);
+
+        // then — COMMUNITY이므로 고민카드 필드는 null
+        assertThat(response.getPostType()).isEqualTo(PostType.COMMUNITY);
+        verify(therapyPostRepository).save(argThat(post ->
+                post.getPostType() == PostType.COMMUNITY
+                        && post.getDiagnoses() == null
+                        && post.getAgeGroup() == null
+                        && post.getOtherNotes() == null
+        ));
+    }
+
+    @Test
+    void 비고민카드_수정시_고민카드_필드_null_유지() {
+        // COMMUNITY 게시글 수정 시 diagnoses/ageGroup/otherNotes가 요청에 있어도 반영되지 않아야 함
+        Long userId = 1L;
+        Long postId = 300L;
+
+        User author = User.builder()
+                .id(userId)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost communityPost = TherapyPost.create(
+                "<p>일반 글</p>",
+                TherapyArea.SPEECH,
+                Visibility.PUBLIC,
+                author
+        );
+        ReflectionTestUtils.setField(communityPost, "id", postId);
+        ReflectionTestUtils.setField(communityPost, "viewCount", 0L);
+        ReflectionTestUtils.setField(communityPost, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(communityPost, "updatedAt", LocalDateTime.now());
+
+        UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
+                "<p>수정된 내용</p>",
+                TherapyArea.COGNITIVE,
+                AgeGroup.AGE_6_12,
+                List.of("ADHD"),
+                "메모",
+                Visibility.PUBLIC
+        );
+
+        when(activePostFinder.findOrThrow(postId)).thenReturn(communityPost);
+
+        // when
+        postService.updatePost(userId, UserRole.THERAPIST, postId, request);
+
+        // then — COMMUNITY 게시글이므로 고민카드 필드는 여전히 null
+        assertThat(communityPost.getDiagnoses()).isNullOrEmpty();
+        assertThat(communityPost.getAgeGroup()).isNull();
+        assertThat(communityPost.getOtherNotes()).isNull();
     }
 
     @Test
