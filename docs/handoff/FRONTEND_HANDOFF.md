@@ -130,7 +130,7 @@ curl -X POST 'http://localhost:8080/api/v1/therapist-verifications' \
 
 백엔드는 `storedKey`에서 **결정적으로** `finalKey`(`post-images/{filename}`)를 만들고, `stored_path`에 **유니크 제약**을 둡니다. 그래서:
 - 성공 후 응답만 유실된 재시도 → 백엔드가 기존 레코드를 찾아 **같은 결과 반환**(에러 아님).
-- 거의 동시 중복 confirm → 유니크 제약으로 하나만 저장, race 패배 요청은 에러 응답을 받을 수 있음. FE가 **같은 storedKey로 한 번 더 재시도**하면 기존 결과를 정상 반환.
+- 거의 동시 중복 confirm → 유니크 제약으로 하나만 저장, race 패배 요청은 `UPLOAD_409_CONFIRM` 응답을 받을 수 있음. FE가 **같은 storedKey로 한 번 더 재시도**하면 기존 결과를 정상 반환.
 - **시간복잡도**: 멱등 판정 `findByStoredPath` = `stored_path` 유니크 인덱스로 **O(log n)**, 결정적 `finalKey` 생성 **O(1)** — 추가 비용 무시 가능.
 
 (설계 상세는 백엔드 `UploadConfirmService` + Flyway `V48`. 단, 이 멱등성은 **FE가 같은 storedKey로 재시도해야** 실효가 납니다.)

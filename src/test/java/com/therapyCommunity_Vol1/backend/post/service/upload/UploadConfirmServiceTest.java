@@ -141,7 +141,7 @@ class UploadConfirmServiceTest {
     }
 
     @Test
-    void confirm_image_uniqueConflict_rethrowsAndPreservesSharedFinalKey() {
+    void confirm_image_uniqueConflict_returnsConflictAndPreservesSharedFinalKey() {
         // 거의 불가능한 동시 race: 진입 단락 miss 후 persist 중 다른 요청이 같은 finalKey 로 먼저
         // INSERT → stored_path 유니크 위반. PG는 위반 후 트랜잭션을 abort 하므로 같은 tx 안 재조회는
         // 불가 → 흡수하지 않고 깔끔히 실패시킨다(중복 0). 단 finalKey 는 승자 레코드가 참조하므로
@@ -158,7 +158,8 @@ class UploadConfirmServiceTest {
 
         assertThatThrownBy(() -> service.confirm(
                 1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, storedKey, "abc.jpg"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_CONFIRM_CONFLICT);
 
         // 공유 finalKey(승자 레코드가 참조) 는 삭제 금지
         verify(fileStorageService, never()).delete("post-images/abc.jpg");

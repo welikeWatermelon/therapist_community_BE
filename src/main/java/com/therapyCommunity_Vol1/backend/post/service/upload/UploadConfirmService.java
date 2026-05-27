@@ -114,7 +114,7 @@ public class UploadConfirmService {
             // 이 클라이언트가 재시도하면 진입부 findByStoredPath 단락으로 멱등 복구된다.
             log.warn("upload confirm unique conflict (concurrent retry?): postId={}, kind={}, storedKey={}, finalKey={}",
                     postId, kind, storedKey, finalKey);
-            throw e;
+            throw new CustomException(ErrorCode.UPLOAD_CONFIRM_CONFLICT);
         } catch (RuntimeException e) {
             safeDelete(finalKey);
             throw e;
