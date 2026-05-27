@@ -80,3 +80,7 @@ app:
       enabled: false
     vector:
       min-score: 0.3
+sentry:
+  dsn: ${SENTRY_DSN}
+  traces-sample-rate: 1.0
+  environment: ${SPRING_PROFILES_ACTIVE}
