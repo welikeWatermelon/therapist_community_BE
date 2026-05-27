@@ -125,7 +125,11 @@ class PostServiceTest {
 
         CreateTherapyPostRequest request = new CreateTherapyPostRequest(
                 "<p>본문</p>",
+                null,
                 TherapyArea.SPEECH,
+                null,
+                null,
+                null,
                 Visibility.PUBLIC,
                 null
         );
@@ -488,6 +492,9 @@ class PostServiceTest {
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
+                null,
+                null,
+                null,
                 Visibility.PRIVATE
         );
 
@@ -531,6 +538,9 @@ class PostServiceTest {
         UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
                 "<p>수정 본문</p>",
                 TherapyArea.COGNITIVE,
+                null,
+                null,
+                null,
                 Visibility.PRIVATE
         );
 
@@ -594,11 +604,11 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(), any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST, null);
 
         // then
         assertThat(response.getItems()).hasSize(3);
@@ -622,11 +632,11 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(), any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST, FeedSortType.LATEST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(size, null, UserRole.THERAPIST, FeedSortType.LATEST, null);
 
         // then
         assertThat(response.getItems()).hasSize(size);
@@ -636,10 +646,10 @@ class PostServiceTest {
 
     @Test
     void 피드_빈결과() {
-        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST, null);
 
         assertThat(response.getItems()).isEmpty();
         assertThat(response.isHasNext()).isFalse();
@@ -655,13 +665,13 @@ class PostServiceTest {
         ReflectionTestUtils.setField(privatePost, "viewCount", 0L);
         ReflectionTestUtils.setField(privatePost, "createdAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(), any(Pageable.class)))
                 .thenReturn(List.of(privatePost));
 
         CursorPagedResponse<TherapyPostSummaryResponse> response =
-                postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
+                postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST, null);
 
-        verify(therapyPostRepository).findFeedLatest(anyList(), any(Pageable.class));
+        verify(therapyPostRepository).findFeedLatest(anyList(), any(), any(Pageable.class));
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).isAccessLocked()).isTrue();
@@ -685,11 +695,11 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedPopular(anyList(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedPopular(anyList(), any(), any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
-        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.POPULAR);
+        CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.POPULAR, null);
 
         // then
         assertThat(response.getItems()).hasSize(3);
@@ -700,11 +710,298 @@ class PostServiceTest {
     @Test
     void 인기순_피드_USER도_PRIVATE_포함_전체_조회() {
         // PRIVATE UX 개편: USER도 PUBLIC + PRIVATE 통합 조회.
-        when(therapyPostRepository.findFeedPopular(anyList(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedPopular(anyList(), any(), any(Pageable.class)))
                 .thenReturn(List.of());
 
-        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
+        postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR, null);
 
-        verify(therapyPostRepository).findFeedPopular(anyList(), any(Pageable.class));
+        verify(therapyPostRepository).findFeedPopular(anyList(), any(), any(Pageable.class));
+    }
+
+    // ── CONCERN_CARD 테스트 ──────────────────────────────
+
+    @Test
+    void 고민카드_작성_성공() {
+        // given
+        Long userId = 1L;
+        List<String> diagnoses = List.of("ADHD", "ASD");
+
+        CreateTherapyPostRequest request = new CreateTherapyPostRequest(
+                "<p>고민 내용</p>",
+                PostType.CONCERN_CARD,
+                TherapyArea.SENSORY_INTEGRATION,
+                AgeGroup.AGE_6_12,
+                diagnoses,
+                "기타 메모",
+                Visibility.PUBLIC,
+                null
+        );
+
+        User author = User.builder()
+                .id(userId)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost savedPost = TherapyPost.createConcernCard(
+                "<p>고민 내용</p>",
+                TherapyArea.SENSORY_INTEGRATION,
+                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
+                author,
+                diagnoses,
+                "기타 메모"
+        );
+        ReflectionTestUtils.setField(savedPost, "id", 200L);
+        ReflectionTestUtils.setField(savedPost, "viewCount", 0L);
+        ReflectionTestUtils.setField(savedPost, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(savedPost, "updatedAt", LocalDateTime.now());
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(author));
+        when(therapyPostRepository.save(any(TherapyPost.class))).thenReturn(savedPost);
+
+        // when
+        TherapyPostDetailResponse response = postService.createPost(userId, UserRole.THERAPIST, request);
+
+        // then
+        assertThat(response.getId()).isEqualTo(200L);
+        assertThat(response.getPostType()).isEqualTo(PostType.CONCERN_CARD);
+        assertThat(response.getAgeGroup()).isEqualTo(AgeGroup.AGE_6_12);
+        assertThat(response.getDiagnoses()).containsExactly("ADHD", "ASD");
+        assertThat(response.getOtherNotes()).isEqualTo("기타 메모");
+        verify(therapyPostRepository).save(argThat(post ->
+                post.getPostType() == PostType.CONCERN_CARD
+                        && post.getDiagnoses().equals(diagnoses)
+                        && post.getAgeGroup() == AgeGroup.AGE_6_12
+        ));
+    }
+
+    @Test
+    void 고민카드_수정_성공() {
+        // given
+        Long userId = 1L;
+        Long postId = 200L;
+
+        User author = User.builder()
+                .id(userId)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost existingPost = TherapyPost.createConcernCard(
+                "<p>원래 내용</p>",
+                TherapyArea.SENSORY_INTEGRATION,
+                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
+                author,
+                List.of("ADHD"),
+                "메모"
+        );
+        ReflectionTestUtils.setField(existingPost, "id", postId);
+        ReflectionTestUtils.setField(existingPost, "viewCount", 5L);
+        ReflectionTestUtils.setField(existingPost, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(existingPost, "updatedAt", LocalDateTime.now());
+
+        UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
+                "<p>수정된 내용</p>",
+                TherapyArea.COGNITIVE,
+                AgeGroup.AGE_13_18,
+                List.of("ADHD", "불안장애"),
+                "수정된 메모",
+                Visibility.PUBLIC
+        );
+
+        when(activePostFinder.findOrThrow(postId)).thenReturn(existingPost);
+
+        // when
+        TherapyPostDetailResponse response = postService.updatePost(userId, UserRole.THERAPIST, postId, request);
+
+        // then
+        assertThat(response.getPostType()).isEqualTo(PostType.CONCERN_CARD);
+        assertThat(existingPost.getDiagnoses()).containsExactly("ADHD", "불안장애");
+        assertThat(existingPost.getAgeGroup()).isEqualTo(AgeGroup.AGE_13_18);
+        assertThat(existingPost.getOtherNotes()).isEqualTo("수정된 메모");
+    }
+
+    @Test
+    void 고민카드_피드_postType_필터링() {
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost concernCard = TherapyPost.createConcernCard(
+                "<p>고민 카드</p>",
+                TherapyArea.SENSORY_INTEGRATION,
+                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
+                author,
+                List.of("ADHD"),
+                null
+        );
+        ReflectionTestUtils.setField(concernCard, "id", 1L);
+        ReflectionTestUtils.setField(concernCard, "viewCount", 0L);
+        ReflectionTestUtils.setField(concernCard, "createdAt", LocalDateTime.now());
+
+        when(therapyPostRepository.findFeedLatest(anyList(), eq(PostType.CONCERN_CARD), any(Pageable.class)))
+                .thenReturn(List.of(concernCard));
+
+        // when
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST, PostType.CONCERN_CARD);
+
+        // then
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getPostType()).isEqualTo(PostType.CONCERN_CARD);
+        verify(therapyPostRepository).findFeedLatest(anyList(), eq(PostType.CONCERN_CARD), any(Pageable.class));
+    }
+
+    @Test
+    void 고민카드_USER에게_진단명_마스킹() {
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost concernCard = TherapyPost.createConcernCard(
+                "<p>고민 내용</p>",
+                TherapyArea.SENSORY_INTEGRATION,
+                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
+                author,
+                List.of("ADHD", "ASD"),
+                "기타 메모"
+        );
+        ReflectionTestUtils.setField(concernCard, "id", 1L);
+        ReflectionTestUtils.setField(concernCard, "viewCount", 0L);
+        ReflectionTestUtils.setField(concernCard, "createdAt", LocalDateTime.now());
+
+        when(therapyPostRepository.findFeedLatest(anyList(), any(), any(Pageable.class)))
+                .thenReturn(List.of(concernCard));
+
+        // when — USER 역할로 조회
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST, null);
+
+        // then — 진단명이 마스킹되어야 함
+        TherapyPostSummaryResponse item = response.getItems().get(0);
+        assertThat(item.getDiagnoses()).isNull();
+        assertThat(item.getOtherNotes()).isNull();
+    }
+
+    @Test
+    void 고민카드_THERAPIST에게_진단명_노출() {
+        // given
+        User author = User.builder()
+                .id(1L)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost concernCard = TherapyPost.createConcernCard(
+                "<p>고민 내용</p>",
+                TherapyArea.SENSORY_INTEGRATION,
+                AgeGroup.AGE_6_12,
+                Visibility.PUBLIC,
+                author,
+                List.of("ADHD", "ASD"),
+                "기타 메모"
+        );
+        ReflectionTestUtils.setField(concernCard, "id", 1L);
+        ReflectionTestUtils.setField(concernCard, "viewCount", 0L);
+        ReflectionTestUtils.setField(concernCard, "createdAt", LocalDateTime.now());
+
+        when(therapyPostRepository.findFeedLatest(anyList(), any(), any(Pageable.class)))
+                .thenReturn(List.of(concernCard));
+
+        // when — THERAPIST 역할로 조회
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST, null);
+
+        // then — 진단명이 보여야 함
+        TherapyPostSummaryResponse item = response.getItems().get(0);
+        assertThat(item.getDiagnoses()).containsExactly("ADHD", "ASD");
+        assertThat(item.getOtherNotes()).isEqualTo("기타 메모");
+    }
+
+    @Test
+    void 일반게시글에_고민카드_필드_포함_수정요청_무시() {
+        // COMMUNITY 게시글에 diagnoses를 포함한 update 요청 시 기존 update() 경로로 처리되어 diagnoses 무시
+        Long userId = 1L;
+        Long postId = 300L;
+
+        User author = User.builder()
+                .id(userId)
+                .email("therapist@test.com")
+                .nickname("상담사")
+                .role(UserRole.THERAPIST)
+                .build();
+
+        TherapyPost communityPost = TherapyPost.create(
+                "<p>일반 글</p>",
+                TherapyArea.SPEECH,
+                Visibility.PUBLIC,
+                author
+        );
+        ReflectionTestUtils.setField(communityPost, "id", postId);
+        ReflectionTestUtils.setField(communityPost, "viewCount", 0L);
+        ReflectionTestUtils.setField(communityPost, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(communityPost, "updatedAt", LocalDateTime.now());
+
+        UpdateTherapyPostRequest request = new UpdateTherapyPostRequest(
+                "<p>수정된 내용</p>",
+                TherapyArea.COGNITIVE,
+                AgeGroup.AGE_6_12,
+                List.of("ADHD"),
+                "메모",
+                Visibility.PUBLIC
+        );
+
+        when(activePostFinder.findOrThrow(postId)).thenReturn(communityPost);
+
+        // when
+        postService.updatePost(userId, UserRole.THERAPIST, postId, request);
+
+        // then — COMMUNITY 게시글이므로 diagnoses는 반영되지 않아야 함
+        assertThat(communityPost.getPostType()).isEqualTo(PostType.COMMUNITY);
+        assertThat(communityPost.getDiagnoses()).isNullOrEmpty();
+    }
+
+    @Test
+    void USER_역할_고민카드_작성_실패() {
+        Long userId = 1L;
+
+        CreateTherapyPostRequest request = new CreateTherapyPostRequest(
+                "<p>고민</p>",
+                PostType.CONCERN_CARD,
+                TherapyArea.SPEECH,
+                AgeGroup.AGE_6_12,
+                List.of("ADHD"),
+                "메모",
+                Visibility.PUBLIC,
+                null
+        );
+
+        User user = User.builder()
+                .id(userId)
+                .email("user@test.com")
+                .nickname("일반유저")
+                .role(UserRole.USER)
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // when & then — USER는 CONCERN_CARD 작성 불가
+        assertThatThrownBy(() -> postService.createPost(userId, UserRole.USER, request))
+                .isInstanceOf(com.therapyCommunity_Vol1.backend.global.exception.CustomException.class);
     }
 }
