@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
+import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
@@ -26,6 +27,9 @@ public class TherapyPostDetailResponse {
     private String authorNickname;
     private String authorProfileImageUrl;
     private TherapyArea therapyArea;
+    private AgeGroup ageGroup;
+    private List<String> diagnoses;
+    private String otherNotes;
     private Visibility visibility;
     private Long viewCount;
     private Long commentCount;
@@ -78,6 +82,7 @@ public class TherapyPostDetailResponse {
             List<PostVideoResponse> videos
     ) {
         boolean canManage = canManage(post, currentUserId, currentUserRole);
+        boolean canSeeDiagnoses = currentUserRole == UserRole.THERAPIST || currentUserRole == UserRole.ADMIN;
         return new TherapyPostDetailResponse(
                 post.getId(),
                 post.getContent(),
@@ -86,6 +91,9 @@ public class TherapyPostDetailResponse {
                 post.getAuthor().getDisplayNickname(),
                 authorProfileImageUrl,
                 post.getTherapyArea(),
+                post.getAgeGroup(),
+                canSeeDiagnoses ? post.getDiagnoses() : null,
+                canSeeDiagnoses ? post.getOtherNotes() : null,
                 post.getVisibility(),
                 post.getViewCount(),
                 commentCount,

@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
+import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
@@ -19,6 +20,9 @@ public class TherapyPostSummaryResponse {
     private String authorNickname;
     private String authorProfileImageUrl;
     private TherapyArea therapyArea;
+    private AgeGroup ageGroup;
+    private List<String> diagnoses;
+    private String otherNotes;
     private Visibility visibility;
     private Long viewCount;
     private Long likeCount;
@@ -45,6 +49,9 @@ public class TherapyPostSummaryResponse {
             String authorNickname,
             String authorProfileImageUrl,
             TherapyArea therapyArea,
+            AgeGroup ageGroup,
+            List<String> diagnoses,
+            String otherNotes,
             Visibility visibility,
             Long viewCount,
             Long likeCount,
@@ -63,6 +70,9 @@ public class TherapyPostSummaryResponse {
         this.authorNickname = authorNickname;
         this.authorProfileImageUrl = authorProfileImageUrl;
         this.therapyArea = therapyArea;
+        this.ageGroup = ageGroup;
+        this.diagnoses = diagnoses;
+        this.otherNotes = otherNotes;
         this.visibility = visibility;
         this.viewCount = viewCount;
         this.likeCount = likeCount;
@@ -104,6 +114,9 @@ public class TherapyPostSummaryResponse {
                 : makePreview(post.getContent());
         // PRIVATE 게시글의 이미지 URL은 권한 없는 사용자에게 노출하지 않음
         List<String> safeImageUrls = accessLocked ? List.of() : imageUrls;
+        // 진단명은 THERAPIST+ (canViewPrivate) 에게만 노출
+        List<String> safeDiagnoses = canViewPrivate ? post.getDiagnoses() : null;
+        String safeOtherNotes = canViewPrivate ? post.getOtherNotes() : null;
         return new TherapyPostSummaryResponse(
                 post.getId(),
                 post.getPostType(),
@@ -111,6 +124,9 @@ public class TherapyPostSummaryResponse {
                 post.getAuthor().getDisplayNickname(),
                 authorProfileImageUrl,
                 post.getTherapyArea(),
+                post.getAgeGroup(),
+                safeDiagnoses,
+                safeOtherNotes,
                 post.getVisibility(),
                 post.getViewCount(),
                 likeCount,
