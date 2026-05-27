@@ -81,6 +81,6 @@ app:
     vector:
       min-score: 0.3
 sentry:
-  dsn: ${SENTRY_DSN}
-  traces-sample-rate: 1.0
-  environment: ${SPRING_PROFILES_ACTIVE}
+  dsn: ${SENTRY_DSN:}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}
+  environment: ${SENTRY_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}
