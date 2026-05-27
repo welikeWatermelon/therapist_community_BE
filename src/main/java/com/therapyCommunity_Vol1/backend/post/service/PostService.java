@@ -151,7 +151,8 @@ public class PostService {
         Page<TherapyPost> result = findPosts(page, size, sortType, condition);
 
         boolean canViewPrivate = visibilityPolicy.canViewPrivate(currentUserRole);
-        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), canViewPrivate);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), canViewPrivate, canViewSensitive);
 
         return PagedResponse.from(result, posts);
     }
@@ -228,15 +229,16 @@ public class PostService {
             int size, String cursor, UserRole role, FeedSortType sortType, PostType postType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
         boolean canViewPrivate = visibilityPolicy.canViewPrivate(role);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(role);
 
         return switch (sortType) {
-            case LATEST -> fetchLatestFeed(size, cursor, canViewPrivate, postType);
-            case POPULAR -> fetchPopularFeed(size, cursor, canViewPrivate, postType);
+            case LATEST -> fetchLatestFeed(size, cursor, canViewPrivate, canViewSensitive, postType);
+            case POPULAR -> fetchPopularFeed(size, cursor, canViewPrivate, canViewSensitive, postType);
         };
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
-            int size, String cursor, boolean canViewPrivate, PostType postType) {
+            int size, String cursor, boolean canViewPrivate, boolean canViewSensitive, PostType postType) {
         PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
@@ -248,14 +250,14 @@ public class PostService {
                     GENERAL_FEED_VISIBILITIES, postType, postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate, canViewSensitive);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
-            int size, String cursor, boolean canViewPrivate, PostType postType) {
+            int size, String cursor, boolean canViewPrivate, boolean canViewSensitive, PostType postType) {
         PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
@@ -270,7 +272,7 @@ public class PostService {
         boolean hasNext = posts.size() > size;
         List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed, canViewPrivate);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed, canViewPrivate, canViewSensitive);
 
         String nextCursor = hasNext
                 ? new PopularCursor(
@@ -306,7 +308,8 @@ public class PostService {
                     followingIds, visibilities, postType, postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, true);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, true, canViewSensitive);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
@@ -368,6 +371,7 @@ public class PostService {
                 .map(TherapyPostReaction::getReactionType)
                 .orElse(null);
 
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
         TherapyPostDetailResponse response = TherapyPostDetailResponse.from(
                 post,
                 attachments,
@@ -379,7 +383,8 @@ public class PostService {
                 isScrapped,
                 profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
                 postImageService.getImagesForPostUnchecked(postId),
-                postVideoService.getVideosForPostUnchecked(postId)
+                postVideoService.getVideosForPostUnchecked(postId),
+                canViewSensitive
         );
         AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
         response.setAutoComment(acStatus.status(), acStatus.sourceMode());
@@ -447,6 +452,10 @@ public class PostService {
     // ── Summary DTO 변환 헬퍼 ──────────────────────────────
 
     private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate) {
+        return toSummaries(posts, canViewPrivate, canViewPrivate);
+    }
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate, boolean canViewSensitiveFields) {
         if (posts.isEmpty()) {
             return List.of();
         }
@@ -486,6 +495,7 @@ public class PostService {
                             commentCounts.getOrDefault(post.getId(), 0L),
                             false,
                             canViewPrivate,
+                            canViewSensitiveFields,
                             profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
                             imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
                                     .map(PostImageResponse::getImageUrl)

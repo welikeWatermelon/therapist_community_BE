@@ -81,8 +81,26 @@ public class TherapyPostDetailResponse {
             List<PostImageResponse> images,
             List<PostVideoResponse> videos
     ) {
+        return from(post, attachments, commentCount, reactionCounts, myReactionType,
+                currentUserId, currentUserRole, isScrapped, authorProfileImageUrl, images, videos,
+                currentUserRole == UserRole.THERAPIST || currentUserRole == UserRole.ADMIN);
+    }
+
+    public static TherapyPostDetailResponse from(
+            TherapyPost post,
+            List<PostAttachmentResponse> attachments,
+            Long commentCount,
+            Map<PostReactionType, Long> reactionCounts,
+            PostReactionType myReactionType,
+            Long currentUserId,
+            UserRole currentUserRole,
+            boolean isScrapped,
+            String authorProfileImageUrl,
+            List<PostImageResponse> images,
+            List<PostVideoResponse> videos,
+            boolean canViewSensitiveFields
+    ) {
         boolean canManage = canManage(post, currentUserId, currentUserRole);
-        boolean canSeeDiagnoses = currentUserRole == UserRole.THERAPIST || currentUserRole == UserRole.ADMIN;
         return new TherapyPostDetailResponse(
                 post.getId(),
                 post.getContent(),
@@ -92,8 +110,8 @@ public class TherapyPostDetailResponse {
                 authorProfileImageUrl,
                 post.getTherapyArea(),
                 post.getAgeGroup(),
-                canSeeDiagnoses ? post.getDiagnoses() : null,
-                canSeeDiagnoses ? post.getOtherNotes() : null,
+                canViewSensitiveFields ? post.getDiagnoses() : null,
+                canViewSensitiveFields ? post.getOtherNotes() : null,
                 post.getVisibility(),
                 post.getViewCount(),
                 commentCount,

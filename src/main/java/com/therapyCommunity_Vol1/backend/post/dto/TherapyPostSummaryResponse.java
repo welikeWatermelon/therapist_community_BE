@@ -108,15 +108,32 @@ public class TherapyPostSummaryResponse {
             List<String> imageUrls,
             PostReactionType myReactionType
     ) {
+        return from(post, likeCount, curiousCount, usefulCount, commentCount,
+                isScrapped, canViewPrivate, canViewPrivate, authorProfileImageUrl, imageUrls, myReactionType);
+    }
+
+    public static TherapyPostSummaryResponse from(
+            TherapyPost post,
+            Long likeCount,
+            Long curiousCount,
+            Long usefulCount,
+            Long commentCount,
+            boolean isScrapped,
+            boolean canViewPrivate,
+            boolean canViewSensitiveFields,
+            String authorProfileImageUrl,
+            List<String> imageUrls,
+            PostReactionType myReactionType
+    ) {
         boolean accessLocked = post.getVisibility() == Visibility.PRIVATE && !canViewPrivate;
         String preview = accessLocked
                 ? PRIVATE_CONTENT_MESSAGE
                 : makePreview(post.getContent());
         // PRIVATE 게시글의 이미지 URL은 권한 없는 사용자에게 노출하지 않음
         List<String> safeImageUrls = accessLocked ? List.of() : imageUrls;
-        // 진단명은 THERAPIST+ (canViewPrivate) 에게만 노출
-        List<String> safeDiagnoses = canViewPrivate ? post.getDiagnoses() : null;
-        String safeOtherNotes = canViewPrivate ? post.getOtherNotes() : null;
+        // 진단명은 canViewSensitiveFields (THERAPIST+) 에게만 노출
+        List<String> safeDiagnoses = canViewSensitiveFields ? post.getDiagnoses() : null;
+        String safeOtherNotes = canViewSensitiveFields ? post.getOtherNotes() : null;
         return new TherapyPostSummaryResponse(
                 post.getId(),
                 post.getPostType(),

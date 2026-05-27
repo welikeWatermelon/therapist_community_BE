@@ -119,6 +119,10 @@ public class SearchResultAssembler {
     }
 
     private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate) {
+        return toSummaries(posts, canViewPrivate, canViewPrivate);
+    }
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate, boolean canViewSensitiveFields) {
         if (posts.isEmpty()) {
             return List.of();
         }
@@ -157,6 +161,7 @@ public class SearchResultAssembler {
                             commentCounts.getOrDefault(post.getId(), 0L),
                             false,
                             canViewPrivate,
+                            canViewSensitiveFields,
                             profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
                             imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
                                     .map(PostImageResponse::getImageUrl)
