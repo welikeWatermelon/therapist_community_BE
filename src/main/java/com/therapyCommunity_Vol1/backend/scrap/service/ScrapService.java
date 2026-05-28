@@ -9,8 +9,8 @@ import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+import com.therapyCommunity_Vol1.backend.post.event.PopularityRecalculationEvent;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
@@ -19,7 +19,7 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -39,9 +39,8 @@ import java.util.Set;
 public class ScrapService {
 
     private final TherapyPostScrapRepository scrapRepository;
-    private final PostService postService;
     private final ActivePostFinder activePostFinder;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final UserEventPublisher userEventPublisher;
@@ -55,8 +54,7 @@ public class ScrapService {
 
     @Transactional
     public ScrapStatusResponse addScrap(Long currentUserId, UserRole currentUserRole, Long postId) {
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userService.findById(currentUserId);
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
@@ -66,7 +64,7 @@ public class ScrapService {
         if (!alreadyExists) {
             TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
             scrapRepository.save(scrap);
-            postService.recalculatePopularityScore(postId);
+            eventPublisher.publishEvent(new PopularityRecalculationEvent(postId));
 
             eventPublisher.publishEvent(NotificationEvent.of(
                     currentUserId, post.getAuthor().getId(),
@@ -92,7 +90,7 @@ public class ScrapService {
         scrapRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(scrap -> {
                     scrapRepository.delete(scrap);
-                    postService.recalculatePopularityScore(postId);
+                    eventPublisher.publishEvent(new PopularityRecalculationEvent(postId));
                 });
         return new ScrapStatusResponse(postId, false);
     }
@@ -106,8 +104,7 @@ public class ScrapService {
     }
 
     public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, UserRole currentUserRole, int page, int size) {
-        userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        userService.findById(currentUserId);
 
         Pageable pageable = PageRequest.of(
                 page,
