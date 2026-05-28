@@ -17,7 +17,7 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepo
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ByteArrayResource;
@@ -43,7 +43,7 @@ class PostAttachmentServiceTest {
     private ActivePostFinder activePostFinder;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private TherapyPostDownloadRepository therapyPostDownloadRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private FileStorageService fileStorageService;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
@@ -55,7 +55,7 @@ class PostAttachmentServiceTest {
         activePostFinder = mock(ActivePostFinder.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
         therapyPostDownloadRepository = mock(TherapyPostDownloadRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         fileStorageService = mock(FileStorageService.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
@@ -69,7 +69,7 @@ class PostAttachmentServiceTest {
                 activePostFinder,
                 therapyPostAttachmentRepository,
                 therapyPostDownloadRepository,
-                userRepository,
+                userService,
                 fileStorageService,
                 resourceAccessValidator,
                 visibilityPolicy,
@@ -161,7 +161,7 @@ class PostAttachmentServiceTest {
                 "guide.pdf"
         );
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(userService.findById(userId)).thenReturn(downloader);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
         when(fileStorageService.loadAsResource("post-attachments/guide.pdf", "application/pdf", "guide.pdf"))
@@ -187,7 +187,7 @@ class PostAttachmentServiceTest {
                 "guide.pdf"
         );
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(userService.findById(userId)).thenReturn(downloader);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
         when(fileStorageService.loadAsResource(any(), any(), any())).thenReturn(storedFile);
@@ -219,7 +219,7 @@ class PostAttachmentServiceTest {
         ReflectionTestUtils.setField(download, "lastDownloadedAt", LocalDateTime.of(2026, 3, 22, 12, 0));
         ReflectionTestUtils.setField(download, "downloadCount", 3L);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(userService.findById(userId)).thenReturn(downloader);
         when(therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(eq(userId), any()))
                 .thenReturn(new PageImpl<>(
                         List.of(download),

@@ -24,7 +24,7 @@ import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy
 import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -45,7 +45,7 @@ public class CommentService {
 
     private final TherapyPostCommentRepository commentRepository;
     private final ActivePostFinder activePostFinder;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ResourceAccessValidator resourceAccessValidator;
     private final CommentThreadAssembler commentThreadAssembler;
     private final AiCommentProperties aiCommentProperties;
@@ -62,8 +62,7 @@ public class CommentService {
             Long postId,
             CreateCommentRequest request
     ) {
-        User author = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User author = userService.findById(currentUserId);
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
@@ -171,28 +170,29 @@ public class CommentService {
         }
         List<Long> commentIds = comments.stream().map(TherapyPostComment::getId).toList();
         List<TherapyPostCommentReaction> reactions = commentReactionRepository.findByCommentIdIn(commentIds);
+        Map<Long, long[]> counts = new HashMap<>();
+        Map<Long, CommentReactionType> myReactions = new HashMap<>();
+        for (Long id : commentIds) {
+            counts.put(id, new long[3]);
+        }
+        for (TherapyPostCommentReaction r : reactions) {
+            Long cId = r.getComment().getId();
+            long[] c = counts.get(cId);
+            if (c != null) {
+                switch (r.getReactionType()) {
+                    case LIKE -> c[0]++;
+                    case CURIOUS -> c[1]++;
+                    case USEFUL -> c[2]++;
+                }
+                if (currentUserId != null && currentUserId.equals(r.getUser().getId())) {
+                    myReactions.put(cId, r.getReactionType());
+                }
+            }
+        }
         Map<Long, CommentReactionAggregate> result = new HashMap<>();
         for (Long id : commentIds) {
-            result.put(id, CommentReactionAggregate.empty());
-        }
-        Map<Long, List<TherapyPostCommentReaction>> grouped = new HashMap<>();
-        for (TherapyPostCommentReaction r : reactions) {
-            grouped.computeIfAbsent(r.getComment().getId(), ignored -> new java.util.ArrayList<>()).add(r);
-        }
-        for (Map.Entry<Long, List<TherapyPostCommentReaction>> entry : grouped.entrySet()) {
-            long likes = 0;
-            long curious = 0;
-            long useful = 0;
-            CommentReactionType my = null;
-            for (TherapyPostCommentReaction r : entry.getValue()) {
-                switch (r.getReactionType()) {
-                    case LIKE -> likes++;
-                    case CURIOUS -> curious++;
-                    case USEFUL -> useful++;
-                }
-                if (r.getUser().getId().equals(currentUserId)) my = r.getReactionType();
-            }
-            result.put(entry.getKey(), new CommentReactionAggregate(likes, curious, useful, my));
+            long[] c = counts.get(id);
+            result.put(id, new CommentReactionAggregate(c[0], c[1], c[2], myReactions.get(id)));
         }
         return result;
     }
@@ -229,5 +229,23 @@ public class CommentService {
     public Page<TherapyPostComment> getMyComments(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
         return commentRepository.findByAuthorId(userId, pageable);
+    }
+
+    /**
+     * 단건 게시글의 활성 댓글 수를 조회한다.
+     */
+    public long getCommentCount(Long postId) {
+        return commentRepository.countByPostIdAndDeletedAtIsNull(postId);
+    }
+
+    /**
+     * 다건 게시글의 활성 댓글 수를 배치 조회한다.
+     */
+    public Map<Long, Long> getCommentCountsByPostIds(List<Long> postIds) {
+        Map<Long, Long> result = new HashMap<>();
+        for (Object[] row : commentRepository.countActiveByPostIdIn(postIds)) {
+            result.put((Long) row[0], (Long) row[1]);
+        }
+        return result;
     }
 }

@@ -12,7 +12,7 @@ import com.therapyCommunity_Vol1.backend.reaction.dto.ToggleCommentReactionReque
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,7 +26,7 @@ class CommentReactionServiceTest {
 
     private TherapyPostCommentReactionRepository commentReactionRepository;
     private CommentService commentService;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private CommentReactionService commentReactionService;
 
@@ -34,11 +34,11 @@ class CommentReactionServiceTest {
     void setUp() {
         commentReactionRepository = mock(TherapyPostCommentReactionRepository.class);
         commentService = mock(CommentService.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         commentReactionService = new CommentReactionService(
                 commentService,
-                userRepository,
+                userService,
                 commentReactionRepository,
                 eventPublisher
         );
@@ -67,7 +67,7 @@ class CommentReactionServiceTest {
         ToggleCommentReactionRequest request =
                 new ToggleCommentReactionRequest(CommentReactionType.LIKE);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.empty());
 
@@ -110,7 +110,7 @@ class CommentReactionServiceTest {
         ToggleCommentReactionRequest request =
                 new ToggleCommentReactionRequest(CommentReactionType.CURIOUS);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.of(existing), Optional.of(existing));
 
