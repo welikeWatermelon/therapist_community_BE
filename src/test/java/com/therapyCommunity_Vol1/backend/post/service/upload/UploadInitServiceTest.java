@@ -20,10 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,6 +40,7 @@ class UploadInitServiceTest {
     private ResourceAccessValidator resourceAccessValidator;
     private MediaKindPolicy mediaKindPolicy;
     private FileStorageService fileStorageService;
+    private UploadRateLimiter uploadRateLimiter;
     private TherapyPostImageRepository imageRepository;
     private TherapyPostAttachmentRepository attachmentRepository;
     private TherapyPostVideoRepository videoRepository;
@@ -55,6 +56,7 @@ class UploadInitServiceTest {
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         mediaKindPolicy = new MediaKindPolicy();
         fileStorageService = mock(FileStorageService.class);
+        uploadRateLimiter = mock(UploadRateLimiter.class);
         imageRepository = mock(TherapyPostImageRepository.class);
         attachmentRepository = mock(TherapyPostAttachmentRepository.class);
         videoRepository = mock(TherapyPostVideoRepository.class);
@@ -65,6 +67,7 @@ class UploadInitServiceTest {
                 resourceAccessValidator,
                 mediaKindPolicy,
                 fileStorageService,
+                uploadRateLimiter,
                 imageRepository,
                 attachmentRepository,
                 videoRepository
@@ -109,7 +112,7 @@ class UploadInitServiceTest {
         TherapyPost post = post(7L, user(1L));
         when(activePostFinder.findOrThrow(7L)).thenReturn(post);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(post, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(post), eq(UserRole.USER), any());
 
         assertThatThrownBy(() -> service.init(
                 1L, UserRole.USER, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
@@ -181,7 +184,7 @@ class UploadInitServiceTest {
     void init_storedKeyContainsPostIdAndKindAndExtension() {
         TherapyPost post = post(99L, user(1L));
         when(activePostFinder.findOrThrow(99L)).thenReturn(post);
-        when(attachmentRepository.findByPostIdOrderByCreatedAtAsc(99L)).thenReturn(List.of());
+        when(attachmentRepository.countByPostId(99L)).thenReturn(0);
         when(fileStorageService.presignPut(anyString(), anyString(), org.mockito.ArgumentMatchers.any(Duration.class)))
                 .thenReturn("https://signed");
 
@@ -189,6 +192,30 @@ class UploadInitServiceTest {
                 1L, UserRole.THERAPIST, 99L, MediaKind.ATTACHMENT, "doc.pdf", "application/pdf", 1 * MB);
 
         assertThat(response.getStoredKey()).matches("uploads-pending/attachments/99/[A-Fa-f0-9-]+\\.pdf");
+    }
+
+    @Test
+    void init_throwsWhenRateLimitExceeded() {
+        doThrow(new CustomException(ErrorCode.UPLOAD_RATE_LIMIT_EXCEEDED))
+                .when(uploadRateLimiter).checkAndIncrement(1L);
+
+        assertThatThrownBy(() -> service.init(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_RATE_LIMIT_EXCEEDED);
+
+        verify(activePostFinder, never()).findOrThrow(anyLong());
+    }
+
+    @Test
+    void init_throwsWhenDailyLimitExceeded() {
+        doThrow(new CustomException(ErrorCode.UPLOAD_DAILY_LIMIT_EXCEEDED))
+                .when(uploadRateLimiter).checkAndIncrement(1L);
+
+        assertThatThrownBy(() -> service.init(
+                1L, UserRole.THERAPIST, 7L, MediaKind.IMAGE, "p.jpg", "image/jpeg", 1 * MB))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.UPLOAD_DAILY_LIMIT_EXCEEDED);
     }
 
     private User user(Long id) {

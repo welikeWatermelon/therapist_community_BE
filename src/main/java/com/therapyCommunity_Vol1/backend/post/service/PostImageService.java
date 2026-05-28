@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,7 +47,7 @@ public class PostImageService {
             MultipartFile file
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         StoredFileInfo storedFileInfo = fileStorageService.storePostImage(file);
@@ -86,13 +87,24 @@ public class PostImageService {
                 sizeBytes,
                 nextOrder
         );
-        TherapyPostImage saved = therapyPostImageRepository.save(image);
+        // saveAndFlush: stored_path 유니크 위반을 이 호출(=UploadConfirmService try-catch) 안에서
+        // 동기적으로 터뜨린다. IDENTITY 전략이라 어차피 즉시 INSERT 되지만, 전략이 바뀌어도(SEQUENCE 등)
+        // 타이밍이 commit 으로 밀리지 않도록 명시적으로 flush.
+        TherapyPostImage saved = therapyPostImageRepository.saveAndFlush(image);
         return toResponse(saved);
     }
 
-    public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole) {
+    /**
+     * 멱등 confirm 판정용 — finalKey(stored_path) 로 이미 영속된 이미지가 있으면 응답으로 매핑.
+     * UploadConfirmService 가 재시도 단락에 사용.
+     */
+    public Optional<PostImageResponse> findByStoredPath(String storedPath) {
+        return therapyPostImageRepository.findByStoredPath(storedPath).map(this::toResponse);
+    }
+
+    public List<PostImageResponse> getImages(Long postId, UserRole currentUserRole, Long currentUserId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         return getImagesForPostUnchecked(postId);
     }
@@ -134,9 +146,9 @@ public class PostImageService {
         return PostImageResponse.from(image);
     }
 
-    public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole) {
+    public StoredFileResource loadImage(Long postId, Long imageId, UserRole currentUserRole, Long currentUserId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         TherapyPostImage image = therapyPostImageRepository.findById(imageId)
                 .filter(i -> i.getPost().getId().equals(postId))
@@ -157,7 +169,7 @@ public class PostImageService {
             Long imageId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         TherapyPostImage image = therapyPostImageRepository.findById(imageId)

@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.global.exception;
 
+import io.sentry.Sentry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,10 @@ public class GlobalExceptionHandler {
     ) {
         ErrorCode errorCode = e.getErrorCode();
         log.error("CustomException: path={}, code={}", request.getRequestURI(), errorCode.name());
+
+        if (errorCode.getStatus().is5xxServerError()) {
+            Sentry.captureException(e);
+        }
 
         return ResponseEntity
                 .status(errorCode.getStatus())
@@ -97,6 +102,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Unhandled: path={}", request.getRequestURI(), e);
+        Sentry.captureException(e);
 
         return ResponseEntity
                 .status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())

@@ -11,6 +11,8 @@ public interface TherapyPostAttachmentRepository extends JpaRepository<TherapyPo
 
     List<TherapyPostAttachment> findByPostIdOrderByCreatedAtAsc(Long postId);
 
+    int countByPostId(Long postId);
+
     @EntityGraph(attributePaths = "post")
     Optional<TherapyPostAttachment> findByIdAndPostId(Long attachmentId, Long postId);
 }

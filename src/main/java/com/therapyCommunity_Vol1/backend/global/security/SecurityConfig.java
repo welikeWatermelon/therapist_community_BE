@@ -65,6 +65,9 @@ public class SecurityConfig {
                     ).permitAll()
                     // 알림 API — 로그인한 사용자 모두
                     .requestMatchers("/api/v1/notifications/**").authenticated()
+                    // 쪽지 API — 로그인한 사용자 모두
+                    .requestMatchers("/api/v1/messages/**").authenticated()
+                    .requestMatchers("/api/v1/me/messages/**").authenticated()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     // 커뮤니티 — USER 포함 (서비스에서 PUBLIC/PRIVATE 체크)

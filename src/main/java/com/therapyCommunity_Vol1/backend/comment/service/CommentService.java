@@ -66,7 +66,7 @@ public class CommentService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         TherapyPostComment comment;
 
@@ -132,7 +132,7 @@ public class CommentService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         List<TherapyPostComment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
         // N+1 제거: commentIds 한 번의 IN 절 SQL로 모든 reaction 가져와 메모리에서 매핑
@@ -149,7 +149,7 @@ public class CommentService {
     ) {
         TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
-        visibilityPolicy.checkAccess(comment.getPost(), currentUserRole);
+        visibilityPolicy.checkAccess(comment.getPost(), currentUserRole, currentUserId);
 
         resourceAccessValidator.validateAuthorOrAdmin(comment.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.COMMENT_ACCESS_DENIED);
 
@@ -215,7 +215,7 @@ public class CommentService {
     ) {
         TherapyPostComment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
-        visibilityPolicy.checkAccess(comment.getPost(), currentUserRole);
+        visibilityPolicy.checkAccess(comment.getPost(), currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(comment.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.COMMENT_ACCESS_DENIED);
 
         comment.softDelete();

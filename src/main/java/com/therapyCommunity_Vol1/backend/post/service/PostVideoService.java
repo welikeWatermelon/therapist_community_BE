@@ -44,9 +44,9 @@ public class PostVideoService {
                 .toList();
     }
 
-    public StoredFileResource loadVideo(Long postId, Long videoId, UserRole currentUserRole) {
+    public StoredFileResource loadVideo(Long postId, Long videoId, UserRole currentUserRole, Long currentUserId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         TherapyPostVideo video = therapyPostVideoRepository.findByIdAndPostId(videoId, postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_VIDEO_NOT_FOUND));
@@ -66,7 +66,7 @@ public class PostVideoService {
             Long videoId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         TherapyPostVideo video = therapyPostVideoRepository.findByIdAndPostId(videoId, postId)

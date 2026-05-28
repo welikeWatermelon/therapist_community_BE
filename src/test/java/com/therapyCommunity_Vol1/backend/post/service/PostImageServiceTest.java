@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -250,9 +251,9 @@ class PostImageServiceTest {
 
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), any());
 
-        assertThatThrownBy(() -> postImageService.getImages(10L, UserRole.USER))
+        assertThatThrownBy(() -> postImageService.getImages(10L, UserRole.USER, 99L))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
@@ -265,9 +266,9 @@ class PostImageServiceTest {
 
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), any());
 
-        assertThatThrownBy(() -> postImageService.loadImage(10L, 100L, UserRole.USER))
+        assertThatThrownBy(() -> postImageService.loadImage(10L, 100L, UserRole.USER, 99L))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.THERAPIST_VERIFICATION_REQUIRED);
@@ -282,7 +283,7 @@ class PostImageServiceTest {
 
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), any());
 
         // upload
         org.springframework.mock.web.MockMultipartFile file =

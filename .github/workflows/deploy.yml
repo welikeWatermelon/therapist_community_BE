@@ -35,7 +35,7 @@ jobs:
 
       # 로컬 테스트 후 푸시 권장, CI 속도 우선. 추후 별도 test job 추가 예정
       - name: Build JAR
-        run: ./gradlew bootJar -x test
+        run: ./gradlew clean bootJar -x test
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -77,6 +77,8 @@ jobs:
               "docker rm builders-backend || true",
               "docker stop builders-backend-new && docker rm builders-backend-new",
               "docker run -d --name builders-backend --env-file /etc/backend/backend.env -p 8080:8080 --restart unless-stopped $IMAGE",
+              "docker image prune -f",
+              "docker container prune -f",
               "echo Zero-downtime deploy complete"
             ]' \
             --query 'Command.CommandId' \
@@ -141,6 +143,8 @@ jobs:
               "docker rm builders-backend || true",
               "docker stop builders-backend-new && docker rm builders-backend-new",
               "docker run -d --name builders-backend --env-file /etc/backend/backend.env -p 8080:8080 --restart unless-stopped $IMAGE",
+              "docker image prune -f",
+              "docker container prune -f",
               "echo Zero-downtime deploy complete"
             ]' \
             --query 'Command.CommandId' \

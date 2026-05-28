@@ -83,6 +83,29 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @Operation(summary = "팔로잉 피드 (무한스크롤)", description = "내가 팔로우한 치료사의 게시글만 조회. 커서 기반 페이지네이션")
+    @GetMapping("/feed/following")
+    public ResponseEntity<ApiResponse<CursorPagedResponse<TherapyPostSummaryResponse>>> getFollowingFeed(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String cursor
+    ) {
+        CursorPagedResponse<TherapyPostSummaryResponse> response =
+                postService.getFollowingFeed(userDetails.getUserId(), userDetails.getUserRole(), size, cursor);
+
+        Long userId = userDetails.getUserId();
+        List<Long> postIds = response.getItems().stream()
+                .map(TherapyPostSummaryResponse::getId).toList();
+        Set<Long> scrappedIds = scrapService.getScrappedPostIds(userId, postIds);
+        Map<Long, PostReactionType> myReactions = postReactionService.getMyReactionByPostIds(userId, postIds);
+        response.getItems().forEach(post -> {
+            post.markScrapped(scrappedIds.contains(post.getId()));
+            post.markMyReactionType(myReactions.get(post.getId()));
+        });
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @Operation(summary = "게시글 목록/검색", description = "keyword(초성/텍스트), therapyArea, postType 필터. sortType: LATEST, MOST_VIEWED")
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<TherapyPostSummaryResponse>>> getPosts(

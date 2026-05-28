@@ -9,7 +9,13 @@ import java.time.LocalDateTime;
 
 @Getter
 @Entity
-@Table(name = "therapy_post_images")
+@Table(
+        name = "therapy_post_images",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_therapy_post_images_stored_path",
+                columnNames = "stored_path"
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TherapyPostImage {
 

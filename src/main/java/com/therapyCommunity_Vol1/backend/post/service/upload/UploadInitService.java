@@ -13,12 +13,14 @@ import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -31,6 +33,7 @@ public class UploadInitService {
     private final ResourceAccessValidator resourceAccessValidator;
     private final MediaKindPolicy mediaKindPolicy;
     private final FileStorageService fileStorageService;
+    private final UploadRateLimiter uploadRateLimiter;
 
     private final TherapyPostImageRepository imageRepository;
     private final TherapyPostAttachmentRepository attachmentRepository;
@@ -45,8 +48,10 @@ public class UploadInitService {
             String contentType,
             long sizeBytes
     ) {
+        uploadRateLimiter.checkAndIncrement(currentUserId);
+
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(
                 post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
@@ -66,6 +71,10 @@ public class UploadInitService {
             throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
 
+        // confirm 로그와 storedKey 로 짝지어 "init 발급됐으나 confirm 미도달"(브라우저 PUT 실패 등) 을 추적.
+        log.info("upload init issued: userId={}, postId={}, kind={}, storedKey={}, contentType={}, sizeBytes={}, filename={}",
+                currentUserId, postId, kind, storedKey, contentType, sizeBytes, originalFilename);
+
         return new UploadInitResponse(
                 uploadUrl,
                 storedKey,
@@ -76,7 +85,7 @@ public class UploadInitService {
     int currentCount(MediaKind kind, Long postId) {
         return switch (kind) {
             case IMAGE -> imageRepository.countByPostId(postId);
-            case ATTACHMENT -> attachmentRepository.findByPostIdOrderByCreatedAtAsc(postId).size();
+            case ATTACHMENT -> attachmentRepository.countByPostId(postId);
             case VIDEO -> videoRepository.countByPostId(postId);
         };
     }

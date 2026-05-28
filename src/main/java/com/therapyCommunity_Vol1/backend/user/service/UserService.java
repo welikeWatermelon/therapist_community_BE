@@ -9,6 +9,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -17,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,12 +34,18 @@ public class UserService {
     private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
     public CurrentUserResponse getCurrentUser(Long currentUserId) {
+        return getCurrentUser(currentUserId, 0, 0);
+    }
+
+    public CurrentUserResponse getCurrentUser(Long currentUserId, long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
                 therapistVerificationService.findVerificationStatusByUserId(currentUserId),
-                profileImageUrlAssembler
+                profileImageUrlAssembler,
+                followerCount,
+                followingCount
         );
     }
 
@@ -60,7 +69,8 @@ public class UserService {
     }
 
     @Transactional
-    public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request) {
+    public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request,
+                                             long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         if (request.getNickname() != null
@@ -69,12 +79,14 @@ public class UserService {
         }
 
         user.updateProfile(request.getNickname(), null);
-        userCacheService.evict(currentUserId);  // 프로필 변경 → 캐시 무효화
+        userCacheService.evict(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
                 therapistVerificationService.findVerificationStatusByUserId(currentUserId),
-                profileImageUrlAssembler
+                profileImageUrlAssembler,
+                followerCount,
+                followingCount
         );
     }
 
@@ -87,8 +99,24 @@ public class UserService {
         tokenService.revokeAllForUser(currentUserId);
     }
 
-    private User findUserOrThrow(Long userId) {
+    public User findById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    public User getReferenceById(Long userId) {
+        return userRepository.getReferenceById(userId);
+    }
+
+    public List<Long> findUserIdsByRole(UserRole role) {
+        return userRepository.findIdsByRole(role);
+    }
+
+    public List<User> findUsersByIds(List<Long> userIds) {
+        return userRepository.findAllById(userIds);
+    }
+
+    private User findUserOrThrow(Long userId) {
+        return findById(userId);
     }
 }

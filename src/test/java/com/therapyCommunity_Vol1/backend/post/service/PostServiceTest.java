@@ -112,7 +112,8 @@ class PostServiceTest {
                 profileImageUrlAssembler,
                 postImageService,
                 postAttachmentService,
-                postVideoService
+                postVideoService,
+                mock(com.therapyCommunity_Vol1.backend.follow.service.FollowService.class)
         );
     }
 
@@ -192,7 +193,7 @@ class PostServiceTest {
         );
         Page<TherapyPost> page = new PageImpl<>(List.of(post), pageable, 1);
 
-        when(therapyPostRepository.findByDeletedAtIsNull(any(Pageable.class)))
+        when(therapyPostRepository.findByDeletedAtIsNullAndVisibilityIn(anyList(), any(Pageable.class)))
                 .thenReturn(page);
         when(therapyPostReactionRepository.countByPostIdInGroupedByType(eq(List.of(1L))))
                 .thenReturn(List.<Object[]>of(new Object[]{1L, PostReactionType.LIKE, 5L}));
@@ -593,7 +594,7 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
@@ -621,7 +622,7 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
@@ -635,7 +636,7 @@ class PostServiceTest {
 
     @Test
     void 피드_빈결과() {
-        when(therapyPostRepository.findFeedLatest(isNull(), isNull(), any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
                 .thenReturn(List.of());
 
         CursorPagedResponse<TherapyPostSummaryResponse> response = postService.getPostsFeed(10, null, UserRole.THERAPIST, FeedSortType.LATEST);
@@ -654,14 +655,13 @@ class PostServiceTest {
         ReflectionTestUtils.setField(privatePost, "viewCount", 0L);
         ReflectionTestUtils.setField(privatePost, "createdAt", LocalDateTime.now());
 
-        when(therapyPostRepository.findFeedLatest(any(Pageable.class)))
+        when(therapyPostRepository.findFeedLatest(anyList(), any(Pageable.class)))
                 .thenReturn(List.of(privatePost));
 
         CursorPagedResponse<TherapyPostSummaryResponse> response =
                 postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.LATEST);
 
-        verify(therapyPostRepository).findFeedLatest(any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedLatestByVisibility(any(), any(Pageable.class));
+        verify(therapyPostRepository).findFeedLatest(anyList(), any(Pageable.class));
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getItems().get(0).isAccessLocked()).isTrue();
@@ -685,7 +685,7 @@ class PostServiceTest {
             posts.add(post);
         }
 
-        when(therapyPostRepository.findFeedPopular(any(Pageable.class)))
+        when(therapyPostRepository.findFeedPopular(anyList(), any(Pageable.class)))
                 .thenReturn(posts);
 
         // when
@@ -700,12 +700,11 @@ class PostServiceTest {
     @Test
     void 인기순_피드_USER도_PRIVATE_포함_전체_조회() {
         // PRIVATE UX 개편: USER도 PUBLIC + PRIVATE 통합 조회.
-        when(therapyPostRepository.findFeedPopular(any(Pageable.class)))
+        when(therapyPostRepository.findFeedPopular(anyList(), any(Pageable.class)))
                 .thenReturn(List.of());
 
         postService.getPostsFeed(10, null, UserRole.USER, FeedSortType.POPULAR);
 
-        verify(therapyPostRepository).findFeedPopular(any(Pageable.class));
-        verify(therapyPostRepository, never()).findFeedPopularByVisibility(any(), any(Pageable.class));
+        verify(therapyPostRepository).findFeedPopular(anyList(), any(Pageable.class));
     }
 }

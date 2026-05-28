@@ -16,13 +16,25 @@ public record CurrentUserResponse(
         String role,
         boolean canAccessCommunity,
         String communityAccessLevel,
-        TherapistVerificationSummary therapistVerification
+        TherapistVerificationSummary therapistVerification,
+        long followerCount,
+        long followingCount
 ) {
 
     public static CurrentUserResponse from(
             User user,
             Optional<TherapistVerificationStatusDto> verification,
             ProfileImageUrlAssembler profileImageUrlAssembler
+    ) {
+        return from(user, verification, profileImageUrlAssembler, 0, 0);
+    }
+
+    public static CurrentUserResponse from(
+            User user,
+            Optional<TherapistVerificationStatusDto> verification,
+            ProfileImageUrlAssembler profileImageUrlAssembler,
+            long followerCount,
+            long followingCount
     ) {
         String accessLevel = communityAccessLevel(user);
         return new CurrentUserResponse(
@@ -33,7 +45,9 @@ public record CurrentUserResponse(
                 user.getRole().getCode(),
                 "FULL".equals(accessLevel),
                 accessLevel,
-                TherapistVerificationSummary.from(verification)
+                TherapistVerificationSummary.from(verification),
+                followerCount,
+                followingCount
         );
     }
 
