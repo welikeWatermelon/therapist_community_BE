@@ -5,6 +5,7 @@ import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.dto.PostImageResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.UploadConfirmResponse;
@@ -58,6 +59,9 @@ public class UploadConfirmService {
         }
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
+        if (post.getPostType() == PostType.CONCERN_CARD) {
+            throw new CustomException(ErrorCode.CONCERN_CARD_UPLOAD_NOT_ALLOWED);
+        }
         visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(
                 post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);

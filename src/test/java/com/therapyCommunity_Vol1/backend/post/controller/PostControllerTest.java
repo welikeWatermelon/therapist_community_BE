@@ -121,7 +121,7 @@ class PostControllerTest {
                 false,
                 20
         );
-        given(postService.getPostsFeed(eq(20), eq(null), any(UserRole.class), eq(FeedSortType.LATEST)))
+        given(postService.getPostsFeed(eq(20), eq(null), any(UserRole.class), eq(FeedSortType.LATEST), eq(null)))
                 .willReturn(feedResponse);
 
         // when & then
@@ -135,6 +135,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.nextCursor").doesNotExist())
                 .andExpect(jsonPath("$.data.size").value(20));
 
-        verify(postService).getPostsFeed(eq(20), eq(null), any(UserRole.class), eq(FeedSortType.LATEST));
+        verify(postService).getPostsFeed(eq(20), eq(null), any(UserRole.class), eq(FeedSortType.LATEST), eq(null));
     }
 }

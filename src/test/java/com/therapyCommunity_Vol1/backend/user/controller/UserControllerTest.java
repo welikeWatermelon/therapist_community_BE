@@ -98,7 +98,7 @@ class UserControllerTest {
         PagedResponse<TherapyPostSummaryResponse> pagedResponse = new PagedResponse<>(
                 List.of(), 0, 10, 0L, 0, false
         );
-        when(myPageFacade.getMyPosts(1L, 0, 10)).thenReturn(pagedResponse);
+        when(myPageFacade.getMyPosts(1L, 0, 10, null)).thenReturn(pagedResponse);
 
         mockMvc.perform(get("/api/v1/me/posts")
                         .param("page", "0")
@@ -107,7 +107,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.items").isArray());
 
-        verify(myPageFacade).getMyPosts(1L, 0, 10);
+        verify(myPageFacade).getMyPosts(1L, 0, 10, null);
     }
 
     @Test

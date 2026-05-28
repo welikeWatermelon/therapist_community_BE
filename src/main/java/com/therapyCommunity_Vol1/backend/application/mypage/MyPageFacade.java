@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.follow.dto.FollowCountResponse;
 import com.therapyCommunity_Vol1.backend.follow.dto.FollowUserResponse;
 import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
@@ -36,8 +37,8 @@ public class MyPageFacade {
         return userService.getCurrentUser(userId, counts.getFollowerCount(), counts.getFollowingCount());
     }
 
-    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
-        return postService.getMyPosts(userId, page, size);
+    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size, PostType postType) {
+        return postService.getMyPosts(userId, page, size, postType);
     }
 
     public PagedResponse<MyCommentResponse> getMyComments(Long userId, int page, int size) {

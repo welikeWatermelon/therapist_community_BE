@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.post.dto;
 
+import com.therapyCommunity_Vol1.backend.post.domain.AgeGroup;
 import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
@@ -26,6 +27,9 @@ public class TherapyPostDetailResponse {
     private String authorNickname;
     private String authorProfileImageUrl;
     private TherapyArea therapyArea;
+    private AgeGroup ageGroup;
+    private List<String> diagnoses;
+    private String otherNotes;
     private Visibility visibility;
     private Long viewCount;
     private Long commentCount;
@@ -77,6 +81,25 @@ public class TherapyPostDetailResponse {
             List<PostImageResponse> images,
             List<PostVideoResponse> videos
     ) {
+        return from(post, attachments, commentCount, reactionCounts, myReactionType,
+                currentUserId, currentUserRole, isScrapped, authorProfileImageUrl, images, videos,
+                currentUserRole == UserRole.THERAPIST || currentUserRole == UserRole.ADMIN);
+    }
+
+    public static TherapyPostDetailResponse from(
+            TherapyPost post,
+            List<PostAttachmentResponse> attachments,
+            Long commentCount,
+            Map<PostReactionType, Long> reactionCounts,
+            PostReactionType myReactionType,
+            Long currentUserId,
+            UserRole currentUserRole,
+            boolean isScrapped,
+            String authorProfileImageUrl,
+            List<PostImageResponse> images,
+            List<PostVideoResponse> videos,
+            boolean canViewSensitiveFields
+    ) {
         boolean canManage = canManage(post, currentUserId, currentUserRole);
         return new TherapyPostDetailResponse(
                 post.getId(),
@@ -86,6 +109,9 @@ public class TherapyPostDetailResponse {
                 post.getAuthor().getDisplayNickname(),
                 authorProfileImageUrl,
                 post.getTherapyArea(),
+                post.getAgeGroup(),
+                canViewSensitiveFields ? post.getDiagnoses() : null,
+                canViewSensitiveFields ? post.getOtherNotes() : null,
                 post.getVisibility(),
                 post.getViewCount(),
                 commentCount,

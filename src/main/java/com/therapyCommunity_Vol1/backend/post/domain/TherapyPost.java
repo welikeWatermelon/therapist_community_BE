@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 @Entity
@@ -66,6 +67,13 @@ public class TherapyPost extends BaseEntity {
     @Column(name = "search_text", columnDefinition = "TEXT")
     private String searchText;
 
+    @Convert(converter = StringListConverter.class)
+    @Column(name = "diagnoses", columnDefinition = "TEXT")
+    private List<String> diagnoses;
+
+    @Column(name = "other_notes", columnDefinition = "TEXT")
+    private String otherNotes;
+
     private TherapyPost(
             String content,
             TherapyArea therapyArea,
@@ -79,7 +87,29 @@ public class TherapyPost extends BaseEntity {
         this.author = author;
         this.viewCount = 0L;
         this.popularityScore = java.time.Instant.now().getEpochSecond() / TIME_SCORE_DIVISOR;
-        this.searchText = buildSearchText(this.content, this.therapyArea);
+        this.searchText = buildSearchText(this.content, this.therapyArea, null);
+    }
+
+    private TherapyPost(
+            String content,
+            TherapyArea therapyArea,
+            AgeGroup ageGroup,
+            Visibility visibility,
+            User author,
+            List<String> diagnoses,
+            String otherNotes
+    ) {
+        this.content = content;
+        this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
+        this.ageGroup = ageGroup;
+        this.postType = PostType.CONCERN_CARD;
+        this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
+        this.author = author;
+        this.diagnoses = diagnoses;
+        this.otherNotes = otherNotes;
+        this.viewCount = 0L;
+        this.popularityScore = java.time.Instant.now().getEpochSecond() / TIME_SCORE_DIVISOR;
+        this.searchText = buildSearchText(this.content, this.therapyArea, this.diagnoses);
     }
 
     public static TherapyPost create(
@@ -89,6 +119,18 @@ public class TherapyPost extends BaseEntity {
             User author
     ) {
         return new TherapyPost(content, therapyArea, visibility, author);
+    }
+
+    public static TherapyPost createConcernCard(
+            String content,
+            TherapyArea therapyArea,
+            AgeGroup ageGroup,
+            Visibility visibility,
+            User author,
+            List<String> diagnoses,
+            String otherNotes
+    ) {
+        return new TherapyPost(content, therapyArea, ageGroup, visibility, author, diagnoses, otherNotes);
     }
 
     public void increaseViewCount() {
@@ -103,21 +145,45 @@ public class TherapyPost extends BaseEntity {
         this.content = content;
         this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
         this.visibility = visibility != null ? visibility : this.visibility;
-        this.searchText = buildSearchText(this.content, this.therapyArea);
+        this.searchText = buildSearchText(this.content, this.therapyArea, this.diagnoses);
+    }
+
+    public void updateConcernCard(
+            String content,
+            TherapyArea therapyArea,
+            AgeGroup ageGroup,
+            Visibility visibility,
+            List<String> diagnoses,
+            String otherNotes
+    ) {
+        this.content = content;
+        this.therapyArea = therapyArea != null ? therapyArea : TherapyArea.UNSPECIFIED;
+        this.ageGroup = ageGroup;
+        this.visibility = visibility != null ? visibility : this.visibility;
+        this.diagnoses = diagnoses;
+        this.otherNotes = otherNotes;
+        this.searchText = buildSearchText(this.content, this.therapyArea, this.diagnoses);
     }
 
     private static String buildSearchText(
             String content,
-            TherapyArea therapyArea
+            TherapyArea therapyArea,
+            List<String> diagnoses
     ) {
         String c = content == null
                 ? ""
                 : content.substring(0, Math.min(100, content.length()));
         String a = therapyArea == null ? "" : therapyArea.getDescription();
-        return (c + " " + a).trim().toLowerCase();
+        String d = (diagnoses == null || diagnoses.isEmpty()) ? "" : String.join(" ", diagnoses);
+        return (c + " " + a + " " + d).trim().toLowerCase();
     }
 
     public void updatePostType(PostType postType) {
+        if (this.postType == PostType.CONCERN_CARD && postType != PostType.CONCERN_CARD) {
+            this.diagnoses = null;
+            this.otherNotes = null;
+            this.ageGroup = null;
+        }
         this.postType = postType;
     }
 

@@ -10,6 +10,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.event.PostCreatedEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
@@ -90,12 +91,31 @@ public class PostService {
         visibilityPolicy.checkCanWriteVisibility(request.getVisibility(), currentUserRole);
         User author = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        TherapyPost post = TherapyPost.create(
-                request.getContent(),
-                request.getTherapyArea(),
-                request.getVisibility(),
-                author
-        );
+
+        if (request.getPostType() == PostType.CONCERN_CARD
+                && currentUserRole == UserRole.USER) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        TherapyPost post;
+        if (request.getPostType() == PostType.CONCERN_CARD) {
+            post = TherapyPost.createConcernCard(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getAgeGroup(),
+                    request.getVisibility(),
+                    author,
+                    request.getDiagnoses(),
+                    request.getOtherNotes()
+            );
+        } else {
+            post = TherapyPost.create(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getVisibility(),
+                    author
+            );
+        }
         TherapyPost saved = therapyPostRepository.save(post);
 
         eventPublisher.publishEvent(EmbeddingEvent.builder()
@@ -112,7 +132,7 @@ public class PostService {
         // PostCreatedEvent 발행 — autocomment 리스너가 job 생성/이벤트 처리
         eventPublisher.publishEvent(new PostCreatedEvent(saved.getId(), userId, requestAutoComment));
 
-        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, currentUserRole);
         AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(saved.getId());
         response.setAutoComment(acStatus.status(), acStatus.sourceMode());
         return response;
@@ -131,7 +151,8 @@ public class PostService {
         Page<TherapyPost> result = findPosts(page, size, sortType, condition);
 
         boolean canViewPrivate = visibilityPolicy.canViewPrivate(currentUserRole);
-        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), canViewPrivate);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), canViewPrivate, canViewSensitive);
 
         return PagedResponse.from(result, posts);
     }
@@ -179,9 +200,11 @@ public class PostService {
         return searchStrategy.search(condition, lastScore, lastId, size, canViewPrivate);
     }
 
-    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
+    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size, PostType postType) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
-        Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
+        Page<TherapyPost> result = (postType == null)
+                ? therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable)
+                : therapyPostRepository.findByAuthorIdAndDeletedAtIsNullAndPostType(userId, postType, pageable);
 
         // 본인 글이므로 PRIVATE도 자유롭게 볼 수 있음.
         List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), true);
@@ -203,52 +226,53 @@ public class PostService {
      * @param sortType LATEST(최신순) 또는 POPULAR(인기순)
      */
     public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(
-            int size, String cursor, UserRole role, FeedSortType sortType) {
+            int size, String cursor, UserRole role, FeedSortType sortType, PostType postType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
         boolean canViewPrivate = visibilityPolicy.canViewPrivate(role);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(role);
 
         return switch (sortType) {
-            case LATEST -> fetchLatestFeed(size, cursor, canViewPrivate);
-            case POPULAR -> fetchPopularFeed(size, cursor, canViewPrivate);
+            case LATEST -> fetchLatestFeed(size, cursor, canViewPrivate, canViewSensitive, postType);
+            case POPULAR -> fetchPopularFeed(size, cursor, canViewPrivate, canViewSensitive, postType);
         };
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
-            int size, String cursor, boolean canViewPrivate) {
+            int size, String cursor, boolean canViewPrivate, boolean canViewSensitive, PostType postType) {
         PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
         List<TherapyPost> posts;
         if (postCursor == null) {
-            posts = therapyPostRepository.findFeedLatest(GENERAL_FEED_VISIBILITIES, limit);
+            posts = therapyPostRepository.findFeedLatest(GENERAL_FEED_VISIBILITIES, postType, limit);
         } else {
             posts = therapyPostRepository.findFeedLatest(
-                    GENERAL_FEED_VISIBILITIES, postCursor.createdAt(), postCursor.id(), limit);
+                    GENERAL_FEED_VISIBILITIES, postType, postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate, canViewSensitive);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
-            int size, String cursor, boolean canViewPrivate) {
+            int size, String cursor, boolean canViewPrivate, boolean canViewSensitive, PostType postType) {
         PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
         List<TherapyPost> posts;
         if (popCursor == null) {
-            posts = therapyPostRepository.findFeedPopular(GENERAL_FEED_VISIBILITIES, limit);
+            posts = therapyPostRepository.findFeedPopular(GENERAL_FEED_VISIBILITIES, postType, limit);
         } else {
             posts = therapyPostRepository.findFeedPopular(
-                    GENERAL_FEED_VISIBILITIES, popCursor.score(), popCursor.id(), limit);
+                    GENERAL_FEED_VISIBILITIES, postType, popCursor.score(), popCursor.id(), limit);
         }
 
         boolean hasNext = posts.size() > size;
         List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed, canViewPrivate);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed, canViewPrivate, canViewSensitive);
 
         String nextCursor = hasNext
                 ? new PopularCursor(
@@ -261,7 +285,7 @@ public class PostService {
     }
 
     public CursorPagedResponse<TherapyPostSummaryResponse> getFollowingFeed(
-            Long currentUserId, UserRole currentUserRole, int size, String cursor) {
+            Long currentUserId, UserRole currentUserRole, int size, String cursor, PostType postType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
 
         List<Long> followingIds = followService.getFollowingIds(currentUserId);
@@ -278,13 +302,14 @@ public class PostService {
 
         List<TherapyPost> posts;
         if (postCursor == null) {
-            posts = therapyPostRepository.findFollowingFeed(followingIds, visibilities, limit);
+            posts = therapyPostRepository.findFollowingFeed(followingIds, visibilities, postType, limit);
         } else {
             posts = therapyPostRepository.findFollowingFeed(
-                    followingIds, visibilities, postCursor.createdAt(), postCursor.id(), limit);
+                    followingIds, visibilities, postType, postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, true);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, true, canViewSensitive);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
@@ -346,6 +371,7 @@ public class PostService {
                 .map(TherapyPostReaction::getReactionType)
                 .orElse(null);
 
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
         TherapyPostDetailResponse response = TherapyPostDetailResponse.from(
                 post,
                 attachments,
@@ -357,7 +383,8 @@ public class PostService {
                 isScrapped,
                 profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
                 postImageService.getImagesForPostUnchecked(postId),
-                postVideoService.getVideosForPostUnchecked(postId)
+                postVideoService.getVideosForPostUnchecked(postId),
+                canViewSensitive
         );
         AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
         response.setAutoComment(acStatus.status(), acStatus.sourceMode());
@@ -379,11 +406,22 @@ public class PostService {
 
         String oldSearchText = post.getSearchText();
 
-        post.update(
-                request.getContent(),
-                request.getTherapyArea(),
-                request.getVisibility()
-        );
+        if (post.getPostType() == PostType.CONCERN_CARD) {
+            post.updateConcernCard(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getAgeGroup(),
+                    request.getVisibility(),
+                    request.getDiagnoses(),
+                    request.getOtherNotes()
+            );
+        } else {
+            post.update(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getVisibility()
+            );
+        }
 
         if (!oldSearchText.equals(post.getSearchText())) {
             eventPublisher.publishEvent(EmbeddingEvent.builder()
@@ -414,6 +452,10 @@ public class PostService {
     // ── Summary DTO 변환 헬퍼 ──────────────────────────────
 
     private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate) {
+        return toSummaries(posts, canViewPrivate, canViewPrivate);
+    }
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate, boolean canViewSensitiveFields) {
         if (posts.isEmpty()) {
             return List.of();
         }
@@ -453,6 +495,7 @@ public class PostService {
                             commentCounts.getOrDefault(post.getId(), 0L),
                             false,
                             canViewPrivate,
+                            canViewSensitiveFields,
                             profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
                             imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
                                     .map(PostImageResponse::getImageUrl)
