@@ -4,7 +4,6 @@ import com.therapyCommunity_Vol1.backend.admin.dto.RejectTherapistVerificationRe
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerificationStatus;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
-import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
 import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,18 +15,15 @@ import static org.mockito.Mockito.*;
 
 class AdminTherapistVerificationServiceTest {
 
-    private TherapistVerificationRepository therapistVerificationRepository;
     private FileStorageService fileStorageService;
     private TherapistVerificationService therapistVerificationService;
     private AdminTherapistVerificationService adminTherapistVerificationService;
 
     @BeforeEach
     void setUp() {
-        therapistVerificationRepository = mock(TherapistVerificationRepository.class);
         fileStorageService = mock(FileStorageService.class);
         therapistVerificationService = mock(TherapistVerificationService.class);
         adminTherapistVerificationService = new AdminTherapistVerificationService(
-                therapistVerificationRepository,
                 fileStorageService,
                 therapistVerificationService
         );

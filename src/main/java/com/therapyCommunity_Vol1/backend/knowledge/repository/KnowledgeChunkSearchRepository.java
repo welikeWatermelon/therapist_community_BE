@@ -1,5 +1,6 @@
 package com.therapyCommunity_Vol1.backend.knowledge.repository;
 
+import com.therapyCommunity_Vol1.backend.knowledge.dto.ChunkSearchResult;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,8 +13,6 @@ import java.util.List;
 public class KnowledgeChunkSearchRepository {
 
     private final JdbcTemplate jdbcTemplate;
-
-    public record ChunkSearchResult(Long chunkId, Long documentId, String content, String title, double score) {}
 
     public List<ChunkSearchResult> findSimilarChunks(float[] queryEmbedding, TherapyArea therapyArea, int topK) {
         String vectorStr = toVectorString(queryEmbedding);

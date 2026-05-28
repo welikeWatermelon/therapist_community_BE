@@ -8,8 +8,8 @@ import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.SourceMode;
 import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
 import com.therapyCommunity_Vol1.backend.knowledge.client.GeminiEmbeddingClient;
-import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeChunkSearchRepository;
-import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeChunkSearchRepository.ChunkSearchResult;
+import com.therapyCommunity_Vol1.backend.knowledge.dto.ChunkSearchResult;
+import com.therapyCommunity_Vol1.backend.knowledge.service.KnowledgeDocumentService;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ public class AiCommentJobService {
     private final PostAiCommentJobRepository jobRepository;
     private final GeminiEmbeddingClient embeddingClient;
     private final GeminiChatClient chatClient;
-    private final KnowledgeChunkSearchRepository chunkSearchRepository;
+    private final KnowledgeDocumentService knowledgeDocumentService;
     private final AiCommentProperties properties;
     private final ObjectMapper objectMapper;
     private final AiCommentJobService self;
@@ -45,7 +45,7 @@ public class AiCommentJobService {
             PostAiCommentJobRepository jobRepository,
             GeminiEmbeddingClient embeddingClient,
             GeminiChatClient chatClient,
-            KnowledgeChunkSearchRepository chunkSearchRepository,
+            KnowledgeDocumentService knowledgeDocumentService,
             AiCommentProperties properties,
             ObjectMapper objectMapper,
             @org.springframework.context.annotation.Lazy AiCommentJobService self
@@ -53,7 +53,7 @@ public class AiCommentJobService {
         this.jobRepository = jobRepository;
         this.embeddingClient = embeddingClient;
         this.chatClient = chatClient;
-        this.chunkSearchRepository = chunkSearchRepository;
+        this.knowledgeDocumentService = knowledgeDocumentService;
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.self = self;
@@ -108,7 +108,7 @@ public class AiCommentJobService {
                 float[] queryEmbedding = embeddingClient.embed(
                         cleanContent, properties.getApiKey(), properties.getEmbeddingModel(),
                         properties.getBaseUrl(), properties.getTimeoutSeconds());
-                chunks = chunkSearchRepository.findSimilarChunks(
+                chunks = knowledgeDocumentService.findSimilarChunks(
                         queryEmbedding, post.getTherapyArea(), properties.getRetrieval().getTopK());
                 hasGoodResults = !chunks.isEmpty()
                         && chunks.get(0).score() >= properties.getRetrieval().getMinScore();
