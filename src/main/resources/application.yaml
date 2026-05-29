@@ -63,6 +63,9 @@ management:
       show-details: never
     prometheus:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
   health:
     db:
       enabled: false
