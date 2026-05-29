@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
@@ -14,7 +17,7 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepo
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ByteArrayResource;
@@ -31,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 class PostAttachmentServiceTest {
@@ -38,10 +43,11 @@ class PostAttachmentServiceTest {
     private ActivePostFinder activePostFinder;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private TherapyPostDownloadRepository therapyPostDownloadRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private FileStorageService fileStorageService;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private UserEventPublisher userEventPublisher;
     private PostAttachmentService postAttachmentService;
 
     @BeforeEach
@@ -49,7 +55,7 @@ class PostAttachmentServiceTest {
         activePostFinder = mock(ActivePostFinder.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
         therapyPostDownloadRepository = mock(TherapyPostDownloadRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         fileStorageService = mock(FileStorageService.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
@@ -57,14 +63,17 @@ class PostAttachmentServiceTest {
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
 
+        userEventPublisher = mock(UserEventPublisher.class);
+
         postAttachmentService = new PostAttachmentService(
                 activePostFinder,
                 therapyPostAttachmentRepository,
                 therapyPostDownloadRepository,
-                userRepository,
+                userService,
                 fileStorageService,
                 resourceAccessValidator,
-                visibilityPolicy
+                visibilityPolicy,
+                userEventPublisher
         );
     }
 
@@ -152,7 +161,7 @@ class PostAttachmentServiceTest {
                 "guide.pdf"
         );
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(userService.findById(userId)).thenReturn(downloader);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
         when(fileStorageService.loadAsResource("post-attachments/guide.pdf", "application/pdf", "guide.pdf"))
@@ -163,6 +172,38 @@ class PostAttachmentServiceTest {
 
         assertThat(response.getOriginalFilename()).isEqualTo("guide.pdf");
         verify(therapyPostDownloadRepository).save(any(TherapyPostDownload.class));
+    }
+
+    @Test
+    void 다운로드_시_ATTACHMENT_DOWNLOAD_이벤트_발행() {
+        Long userId = 2L;
+        User author = therapist(1L, "author@test.com", "author");
+        User downloader = therapist(userId, "reader@test.com", "reader");
+        TherapyPost post = resourcePost(10L, author);
+        TherapyPostAttachment attachment = attachment(99L, post);
+        StoredFileResource storedFile = new StoredFileResource(
+                new ByteArrayResource("pdf".getBytes()),
+                "application/pdf",
+                "guide.pdf"
+        );
+
+        when(userService.findById(userId)).thenReturn(downloader);
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
+        when(therapyPostAttachmentRepository.findByIdAndPostId(99L, 10L)).thenReturn(Optional.of(attachment));
+        when(fileStorageService.loadAsResource(any(), any(), any())).thenReturn(storedFile);
+        when(therapyPostDownloadRepository.findByPostIdAndUserId(10L, userId)).thenReturn(Optional.empty());
+
+        postAttachmentService.downloadAttachment(userId, UserRole.THERAPIST, 10L, 99L);
+
+        verify(userEventPublisher).publish(
+                eq(userId),
+                eq(UserEventType.ATTACHMENT_DOWNLOAD),
+                eq(EventTargetType.POST),
+                eq(10L),
+                argThat(m -> Long.valueOf(99L).equals(m.get("attachmentId"))
+                          && "pdf".equals(m.get("extension"))
+                          && Long.valueOf(1234L).equals(m.get("sizeBytes")))
+        );
     }
 
     @Test
@@ -178,7 +219,7 @@ class PostAttachmentServiceTest {
         ReflectionTestUtils.setField(download, "lastDownloadedAt", LocalDateTime.of(2026, 3, 22, 12, 0));
         ReflectionTestUtils.setField(download, "downloadCount", 3L);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(downloader));
+        when(userService.findById(userId)).thenReturn(downloader);
         when(therapyPostDownloadRepository.findByUserIdAndPost_DeletedAtIsNull(eq(userId), any()))
                 .thenReturn(new PageImpl<>(
                         List.of(download),

@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.reaction.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -9,14 +12,15 @@ import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
 import com.therapyCommunity_Vol1.backend.reaction.dto.TogglePostReactionRequest;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.Map;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,16 +31,18 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class PostReactionServiceTest {
 
     private TherapyPostReactionRepository postReactionRepository;
-    private PostService postService;
     private ActivePostFinder activePostFinder;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private UserEventPublisher userEventPublisher;
     private PostReactionService postReactionService;
 
     private User user;
@@ -45,13 +51,13 @@ class PostReactionServiceTest {
     @BeforeEach
     void setUp() {
         postReactionRepository = mock(TherapyPostReactionRepository.class);
-        postService = mock(PostService.class);
         activePostFinder = mock(ActivePostFinder.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
+        userEventPublisher = mock(UserEventPublisher.class);
         postReactionService = new PostReactionService(
-                postReactionRepository, postService, activePostFinder, userRepository, eventPublisher, visibilityPolicy
+                postReactionRepository, activePostFinder, userService, eventPublisher, visibilityPolicy, userEventPublisher
         );
 
         user = User.builder()
@@ -59,7 +65,7 @@ class PostReactionServiceTest {
                 .build();
         post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, user);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
     }
 
@@ -194,7 +200,7 @@ class PostReactionServiceTest {
         TherapyPost privatePost = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PRIVATE, user);
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), anyLong());
 
         assertThatThrownBy(() -> postReactionService.toggleReaction(
                 1L, UserRole.USER, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
@@ -207,13 +213,71 @@ class PostReactionServiceTest {
         verify(postReactionRepository, never()).delete(any(TherapyPostReaction.class));
     }
 
+    /** 새 반응 생성 시 POST_REACT analytics 이벤트가 발행된다 */
+    @Test
+    void 새_반응_생성시_POST_REACT_이벤트_발행() {
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(TherapyPostReaction.create(post, user, PostReactionType.LIKE)));
+        when(postReactionRepository.countGroupedByPostId(10L)).thenReturn(List.of());
+
+        postReactionService.toggleReaction(
+                1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
+        );
+
+        verify(userEventPublisher).publish(
+                eq(1L),
+                eq(UserEventType.POST_REACT),
+                eq(EventTargetType.POST),
+                eq(10L),
+                eq(Map.of("reactionType", "LIKE"))
+        );
+    }
+
+    /**
+     * 타입 변경 시 analytics 이벤트 미발행 — 신규 positive signal이 아님.
+     * (동일 유저가 LIKE↔USEFUL 반복 토글로 지표를 부풀리는 어뷰징 차단)
+     */
+    @Test
+    void 타입_변경시_analytics_이벤트_미발행() {
+        TherapyPostReaction existing = TherapyPostReaction.create(post, user, PostReactionType.LIKE);
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L))
+                .thenReturn(Optional.of(existing))
+                .thenReturn(Optional.of(existing));
+        when(postReactionRepository.countGroupedByPostId(10L)).thenReturn(List.of());
+
+        postReactionService.toggleReaction(
+                1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.USEFUL)
+        );
+
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong(), any());
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong());
+    }
+
+    /** 같은 반응 재클릭(삭제)에는 analytics 이벤트 미발행 (부정 시그널 미수집) */
+    @Test
+    void 같은_반응_삭제시_analytics_이벤트_미발행() {
+        TherapyPostReaction existing = TherapyPostReaction.create(post, user, PostReactionType.LIKE);
+        when(postReactionRepository.findByPostIdAndUserId(10L, 1L))
+                .thenReturn(Optional.of(existing))
+                .thenReturn(Optional.empty());
+        when(postReactionRepository.countGroupedByPostId(10L)).thenReturn(List.of());
+
+        postReactionService.toggleReaction(
+                1L, UserRole.THERAPIST, 10L, new TogglePostReactionRequest(PostReactionType.LIKE)
+        );
+
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong(), any());
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong());
+    }
+
     /** USER는 PRIVATE 게시글의 반응 상태를 조회할 수 없다 */
     @Test
     void USER는_PRIVATE_게시글의_반응_상태_조회_불가() {
         TherapyPost privatePost = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PRIVATE, user);
         when(activePostFinder.findOrThrow(10L)).thenReturn(privatePost);
         doThrow(new CustomException(ErrorCode.THERAPIST_VERIFICATION_REQUIRED))
-                .when(visibilityPolicy).checkAccess(privatePost, UserRole.USER);
+                .when(visibilityPolicy).checkAccess(eq(privatePost), eq(UserRole.USER), anyLong());
 
         assertThatThrownBy(() -> postReactionService.getReactionStatus(1L, UserRole.USER, 10L))
                 .isInstanceOf(CustomException.class)

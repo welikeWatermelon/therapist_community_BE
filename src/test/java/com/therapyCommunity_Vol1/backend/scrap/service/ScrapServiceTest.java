@@ -1,10 +1,12 @@
 package com.therapyCommunity_Vol1.backend.scrap.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
@@ -13,7 +15,7 @@ import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,30 +26,32 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class ScrapServiceTest {
 
     private TherapyPostScrapRepository scrapRepository;
-    private PostService postService;
     private ActivePostFinder activePostFinder;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private UserEventPublisher userEventPublisher;
     private ScrapService scrapService;
 
     @BeforeEach
     void setUp() {
         this.scrapRepository = mock(TherapyPostScrapRepository.class);
-        this.postService = mock(PostService.class);
         this.activePostFinder = mock(ActivePostFinder.class);
-        this.userRepository = mock(UserRepository.class);
+        this.userService = mock(UserService.class);
         this.eventPublisher = mock(ApplicationEventPublisher.class);
         this.visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
-        this.scrapService = new ScrapService(scrapRepository, postService, activePostFinder, userRepository, eventPublisher, visibilityPolicy);
+        this.userEventPublisher = mock(UserEventPublisher.class);
+        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userService, eventPublisher, visibilityPolicy, userEventPublisher);
     }
 
     @Test
@@ -70,7 +74,7 @@ class ScrapServiceTest {
                 Visibility.PUBLIC,
                 user
         );
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
 
@@ -104,7 +108,7 @@ class ScrapServiceTest {
                 user
         );
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
 
@@ -114,6 +118,44 @@ class ScrapServiceTest {
         // then
         verify(scrapRepository, never()).save(any(TherapyPostScrap.class));
         assertThat(response.isScrapped()).isTrue();
+    }
+
+    @Test
+    void 최초_스크랩_시_POST_SCRAP_이벤트_발행() {
+        Long currentUserId = 1L;
+        Long postId = 10L;
+        User user = User.builder().id(currentUserId).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, user);
+
+        when(userService.findById(currentUserId)).thenReturn(user);
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
+        when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
+
+        scrapService.addScrap(currentUserId, UserRole.THERAPIST, postId);
+
+        verify(userEventPublisher).publish(
+                eq(currentUserId),
+                eq(UserEventType.POST_SCRAP),
+                eq(EventTargetType.POST),
+                eq(postId)
+        );
+    }
+
+    @Test
+    void 중복_스크랩_요청에는_analytics_이벤트_미발행() {
+        Long currentUserId = 1L;
+        Long postId = 10L;
+        User user = User.builder().id(currentUserId).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, user);
+
+        when(userService.findById(currentUserId)).thenReturn(user);
+        when(activePostFinder.findOrThrow(postId)).thenReturn(post);
+        when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
+
+        scrapService.addScrap(currentUserId, UserRole.THERAPIST, postId);
+
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong());
+        verify(userEventPublisher, never()).publish(anyLong(), any(), any(), anyLong(), any());
     }
 
     @Test
@@ -175,7 +217,7 @@ class ScrapServiceTest {
                 Sort.Order.desc("id")));
         Page<TherapyPostScrap> page = new PageImpl<>(List.of(scrap), pageable, 1);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(scrapRepository.findByUserIdAndPost_DeletedAtIsNull(eq(currentUserId),any(Pageable.class)))
                 .thenReturn(page);
 

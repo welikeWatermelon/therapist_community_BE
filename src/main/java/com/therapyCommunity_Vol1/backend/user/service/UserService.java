@@ -7,8 +7,9 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
@@ -18,25 +19,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
 
     private final UserRepository userRepository;
-    private final TherapistVerificationService therapistVerificationService;
     private final TokenService tokenService;
     private final FileStorageService fileStorageService;
     private final UserCacheService userCacheService;
     private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
-    public CurrentUserResponse getCurrentUser(Long currentUserId) {
+    public CurrentUserResponse getCurrentUser(Long currentUserId,
+                                              Optional<TherapistVerificationStatusDto> verification,
+                                              long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
-                therapistVerificationService.findVerificationStatusByUserId(currentUserId),
-                profileImageUrlAssembler
+                verification,
+                profileImageUrlAssembler,
+                followerCount,
+                followingCount
         );
     }
 
@@ -60,7 +67,9 @@ public class UserService {
     }
 
     @Transactional
-    public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request) {
+    public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request,
+                                             Optional<TherapistVerificationStatusDto> verification,
+                                             long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         if (request.getNickname() != null
@@ -69,12 +78,14 @@ public class UserService {
         }
 
         user.updateProfile(request.getNickname(), null);
-        userCacheService.evict(currentUserId);  // 프로필 변경 → 캐시 무효화
+        userCacheService.evict(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
-                therapistVerificationService.findVerificationStatusByUserId(currentUserId),
-                profileImageUrlAssembler
+                verification,
+                profileImageUrlAssembler,
+                followerCount,
+                followingCount
         );
     }
 
@@ -87,8 +98,34 @@ public class UserService {
         tokenService.revokeAllForUser(currentUserId);
     }
 
-    private User findUserOrThrow(Long userId) {
+    public User findById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    public User findByIdOrNull(Long userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    public User getReferenceById(Long userId) {
+        return userRepository.getReferenceById(userId);
+    }
+
+    public List<Long> findUserIdsByRole(UserRole role) {
+        return userRepository.findIdsByRole(role);
+    }
+
+    public List<User> findUsersByIds(List<Long> userIds) {
+        return userRepository.findAllById(userIds);
+    }
+
+    private User findUserOrThrow(Long userId) {
+        return findById(userId);
     }
 }

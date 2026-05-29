@@ -5,6 +5,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
   flyway:
     repair-on-migrate: true
+    out-of-order: true
   jpa:
     hibernate:
       ddl-auto: none
@@ -15,11 +16,19 @@ jwt:
   refresh-secret: ${JWT_REFRESH_SECRET}
   access-ttl-sec: ${JWT_ACCESS_TTL_SEC:1800}
   refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
+auth:
+  cookie:
+    refresh:
+      # Vercel preview(*.vercel.app) ↔ api-staging.melonnetherapists.com 이 cross-site라
+      # SameSite=Lax면 cross-site fetch에 refreshToken 쿠키가 첨부되지 않아 자동 로그아웃 발생.
+      # staging에서만 None으로 풀고, prod는 same-site 환경이라 application.yaml의 Lax 그대로 둔다.
+      same-site: None
 app:
+  base-url: http://43.201.120.96:8080
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
   aws:
-    enabled: false
-    region: ${APP_AWS_REGION:ap-northeast-2}
+    enabled: ${APP_AWS_ENABLED:false}
+    region: ap-northeast-2
     s3:
-      bucket: ${APP_AWS_S3_BUCKET:local-test-bucket}
+      bucket: melonne-therapists-bucket-dev

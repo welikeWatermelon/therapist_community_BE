@@ -1,13 +1,16 @@
 package com.therapyCommunity_Vol1.backend.scrap.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
+import com.therapyCommunity_Vol1.backend.post.event.PopularityRecalculationEvent;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
@@ -16,7 +19,7 @@ import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -36,11 +39,11 @@ import java.util.Set;
 public class ScrapService {
 
     private final TherapyPostScrapRepository scrapRepository;
-    private final PostService postService;
     private final ActivePostFinder activePostFinder;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final UserEventPublisher userEventPublisher;
 
     public Set<Long> getScrappedPostIds(Long userId, List<Long> postIds) {
         if (userId == null || postIds.isEmpty()) {
@@ -51,26 +54,29 @@ public class ScrapService {
 
     @Transactional
     public ScrapStatusResponse addScrap(Long currentUserId, UserRole currentUserRole, Long postId) {
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userService.findById(currentUserId);
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         boolean alreadyExists = scrapRepository.existsByPostIdAndUserId(postId,currentUserId);
 
         if (!alreadyExists) {
             TherapyPostScrap scrap = TherapyPostScrap.create(post,user);
             scrapRepository.save(scrap);
-            postService.recalculatePopularityScore(postId);
+            eventPublisher.publishEvent(new PopularityRecalculationEvent(postId));
 
-            eventPublisher.publishEvent(NotificationEvent.builder()
-                    .senderId(currentUserId)
-                    .receiverIds(List.of(post.getAuthor().getId()))
-                    .type(NotificationType.NEW_SCRAP)
-                    .referenceId(postId)
-                    .content(user.getNickname() + "님이 회원님의 게시글을 스크랩했습니다.")
-                    .build());
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    currentUserId, post.getAuthor().getId(),
+                    NotificationType.NEW_SCRAP, postId));
+
+            // 이미 스크랩한 상태에서 재요청은 멱등 응답이므로 수집하지 않음.
+            userEventPublisher.publish(
+                    currentUserId,
+                    UserEventType.POST_SCRAP,
+                    EventTargetType.POST,
+                    postId
+            );
         }
 
         return new ScrapStatusResponse(postId, true);
@@ -79,27 +85,26 @@ public class ScrapService {
     @Transactional
     public ScrapStatusResponse removeScrap(Long currentUserId, UserRole currentUserRole, Long postId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         scrapRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(scrap -> {
                     scrapRepository.delete(scrap);
-                    postService.recalculatePopularityScore(postId);
+                    eventPublisher.publishEvent(new PopularityRecalculationEvent(postId));
                 });
         return new ScrapStatusResponse(postId, false);
     }
 
     public ScrapStatusResponse getScrapStatus(Long currentUserId, UserRole currentUserRole, Long postId) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         boolean scrapped = scrapRepository.existsByPostIdAndUserId(postId, currentUserId);
 
         return new ScrapStatusResponse(postId, scrapped);
     }
 
     public PagedResponse<ScrappedPostResponse> getMyScraps(Long currentUserId, UserRole currentUserRole, int page, int size) {
-        userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        userService.findById(currentUserId);
 
         Pageable pageable = PageRequest.of(
                 page,
@@ -116,5 +121,12 @@ public class ScrapService {
                 .toList();
 
         return PagedResponse.from(result, scraps);
+    }
+
+    @Transactional
+    public void deleteScrapsByUnfollow(Long userId, Long unfollowedAuthorId) {
+        scrapRepository.deleteByUserIdAndPostAuthorIdAndPostVisibilityIn(
+                userId, unfollowedAuthorId,
+                List.of(Visibility.FOLLOWERS_ONLY, Visibility.VERIFIED_FOLLOWERS_ONLY));
     }
 }

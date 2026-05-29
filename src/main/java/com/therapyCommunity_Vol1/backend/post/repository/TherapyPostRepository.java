@@ -20,7 +20,15 @@ import java.util.Optional;
 
 public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> {
     @EntityGraph(attributePaths = "author")
-    Page<TherapyPost> findByDeletedAtIsNull(Pageable pageable);
+    @Query("""
+            SELECT p FROM TherapyPost p
+            WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
+            """)
+    Page<TherapyPost> findByDeletedAtIsNullAndVisibilityIn(
+            @Param("visibilities") List<Visibility> visibilities,
+            Pageable pageable
+    );
 
     @EntityGraph(attributePaths = "author")
     Optional<TherapyPost> findByIdAndDeletedAtIsNull(Long id);
@@ -29,7 +37,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     Page<TherapyPost> findByAuthorIdAndDeletedAtIsNull(Long authorId, Pageable pageable);
 
     @EntityGraph(attributePaths = "author")
-    Page<TherapyPost> findByDeletedAtIsNullAndVisibility(Visibility visibility, Pageable pageable);
+    Page<TherapyPost> findByAuthorIdAndDeletedAtIsNullAndPostType(Long authorId, PostType postType, Pageable pageable);
 
     // 텍스트 검색 (searchText LIKE — GIN trigram 인덱스 idx_therapy_posts_search_text_trgm 활용)
     // LOWER() 제거: GIN trigram 인덱스는 bare LIKE만 가속, LOWER() 래핑 시 Seq Scan.
@@ -38,6 +46,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
               AND p.searchText LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
@@ -46,6 +55,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("keyword") String keyword,
             @Param("therapyArea") TherapyArea therapyArea,
             @Param("postType") PostType postType,
+            @Param("visibilities") List<Visibility> visibilities,
             Pageable pageable
     );
 
@@ -54,46 +64,14 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
               AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
               AND (:postType IS NULL OR p.postType = :postType)
             """)
     Page<TherapyPost> searchByFilter(
             @Param("therapyArea") TherapyArea therapyArea,
             @Param("postType") PostType postType,
-            Pageable pageable
-    );
-
-    // visibility 필터 포함 — 텍스트 검색 (searchText LIKE, LOWER 제거로 GIN 인덱스 활용)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND p.searchText LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
-              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
-              AND (:postType IS NULL OR p.postType = :postType)
-            """)
-    Page<TherapyPost> searchByKeywordAndVisibility(
-            @Param("keyword") String keyword,
-            @Param("therapyArea") TherapyArea therapyArea,
-            @Param("postType") PostType postType,
-            @Param("visibility") Visibility visibility,
-            Pageable pageable
-    );
-
-    // visibility 필터 포함 — 필터만
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND (:therapyArea IS NULL OR p.therapyArea = :therapyArea)
-              AND (:postType IS NULL OR p.postType = :postType)
-            """)
-    Page<TherapyPost> searchByFilterAndVisibility(
-            @Param("therapyArea") TherapyArea therapyArea,
-            @Param("postType") PostType postType,
-            @Param("visibility") Visibility visibility,
+            @Param("visibilities") List<Visibility> visibilities,
             Pageable pageable
     );
 
@@ -102,105 +80,102 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
             ORDER BY p.createdAt DESC, p.id DESC
             """)
-    List<TherapyPost> findFeedLatest(Pageable pageable);
+    List<TherapyPost> findFeedLatest(
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
+            Pageable pageable
+    );
 
     // 커서 피드 — 전체, 다음 페이지 (커서 있음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
               AND (p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
     List<TherapyPost> findFeedLatest(
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 
-    // 커서 피드 — visibility, 첫 페이지 (커서 없음)
+    // 팔로잉 피드 — 첫 페이지
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
+              AND p.author.id IN :authorIds
+              AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
             ORDER BY p.createdAt DESC, p.id DESC
             """)
-    List<TherapyPost> findFeedLatestByVisibility(
-            @Param("visibility") Visibility visibility,
+    List<TherapyPost> findFollowingFeed(
+            @Param("authorIds") List<Long> authorIds,
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             Pageable pageable
     );
 
-    // 커서 피드 — visibility, 다음 페이지 (커서 있음)
+    // 팔로잉 피드 — 다음 페이지 (커서 있음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
+              AND p.author.id IN :authorIds
+              AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
               AND (p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
-    List<TherapyPost> findFeedLatestByVisibility(
-            @Param("visibility") Visibility visibility,
+    List<TherapyPost> findFollowingFeed(
+            @Param("authorIds") List<Long> authorIds,
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 
-    // RELEVANCE 검색 — pg_trgm <% (word_similarity) 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
     // 인기순 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
             ORDER BY p.popularityScore DESC, p.id DESC
             """)
-    List<TherapyPost> findFeedPopular(Pageable pageable);
+    List<TherapyPost> findFeedPopular(
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
+            Pageable pageable
+    );
 
     // 인기순 커서 피드 — 전체, 다음 페이지 (커서 있음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
+              AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
               AND (p.popularityScore < :cursorScore OR
                    (p.popularityScore = :cursorScore AND p.id < :cursorId))
             ORDER BY p.popularityScore DESC, p.id DESC
             """)
     List<TherapyPost> findFeedPopular(
-            @Param("cursorScore") Long cursorScore,
-            @Param("cursorId") Long cursorId,
-            Pageable pageable
-    );
-
-    // 인기순 커서 피드 — visibility, 첫 페이지 (커서 없음)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-            ORDER BY p.popularityScore DESC, p.id DESC
-            """)
-    List<TherapyPost> findFeedPopularByVisibility(
-            @Param("visibility") Visibility visibility,
-            Pageable pageable
-    );
-
-    // 인기순 커서 피드 — visibility, 다음 페이지 (커서 있음)
-    @EntityGraph(attributePaths = "author")
-    @Query("""
-            SELECT p FROM TherapyPost p
-            WHERE p.deletedAt IS NULL
-              AND p.visibility = :visibility
-              AND (p.popularityScore < :cursorScore OR
-                   (p.popularityScore = :cursorScore AND p.id < :cursorId))
-            ORDER BY p.popularityScore DESC, p.id DESC
-            """)
-    List<TherapyPost> findFeedPopularByVisibility(
-            @Param("visibility") Visibility visibility,
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             @Param("cursorScore") Long cursorScore,
             @Param("cursorId") Long cursorId,
             Pageable pageable
@@ -219,11 +194,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             """, nativeQuery = true)
     void recalculatePopularityScore(@Param("postId") Long postId);
 
-    // RELEVANCE 검색 — pg_trgm similarity + ILIKE fallback, 커서 기반 무한스크롤 전용.
-    // :keyword 는 raw (similarity 전용), :escapedKeyword 는 LIKE 메타문자 이스케이프된 값 (ILIKE 전용).
-    // 반환은 (id, score) 두 컬럼의 Object[] — Service 에서 다음 커서 계산에 score 가 필요해서 함께 노출.
-    // LIMIT 은 :limit 파라미터로 받아 hasNext 판별용 take+1 조회를 수행한다.
-    // RELEVANCE 검색 — pg_trgm % 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
+    // RELEVANCE 검색 — pg_trgm <% (word_similarity) 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
     //
     // 주요 설계:
     // - 매칭 술어: `:keyword <% search_text` (word_similarity 기반, gin_trgm_ops 지원) 와
@@ -239,12 +210,13 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     // - 커서 조건: 동일하게 numeric(10,8) 캐스트한 값과 :lastScore 를 비교한다.
     // - LIMIT 은 :limit 파라미터로 받아 hasNext 판별용 take+1 조회를 수행한다.
 
-    // (a) visibility 필터 없음 — 첫 페이지
+    // (a) 일반 검색 — 첫 페이지 (FOLLOWERS_ONLY/VERIFIED_FOLLOWERS_ONLY 제외)
     @Query(
             value = """
                     SELECT p.id, CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) AS score
                     FROM therapy_posts p
                     WHERE p.deleted_at IS NULL
+                      AND p.visibility IN ('PUBLIC', 'PRIVATE')
                       AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
                       AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
                       AND (
@@ -264,7 +236,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             @Param("limit") int limit
     );
 
-    // (b) visibility 필터 없음 — 다음 페이지 (커서 조건 추가)
+    // (b) 일반 검색 — 다음 페이지 (커서 조건 추가, FOLLOWERS_ONLY/VERIFIED_FOLLOWERS_ONLY 제외)
     // word_similarity()를 서브쿼리에서 1회만 계산하고, 외부에서 커서 필터링
     @Query(
             value = """
@@ -273,6 +245,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
                         SELECT p.id, CAST(word_similarity(:keyword, p.search_text) AS numeric(10,8)) AS score
                         FROM therapy_posts p
                         WHERE p.deleted_at IS NULL
+                          AND p.visibility IN ('PUBLIC', 'PRIVATE')
                           AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
                           AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
                           AND (
@@ -364,4 +337,150 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL AND (:visibility IS NULL OR p.visibility = :visibility)")
     List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids, @Param("visibility") Visibility visibility);
+
+    // Strategy 패턴의 SearchResultAssembler 에서 사용 — visibility 필터 없이 deletedAt 만 재검증
+    @EntityGraph(attributePaths = "author")
+    @Query("SELECT p FROM TherapyPost p WHERE p.id IN :ids AND p.deletedAt IS NULL")
+    List<TherapyPost> findAllByIdInWithAuthor(@Param("ids") List<Long> ids);
+
+    // ── pgvector 임베딩 ──────────────────────────────
+
+    @Modifying
+    @Query(value = "UPDATE therapy_posts SET content_embedding = CAST(:embedding AS vector), embedding_failed_at = NULL WHERE id = :postId",
+            nativeQuery = true)
+    void updateContentEmbedding(@Param("postId") Long postId, @Param("embedding") String embedding);
+
+    @Modifying
+    @Query(value = "UPDATE therapy_posts SET embedding_failed_at = NOW() WHERE id = :postId",
+            nativeQuery = true)
+    void markEmbeddingFailed(@Param("postId") Long postId);
+
+    @Query(value = "SELECT p.id, p.search_text FROM therapy_posts p " +
+            "WHERE p.content_embedding IS NULL AND p.deleted_at IS NULL " +
+            "AND p.embedding_failed_at IS NULL " +
+            "ORDER BY p.id LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findIdsWithoutEmbedding(@Param("limit") int limit);
+
+    // 임베딩 상태별 통계 (admin 대시보드용)
+    @Query(value = """
+            SELECT
+              COUNT(*) FILTER (WHERE content_embedding IS NOT NULL) AS done,
+              COUNT(*) FILTER (WHERE content_embedding IS NULL AND embedding_failed_at IS NOT NULL) AS failed,
+              COUNT(*) FILTER (WHERE content_embedding IS NULL AND embedding_failed_at IS NULL) AS pending,
+              COUNT(*) AS total
+            FROM therapy_posts WHERE deleted_at IS NULL
+            """, nativeQuery = true)
+    Object[] countEmbeddingStats();
+
+    // ── pgvector 검색 (코사인 유사도) ──────────────────────────────
+
+    // HNSW 인덱스 활용을 위해 ORDER BY 에 raw <=> 연산자를 직접 사용한다.
+    // distance ASC = score DESC 이므로 결과 순서는 동일하다.
+    // pgvector 의 iterative index scan 이 WHERE 조건을 평가하면서 인덱스 순서대로 스캔한다.
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility IN ('PUBLIC', 'PRIVATE')
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchFirstPage(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("minScore") BigDecimal minScore,
+            @Param("limit") int limit
+    );
+
+    // NextPage: 서브쿼리 제거 + ORDER BY raw <=> 로 HNSW 인덱스 활용.
+    // 커서 비교는 numeric(10,8) CAST 를 유지해 정밀도 손실 없이 동등 비교한다.
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility IN ('PUBLIC', 'PRIVATE')
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+              AND (
+                CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) < :lastScore
+                OR (
+                  CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) = :lastScore
+                  AND p.id < :lastId
+                )
+              )
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchNextPage(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("minScore") BigDecimal minScore,
+            @Param("lastScore") BigDecimal lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility = CAST(:visibility AS text)
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchFirstPageAndVisibility(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("minScore") BigDecimal minScore,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.id,
+                   CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) AS score
+            FROM therapy_posts p
+            WHERE p.deleted_at IS NULL
+              AND p.content_embedding IS NOT NULL
+              AND p.visibility = CAST(:visibility AS text)
+              AND (CAST(:therapyArea AS text) IS NULL OR p.therapy_area = CAST(:therapyArea AS text))
+              AND (CAST(:postType AS text) IS NULL OR p.post_type = CAST(:postType AS text))
+              AND (1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector))) >= :minScore
+              AND (
+                CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) < :lastScore
+                OR (
+                  CAST(1 - (p.content_embedding <=> CAST(:queryEmbedding AS vector)) AS numeric(10,8)) = :lastScore
+                  AND p.id < :lastId
+                )
+              )
+            ORDER BY p.content_embedding <=> CAST(:queryEmbedding AS vector), p.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Object[]> vectorSearchNextPageAndVisibility(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("therapyArea") String therapyArea,
+            @Param("postType") String postType,
+            @Param("visibility") String visibility,
+            @Param("minScore") BigDecimal minScore,
+            @Param("lastScore") BigDecimal lastScore,
+            @Param("lastId") long lastId,
+            @Param("limit") int limit
+    );
 }

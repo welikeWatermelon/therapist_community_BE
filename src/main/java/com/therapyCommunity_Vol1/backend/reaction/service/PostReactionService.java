@@ -1,12 +1,15 @@
 package com.therapyCommunity_Vol1.backend.reaction.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.notification.domain.NotificationType;
 import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
+import com.therapyCommunity_Vol1.backend.post.event.PopularityRecalculationEvent;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
@@ -15,16 +18,17 @@ import com.therapyCommunity_Vol1.backend.reaction.dto.TogglePostReactionRequest;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -33,11 +37,26 @@ import java.util.Map;
 public class PostReactionService {
 
     private final TherapyPostReactionRepository postReactionRepository;
-    private final PostService postService;
     private final ActivePostFinder activePostFinder;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
     private final PostVisibilityAccessPolicy visibilityPolicy;
+    private final UserEventPublisher userEventPublisher;
+
+    /**
+     * 게시글 목록 응답에 myReactionType을 batch로 채우기 위한 헬퍼.
+     * userId가 null이면 빈 맵 반환 (anonymous 사용자).
+     * 결과: postId → myReactionType (해당 사용자가 그 게시글에 남긴 반응)
+     */
+    public Map<Long, PostReactionType> getMyReactionByPostIds(Long userId, List<Long> postIds) {
+        if (userId == null || postIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, PostReactionType> result = new java.util.HashMap<>();
+        postReactionRepository.findByPostIdInAndUserId(postIds, userId)
+                .forEach(r -> result.put(r.getPost().getId(), r.getReactionType()));
+        return result;
+    }
 
     /**
      * 반응 토글 (생성/삭제/변경).
@@ -53,19 +72,20 @@ public class PostReactionService {
             Long postId,
             TogglePostReactionRequest request
     ) {
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userService.findById(currentUserId);
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         postReactionRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresentOrElse(existing -> {
                     if (existing.getReactionType() == request.getReactionType()) {
-                        // 같은 반응 → 삭제 (토글 off)
+                        // 같은 반응 → 삭제 (토글 off). 부정 시그널이므로 analytics 미수집.
                         postReactionRepository.delete(existing);
                     } else {
-                        // 다른 반응 → 타입 변경
+                        // 다른 반응 → 타입 변경. 이미 활성 상태이므로 신규 positive signal이 아님.
+                        // 동일 유저가 LIKE↔USEFUL을 반복 토글할 경우 지표가 부풀려져, 어뷰징 가능성을
+                        // 차단하기 위해 analytics 미수집.
                         existing.changeReactionType(request.getReactionType());
                     }
                 }, () -> {
@@ -75,16 +95,15 @@ public class PostReactionService {
                     );
                     postReactionRepository.save(reaction);
 
-                    eventPublisher.publishEvent(NotificationEvent.builder()
-                            .senderId(currentUserId)
-                            .receiverIds(List.of(post.getAuthor().getId()))
-                            .type(NotificationType.NEW_POST_REACTION)
-                            .referenceId(postId)
-                            .content(user.getNickname() + "님이 회원님의 게시글에 " + request.getReactionType().getLabel() + " 반응을 남겼습니다.")
-                            .build());
+                    eventPublisher.publishEvent(NotificationEvent.of(
+                            currentUserId, post.getAuthor().getId(),
+                            NotificationType.NEW_POST_REACTION, postId,
+                            request.getReactionType().getLabel()));
+
+                    publishReactAnalytics(currentUserId, postId, request.getReactionType());
                 });
 
-        postService.recalculatePopularityScore(postId);
+        eventPublisher.publishEvent(new PopularityRecalculationEvent(postId));
 
         return getReactionStatus(currentUserId, currentUserRole, postId);
     }
@@ -101,7 +120,7 @@ public class PostReactionService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
         // 내 반응 타입 조회
         PostReactionType myReactionType = postReactionRepository
@@ -131,6 +150,18 @@ public class PostReactionService {
     }
 
     // ── 내부 헬퍼 ──────────────────────────────────────────
+
+    /** positive reaction 신호만 analytics로 전송 (전문성/매칭 지표 산출용). */
+    private void publishReactAnalytics(Long userId, Long postId, PostReactionType reactionType) {
+        userEventPublisher.publish(
+                userId,
+                UserEventType.POST_REACT,
+                EventTargetType.POST,
+                postId,
+                Map.of("reactionType", reactionType.name())
+        );
+    }
+
 
     /**
      * GROUP BY 쿼리 결과를 모든 반응 타입이 포함된 EnumMap으로 변환.
@@ -177,5 +208,41 @@ public class PostReactionService {
     /** top reaction 계산 결과를 담는 내부 record */
     private record TopReaction(PostReactionType type, Long count, String colorToken) {
         static final TopReaction NONE = new TopReaction(null, null, null);
+    }
+
+    /**
+     * 단건 게시글의 반응 타입별 카운트를 조회한다.
+     */
+    public Map<PostReactionType, Long> getReactionCounts(Long postId) {
+        Map<PostReactionType, Long> counts = new EnumMap<>(PostReactionType.class);
+        Arrays.stream(PostReactionType.values()).forEach(t -> counts.put(t, 0L));
+        postReactionRepository.countGroupedByPostId(postId).forEach(row -> {
+            counts.put((PostReactionType) row[0], (Long) row[1]);
+        });
+        return counts;
+    }
+
+    /**
+     * 다건 게시글의 반응 타입별 카운트를 배치 조회한다.
+     */
+    public Map<Long, Map<PostReactionType, Long>> getReactionCountsByPostIds(List<Long> postIds) {
+        Map<Long, Map<PostReactionType, Long>> result = new HashMap<>();
+        for (Object[] row : postReactionRepository.countByPostIdInGroupedByType(postIds)) {
+            Long postId = (Long) row[0];
+            PostReactionType type = (PostReactionType) row[1];
+            Long count = (Long) row[2];
+            result.computeIfAbsent(postId, k -> new HashMap<>()).put(type, count);
+        }
+        return result;
+    }
+
+    /**
+     * 단건 게시글에 대한 현재 사용자의 반응 타입을 조회한다.
+     */
+    public PostReactionType getMyReaction(Long postId, Long userId) {
+        if (userId == null) return null;
+        return postReactionRepository.findByPostIdAndUserId(postId, userId)
+                .map(TherapyPostReaction::getReactionType)
+                .orElse(null);
     }
 }

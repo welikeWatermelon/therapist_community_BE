@@ -79,7 +79,8 @@ class UserControllerTest {
     void 내정보를_조회하면_현재_유저_요약을_반환한다() {
         CurrentUserResponse currentUserResponse = new CurrentUserResponse(
                 1L, "user@example.com", "tester", null, "USER", false, "PUBLIC_ONLY",
-                new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
+                new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null),
+                0, 0
         );
 
         when(myPageFacade.getCurrentUser(1L)).thenReturn(currentUserResponse);
@@ -97,7 +98,7 @@ class UserControllerTest {
         PagedResponse<TherapyPostSummaryResponse> pagedResponse = new PagedResponse<>(
                 List.of(), 0, 10, 0L, 0, false
         );
-        when(myPageFacade.getMyPosts(1L, 0, 10)).thenReturn(pagedResponse);
+        when(myPageFacade.getMyPosts(1L, 0, 10, null)).thenReturn(pagedResponse);
 
         mockMvc.perform(get("/api/v1/me/posts")
                         .param("page", "0")
@@ -106,7 +107,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.items").isArray());
 
-        verify(myPageFacade).getMyPosts(1L, 0, 10);
+        verify(myPageFacade).getMyPosts(1L, 0, 10, null);
     }
 
     @Test
@@ -130,7 +131,8 @@ class UserControllerTest {
     void 프로필_수정시_facade에_위임한다() throws Exception {
         CurrentUserResponse currentUserResponse = new CurrentUserResponse(
                 1L, "user@example.com", "새닉네임", null, "THERAPIST", true, "FULL",
-                new CurrentUserResponse.TherapistVerificationSummary("APPROVED", null, null, null)
+                new CurrentUserResponse.TherapistVerificationSummary("APPROVED", null, null, null),
+                0, 0
         );
         when(myPageFacade.updateProfile(eq(1L), any(UpdateProfileRequest.class))).thenReturn(currentUserResponse);
 

@@ -6,14 +6,19 @@ import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.JwtTokenProvider;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
+import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,7 @@ public class TokenService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenManager refreshTokenManager;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
     @Value("${jwt.refresh-ttl-sec}")
     private long refreshTokenTtlSec;
@@ -61,7 +67,8 @@ public class TokenService {
     }
 
     @Transactional
-    public RefreshResult refresh(String rawRefreshToken, String userAgent, String ipAddress) {
+    public RefreshResult refresh(String rawRefreshToken, String userAgent, String ipAddress,
+                                 Function<Long, Optional<TherapistVerificationStatusDto>> verificationResolver) {
         RefreshToken currentRefreshToken = findRefreshTokenByRawTokenOrThrow(rawRefreshToken);
 
         if (currentRefreshToken.isRevoked()) {
@@ -87,8 +94,13 @@ public class TokenService {
         IssuedToken newRefreshToken =
                 issueRefreshToken(user, currentRefreshToken.getTokenFamily(), userAgent, ipAddress);
 
+        Optional<TherapistVerificationStatusDto> verification =
+                verificationResolver.apply(user.getId());
+        CurrentUserResponse currentUser =
+                CurrentUserResponse.from(user, verification, profileImageUrlAssembler);
+
         return new RefreshResult(
-                new RefreshResponse(accessToken, accessTokenExpiresInSec),
+                new RefreshResponse(accessToken, accessTokenExpiresInSec, currentUser),
                 newRefreshToken.rawToken(),
                 newRefreshToken.expiresInSec()
         );

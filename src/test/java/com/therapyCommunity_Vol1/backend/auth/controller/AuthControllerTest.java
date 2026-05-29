@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.auth.service.AuthService;
 import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.global.exception.GlobalExceptionHandler;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,9 @@ class AuthControllerTest {
     @Mock
     private TokenService tokenService;
 
+    @Mock
+    private TherapistVerificationService therapistVerificationService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
@@ -52,7 +56,8 @@ class AuthControllerTest {
         AuthController authController = new AuthController(
                 authService,
                 tokenService,
-                new RefreshTokenCookieManager("refreshToken", "/api/v1/auth", "Lax", false)
+                new RefreshTokenCookieManager("refreshToken", "/api/v1/auth", "Lax", false),
+                therapistVerificationService
         );
 
         objectMapper = new ObjectMapper();
@@ -73,7 +78,8 @@ class AuthControllerTest {
                         "USER",
                         false,
                         "PUBLIC_ONLY",
-                        new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null)
+                        new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null),
+                        0, 0
                 ),
                 new LoginResponse.Tokens("access-token", 1800L)
         );
@@ -109,9 +115,20 @@ class AuthControllerTest {
 
     @Test
     void 리프레시_성공시_cookie로_refresh를_읽고_새_cookie를_반환한다() throws Exception {
-        given(tokenService.refresh("refresh-cookie", "JUnit", "127.0.0.1"))
+        CurrentUserResponse refreshedUser = new CurrentUserResponse(
+                1L,
+                "user@example.com",
+                "닉네임",
+                "https://cdn.example.com/profile/abc.png?X-Amz-Signature=rotated",
+                "USER",
+                false,
+                "PUBLIC_ONLY",
+                new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null),
+                0, 0
+        );
+        given(tokenService.refresh(eq("refresh-cookie"), eq("JUnit"), eq("127.0.0.1"), any()))
                 .willReturn(new TokenService.RefreshResult(
-                        new RefreshResponse("new-access-token", 1800L),
+                        new RefreshResponse("new-access-token", 1800L, refreshedUser),
                         "rotated-refresh-token",
                         1209600L
                 ));
@@ -127,6 +144,11 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
                 .andExpect(jsonPath("$.data.accessTokenExpiresInSec").value(1800))
+                .andExpect(jsonPath("$.data.user.id").value(1))
+                .andExpect(jsonPath("$.data.user.email").value("user@example.com"))
+                .andExpect(jsonPath("$.data.user.profileImageUrl")
+                        .value("https://cdn.example.com/profile/abc.png?X-Amz-Signature=rotated"))
+                .andExpect(jsonPath("$.data.user.therapistVerification.status").value("NOT_REQUESTED"))
                 .andExpect(header().string(
                         HttpHeaders.SET_COOKIE,
                         allOf(

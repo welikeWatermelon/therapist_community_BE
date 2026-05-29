@@ -7,14 +7,41 @@ spring:
     time-zone: Asia/Seoul
   jpa:
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # Redis 명령 응답 한도. 미설정 시 Lettuce 기본은 무한 대기 → 호출 측 try-catch가 무의미해진다.
+      # 핫패스 캐시 호출은 ms 단위라 2s면 충분히 보수적이며, 일시 네트워크 흔들림에 false-positive를 피한다.
+      timeout: 2000ms
+      connect-timeout: 1000ms
+      lettuce:
+        shutdown-timeout: 100ms
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      embedding:
+        options:
+          model: text-embedding-3-small
+    # Spring AI starter는 OPENAI_API_KEY가 비면 부팅 시 audio.speech 등 bean 생성에서 IllegalArgumentException 발생.
+    # 운영에선 OpenAI 사용 안 하므로 모든 모델을 none으로 비활성화. 사용 시 환경별 yaml에서 override.
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
 auth:
   cookie:
     refresh:
@@ -30,16 +57,38 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: never
+    prometheus:
+      enabled: true
   health:
     db:
       enabled: false
     redis:
       enabled: false
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
+  base-url: http://localhost:8080
   cors:
     allowed-origins: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+  knowledge:
+    enabled: ${KNOWLEDGE_ENABLED:false}
+    api-key: ${GOOGLE_AI_API_KEY:}
+    embedding-model: ${KNOWLEDGE_EMBEDDING_MODEL:gemini-embedding-001}
+  ai-comment:
+    enabled: ${AI_COMMENT_ENABLED:false}
+    api-key: ${GOOGLE_AI_API_KEY:}
+    chat-model: ${AI_COMMENT_CHAT_MODEL:gemini-2.5-flash}
+    embedding-model: ${AI_COMMENT_EMBEDDING_MODEL:gemini-embedding-001}
+    ai-user-email: ${AI_COMMENT_USER_EMAIL:ai-comment@system.local}
+  search:
+    strategy: gin
+    embedding:
+      enabled: false
+    vector:
+      min-score: 0.3
+sentry:
+  dsn: ${SENTRY_DSN:}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}
+  environment: ${SENTRY_ENVIRONMENT:${SPRING_PROFILES_ACTIVE:local}}

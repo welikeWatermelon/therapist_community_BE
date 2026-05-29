@@ -1,6 +1,7 @@
 package com.therapyCommunity_Vol1.backend.comment.dto;
 
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
+import com.therapyCommunity_Vol1.backend.reaction.domain.CommentReactionType;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,17 +20,26 @@ public class ReplyCommentResponse {
     private Long authorId;
     private String authorNickname;
     private String authorRole;
+    private String authorProfileImageUrl;
+    private boolean authorIsAi;
     private String content;
     private boolean deleted;
     private boolean canEdit;
     private boolean canDelete;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private long likeCount;
+    private long curiousCount;
+    private long usefulCount;
+    private CommentReactionType myReactionType;
 
     public static ReplyCommentResponse from(
             TherapyPostComment comment,
             Long currentUserId,
-            UserRole currentUserRole
+            UserRole currentUserRole,
+            String aiUserEmail,
+            String authorProfileImageUrl,
+            CommentReactionAggregate reactions
     ) {
         boolean canManage = !comment.isDeleted() && canManage(comment, currentUserId, currentUserRole);
         return new ReplyCommentResponse(
@@ -39,12 +49,18 @@ public class ReplyCommentResponse {
                 comment.getAuthor().getId(),
                 comment.getAuthor().getDisplayNickname(),
                 comment.getAuthor().getRole().getCode(),
+                authorProfileImageUrl,
+                aiUserEmail != null && aiUserEmail.equals(comment.getAuthor().getEmail()),
                 comment.isDeleted() ? DELETED_PLACEHOLDER : comment.getContent(),
                 comment.isDeleted(),
                 canManage,
                 canManage,
                 comment.getCreatedAt(),
-                comment.getUpdatedAt()
+                comment.getUpdatedAt(),
+                reactions.likeCount(),
+                reactions.curiousCount(),
+                reactions.usefulCount(),
+                reactions.myReactionType()
         );
     }
 

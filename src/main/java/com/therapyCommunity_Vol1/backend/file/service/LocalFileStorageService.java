@@ -36,6 +36,7 @@ public class LocalFileStorageService implements FileStorageService {
             Files.createDirectories(this.uploadRootPath.resolve("therapist-verifications"));
             Files.createDirectories(this.uploadRootPath.resolve("post-attachments"));
             Files.createDirectories(this.uploadRootPath.resolve("profile-images"));
+            Files.createDirectories(this.uploadRootPath.resolve("knowledge-documents"));
         } catch (IOException e) {
             throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
         }
@@ -50,6 +51,12 @@ public class LocalFileStorageService implements FileStorageService {
     public StoredFileInfo storePostAttachment(MultipartFile file) {
         validatePdf(file);
         return store(file, "post-attachments");
+    }
+
+    @Override
+    public StoredFileInfo storePostImage(MultipartFile file) {
+        validateProfileImage(file);
+        return store(file, "post-images");
     }
 
     @Override
@@ -80,6 +87,21 @@ public class LocalFileStorageService implements FileStorageService {
             );
         } catch (IOException e) {
             throw new CustomException(ErrorCode.FILE_STORAGE_ERROR);
+        }
+    }
+
+    @Override
+    public StoredFileInfo storeKnowledgeDocument(MultipartFile file) {
+        return store(file, "knowledge-documents");
+    }
+
+    @Override
+    public InputStream loadAsStream(String storedPath) {
+        try {
+            Path filePath = uploadRootPath.resolve(storedPath).normalize();
+            return Files.newInputStream(filePath);
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.RESOURCE_NOT_FOUND);
         }
     }
 

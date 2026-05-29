@@ -12,7 +12,7 @@ import com.therapyCommunity_Vol1.backend.reaction.dto.ToggleCommentReactionReque
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,7 +26,7 @@ class CommentReactionServiceTest {
 
     private TherapyPostCommentReactionRepository commentReactionRepository;
     private CommentService commentService;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private CommentReactionService commentReactionService;
 
@@ -34,11 +34,11 @@ class CommentReactionServiceTest {
     void setUp() {
         commentReactionRepository = mock(TherapyPostCommentReactionRepository.class);
         commentService = mock(CommentService.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         commentReactionService = new CommentReactionService(
                 commentService,
-                userRepository,
+                userService,
                 commentReactionRepository,
                 eventPublisher
         );
@@ -67,12 +67,12 @@ class CommentReactionServiceTest {
         ToggleCommentReactionRequest request =
                 new ToggleCommentReactionRequest(CommentReactionType.LIKE);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.empty());
 
         when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.LIKE)).thenReturn(1L);
-        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.DISLIKE)).thenReturn(0L);
+        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.CURIOUS)).thenReturn(0L);
 
         TherapyPostCommentReaction saved = TherapyPostCommentReaction.create(comment, user, CommentReactionType.LIKE);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.empty(), Optional.of(saved));
@@ -108,21 +108,21 @@ class CommentReactionServiceTest {
         TherapyPostCommentReaction existing = TherapyPostCommentReaction.create(comment, user, CommentReactionType.LIKE);
 
         ToggleCommentReactionRequest request =
-                new ToggleCommentReactionRequest(CommentReactionType.DISLIKE);
+                new ToggleCommentReactionRequest(CommentReactionType.CURIOUS);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(commentService.findActiveComment(20L)).thenReturn(comment);
         when(commentReactionRepository.findByCommentIdAndUserId(20L, 1L)).thenReturn(Optional.of(existing), Optional.of(existing));
 
         when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.LIKE)).thenReturn(0L);
-        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.DISLIKE)).thenReturn(1L);
+        when(commentReactionRepository.countByCommentIdAndReactionType(20L, CommentReactionType.CURIOUS)).thenReturn(1L);
 
         // when
         CommentReactionStatusResponse response = commentReactionService.toggleReaction(1L, 20L, request);
 
         // then
-        assertThat(existing.getReactionType()).isEqualTo(CommentReactionType.DISLIKE);
-        assertThat(response.getDislikeCount()).isEqualTo(1L);
-        assertThat(response.getMyReactionType()).isEqualTo(CommentReactionType.DISLIKE);
+        assertThat(existing.getReactionType()).isEqualTo(CommentReactionType.CURIOUS);
+        assertThat(response.getCuriousCount()).isEqualTo(1L);
+        assertThat(response.getMyReactionType()).isEqualTo(CommentReactionType.CURIOUS);
     }
 }

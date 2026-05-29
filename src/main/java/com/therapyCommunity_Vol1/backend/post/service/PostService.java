@@ -1,11 +1,17 @@
 package com.therapyCommunity_Vol1.backend.post.service;
 
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
+import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
+import com.therapyCommunity_Vol1.backend.post.event.PostCreatedEvent;
 import com.therapyCommunity_Vol1.backend.post.domain.PostSortType;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
@@ -14,15 +20,19 @@ import com.therapyCommunity_Vol1.backend.global.common.CursorPagedResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
+import com.therapyCommunity_Vol1.backend.post.event.EmbeddingEvent;
+import com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
-import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
-import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
+import com.therapyCommunity_Vol1.backend.reaction.service.PostReactionService;
+import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,17 +40,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,13 +51,22 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
-    private final TherapyPostReactionRepository therapyPostReactionRepository;
-    private final TherapyPostCommentRepository therapyPostCommentRepository;
+    private final PostReactionService postReactionService;
+    private final CommentService commentService;
     private final ActivePostFinder activePostFinder;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
+    private final PostSearchStrategy searchStrategy;
+    private final UserEventPublisher userEventPublisher;
+    private final AiCommentStatusProvider aiCommentStatusProvider;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
+    private final PostImageService postImageService;
+    private final PostAttachmentService postAttachmentService;
+    private final PostVideoService postVideoService;
+    private final FollowService followService;
 
     @Transactional
     public void recalculatePopularityScore(Long postId) {
@@ -73,20 +84,53 @@ public class PostService {
             UserRole currentUserRole,
             CreateTherapyPostRequest request
     ) {
-        if (request.getVisibility() == Visibility.PRIVATE) {
-            visibilityPolicy.checkCanWritePrivate(currentUserRole);
+        visibilityPolicy.checkCanWriteVisibility(request.getVisibility(), currentUserRole);
+        User author = userService.findById(userId);
+
+        if (request.getPostType() == PostType.CONCERN_CARD
+                && currentUserRole == UserRole.USER) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
         }
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        TherapyPost post = TherapyPost.create(
-                request.getContent(),
-                request.getTherapyArea(),
-                request.getVisibility(),
-                author
-        );
+
+        TherapyPost post;
+        if (request.getPostType() == PostType.CONCERN_CARD) {
+            post = TherapyPost.createConcernCard(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getAgeGroup(),
+                    request.getVisibility(),
+                    author,
+                    request.getDiagnoses(),
+                    request.getOtherNotes()
+            );
+        } else {
+            post = TherapyPost.create(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getVisibility(),
+                    author
+            );
+        }
         TherapyPost saved = therapyPostRepository.save(post);
 
-        return TherapyPostDetailResponse.from(saved, userId, author.getRole());
+        eventPublisher.publishEvent(EmbeddingEvent.builder()
+                .postId(saved.getId())
+                .text(saved.getSearchText())
+                .build());
+
+        // 자동 댓글 요청: 검증만 하고, job 생성은 autocomment 패키지의 리스너에서 처리
+        boolean requestAutoComment = Boolean.TRUE.equals(request.getRequestAutoComment());
+        if (requestAutoComment && request.getVisibility() == Visibility.PRIVATE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        // PostCreatedEvent 발행 — autocomment 리스너가 job 생성/이벤트 처리
+        eventPublisher.publishEvent(new PostCreatedEvent(saved.getId(), userId, requestAutoComment));
+
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(saved, userId, currentUserRole);
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(saved.getId());
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     public PagedResponse<TherapyPostSummaryResponse> getPosts(
@@ -99,58 +143,44 @@ public class PostService {
         if (sortType == PostSortType.RELEVANCE) {
             throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
         }
-        Page<TherapyPost> result = findPosts(page, size, sortType, condition, currentUserRole);
+        Page<TherapyPost> result = findPosts(page, size, sortType, condition);
 
-        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
+        boolean canViewPrivate = visibilityPolicy.canViewPrivate(currentUserRole);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), canViewPrivate, canViewSensitive);
 
         return PagedResponse.from(result, posts);
     }
 
+    /**
+     * PRIVATE UX 개편: 모든 role이 PUBLIC + PRIVATE 게시글을 함께 조회.
+     * USER role의 경우 응답 변환 시 contentPreview/이미지가 마스킹되고 accessLocked=true가 표시됨.
+     * 상세 페이지 진입은 PostVisibilityAccessPolicy.checkAccess가 여전히 차단.
+     */
     private Page<TherapyPost> findPosts(int page, int size, PostSortType sortType,
-                                         PostSearchCondition condition, UserRole role) {
-        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
-
+                                         PostSearchCondition condition) {
         // RELEVANCE 는 별도 무한스크롤 엔드포인트(/posts/search)에서만 노출된다.
         // 이 경로로 sortType=RELEVANCE 가 들어오면 toSort() 가 LATEST 정렬로 폴백한다.
         Pageable pageable = PageRequest.of(page, size, toSort(sortType));
 
         if (condition.isEmpty()) {
-            return publicOnly
-                    ? therapyPostRepository.findByDeletedAtIsNullAndVisibility(Visibility.PUBLIC, pageable)
-                    : therapyPostRepository.findByDeletedAtIsNull(pageable);
+            return therapyPostRepository.findByDeletedAtIsNullAndVisibilityIn(GENERAL_FEED_VISIBILITIES, pageable);
         } else if (condition.hasKeyword()) {
             String lowerKeyword = condition.getEscapedKeyword().trim().toLowerCase();
-            return publicOnly
-                    ? therapyPostRepository.searchByKeywordAndVisibility(
-                            lowerKeyword, condition.getTherapyArea(),
-                            condition.getPostType(), Visibility.PUBLIC, pageable)
-                    : therapyPostRepository.searchByKeyword(
-                            lowerKeyword, condition.getTherapyArea(),
-                            condition.getPostType(), pageable);
+            return therapyPostRepository.searchByKeyword(
+                    lowerKeyword, condition.getTherapyArea(),
+                    condition.getPostType(), GENERAL_FEED_VISIBILITIES, pageable);
         } else {
-            return publicOnly
-                    ? therapyPostRepository.searchByFilterAndVisibility(
-                            condition.getTherapyArea(), condition.getPostType(), Visibility.PUBLIC, pageable)
-                    : therapyPostRepository.searchByFilter(
-                            condition.getTherapyArea(), condition.getPostType(), pageable);
+            return therapyPostRepository.searchByFilter(
+                    condition.getTherapyArea(), condition.getPostType(), GENERAL_FEED_VISIBILITIES, pageable);
         }
     }
 
     /**
-     * RELEVANCE 검색 (무한스크롤) — pg_trgm % 연산자 + ILIKE fallback 으로 후보를 모으고
-     * similarity 점수로 정렬한다.
-     *
-     * 두 단계 fetch: 1) native 로 (id, score) + 정렬, 2) ID 로 author 까지 EntityGraph fetch.
-     * native query 는 @EntityGraph 가 동작하지 않아 N+1 회피 목적.
-     *
-     * 페이지네이션은 (lastScore, lastId) 커서 기반. take+1 조회로 hasNextData 를 판단한다.
-     * score 는 numeric(10,8) 로 캐스트해 BigDecimal 로 왕복시켜 동등 비교 안전성을 확보한다.
+     * RELEVANCE 검색 (무한스크롤) — PostSearchStrategy 에 위임.
      *
      * 클래스 레벨 readOnly=true 를 명시적으로 오버라이드해 readOnly=false 트랜잭션을 연다.
-     * SET LOCAL pg_trgm.similarity_threshold 를 안전하게 실행하기 위함이다
-     * (JDBC/Hibernate 일부 버전에서 READ ONLY 트랜잭션의 SET LOCAL 을 거부한 사례가 있어
-     *  안전 차원에서 명시적으로 풀어둔다).
-     * SET LOCAL 은 트랜잭션 종료 시 자동 해제되므로 RESET 호출은 불필요하다.
+     * GIN 전략의 SET LOCAL pg_trgm.word_similarity_threshold 를 안전하게 실행하기 위함이다.
      */
     @Transactional
     public SearchCursorResponse searchPostsByRelevance(
@@ -160,120 +190,27 @@ public class PostService {
             int size,
             UserRole role
     ) {
-        // 치료사 아닌 애들이 들오면 true
-        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
-        // pg_trgm <% 연산자(word_similarity)의 임계값을 트랜잭션 스코프로 0.1로 설정.
-        // word_similarity는 keyword가 search_text 내 부분 단어와 유사한지 평가하므로
-        // 기존 similarity(0.03)보다 높은 임계값에서도 recall 유지됨.
-        // 트랜잭션 종료 시 자동으로 원복된다.
-        entityManager.createNativeQuery("SET LOCAL pg_trgm.word_similarity_threshold = 0.1")
-                .executeUpdate();
-
-        // word_similarity/<% 는 raw, ILIKE 는 escaped — 두 함수가 메타문자 의미가 달라 분리 필수
-        // searchText가 소문자로 저장되므로 keyword도 소문자 변환
-        String rawKeyword = condition.getKeyword().trim().toLowerCase();
-        String escapedKeyword = condition.getEscapedKeyword().trim().toLowerCase();
-        String area = condition.getTherapyArea() != null ? condition.getTherapyArea().name() : null;
-        String type = condition.getPostType() != null ? condition.getPostType().name() : null;
-
-        int limit = size + 1; // hasNext 판별용 take+1 조회
-        boolean firstPage = (lastScore == null && lastId == null);
-
-        //
-        // 여기서 rows는 postId와 score가 들어감
-        // nextCursor의 score보다 낮거나 같다면 id가 낮은거부터 limit개 들어감
-        // 만약 limit보다 숫자가 적다면 그만큼만 들어감
-        // 조건에 맞는 게시판Id와 score를 가져옴
-        List<Object[]> rows;
-        // 첫 페이지라면 (커서 없이)
-
-        if (firstPage) {
-            rows = publicOnly
-                    // 치료사가 아니라면 공개된 글만
-                    ? therapyPostRepository.searchIdsByRelevanceFirstPageAndVisibility(
-                            rawKeyword, escapedKeyword, area, type, Visibility.PUBLIC.name(), limit)
-                    // 치료사라면 전체 글
-                    : therapyPostRepository.searchIdsByRelevanceFirstPage(
-                            rawKeyword, escapedKeyword, area, type, limit);
-        }// 첫 페이지가 아니라면 (커서로 이어서)
-        else {
-            rows = publicOnly
-                    ? therapyPostRepository.searchIdsByRelevanceNextPageAndVisibility(
-                            rawKeyword, escapedKeyword, area, type, Visibility.PUBLIC.name(),
-                            lastScore, lastId, limit)
-                    : therapyPostRepository.searchIdsByRelevanceNextPage(
-                            rawKeyword, escapedKeyword, area, type, lastScore, lastId, limit);
-        }
-
-        // hasNext 판별 + take 개로 트림
-        // 다음 페이지 있나?(현 size()를 넘을만큼?)
-        // 만약 10개씩 가져오는데 5개라면 5개만 보여줌
-        // size는 20이고, 위의 데이터에서 limit을 size+1로 걸어둠
-        // 그래서 limit개 가져오면 21개를 가져오게 됨.(최대)
-        // 이걸 통해 다음 데이터가 있는지 판단할 수 있음
-        boolean hasNextData = rows.size() > size;
-
-        // <postId,score>
-        // 이 떄는 정렬 되어있는 상태
-        List<Object[]> pageRows = hasNextData ? rows.subList(0, size) : rows;
-
-        // 비어있으면 빈 결과 반환
-        if (pageRows.isEmpty()) {
-            return new SearchCursorResponse(
-                    List.of(),
-                    new SearchCursorResponse.SearchCursorMeta(false, null, null)
-            );
-        }
-
-        // postId만 추출
-        // 이 때도 정렬 되어있음
-        List<Long> ids = pageRows.stream()
-                .map(r -> ((Number) r[0]).longValue())
-                .toList();
-
-        // ids를 통해 author 까지 join해서 가져옴
-        // 여기서 Id를 가져와서 Map으로 만드는데, 이 때 정렬이 틀어짐
-        // Map<POSTID,POST> 구조로 한 이유
-        // HashMap의 구조로 PostId를 바로 찾을 수 있기 때문임.
-        // Post안의 id로 접근하려면 모든 자료를 다 뒤지면서 비교해야함. (O(N))
-        // 근데 HashMap은 O(1)으로 Key를 바로 찾아버림
-        Visibility visibility = publicOnly ? Visibility.PUBLIC : null;
-        Map<Long, TherapyPost> byId = therapyPostRepository.findAllByIdInWithAuthor(ids, visibility).stream()
-                .collect(Collectors.toMap(TherapyPost::getId, Function.identity()));
-
-        // byId(정렬되지않은 데이터)들을 native 결과의 ID 순서(ids)대로 정렬
-        List<TherapyPost> orderedPosts = ids.stream()
-                .map(byId::get)
-                .filter(Objects::nonNull)
-                .toList();
-        List<TherapyPostSummaryResponse> items = toSummaries(orderedPosts);
-
-        // 다음 커서: 트림된 마지막 행의 (score, id). 마지막 페이지면 둘 다 null.
-        // score 는 SQL 에서 numeric(10,8) 로 캐스트되어 BigDecimal 로 그대로 전달된다.
-        BigDecimal nextScore = null;
-        Long nextId = null;
-        if (hasNextData) {
-            Object[] lastRow = pageRows.get(pageRows.size() - 1); // 마지막 데이터 (limit+1 인덱스의 데이터 추출)
-            nextId = ((Number) lastRow[0]).longValue();
-            nextScore = (BigDecimal) lastRow[1];
-        }
-
-        return new SearchCursorResponse(
-                items,
-                new SearchCursorResponse.SearchCursorMeta(hasNextData, nextScore, nextId)
-        );
+        // PRIVATE UX 개편: 모든 role이 PUBLIC + PRIVATE 검색 결과를 받고, USER는 마스킹된 형태로 노출.
+        boolean canViewPrivate = visibilityPolicy.canViewPrivate(role);
+        return searchStrategy.search(condition, lastScore, lastId, size, canViewPrivate);
     }
 
-    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
+    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size, PostType postType) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
-        Page<TherapyPost> result = therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable);
+        Page<TherapyPost> result = (postType == null)
+                ? therapyPostRepository.findByAuthorIdAndDeletedAtIsNull(userId, pageable)
+                : therapyPostRepository.findByAuthorIdAndDeletedAtIsNullAndPostType(userId, postType, pageable);
 
-        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent());
+        // 본인 글이므로 PRIVATE도 자유롭게 볼 수 있음.
+        List<TherapyPostSummaryResponse> posts = toSummaries(result.getContent(), true);
 
         return PagedResponse.from(result, posts);
     }
 
     private static final int FEED_MAX_SIZE = 50;
+
+    /** 일반 피드/검색에서 노출하는 visibility. FOLLOWERS_ONLY/VERIFIED_FOLLOWERS_ONLY는 팔로잉 피드 전용. */
+    private static final List<Visibility> GENERAL_FEED_VISIBILITIES = List.of(Visibility.PUBLIC, Visibility.PRIVATE);
 
     /**
      * 커서 기반 피드 조회 (무한스크롤용)
@@ -284,62 +221,53 @@ public class PostService {
      * @param sortType LATEST(최신순) 또는 POPULAR(인기순)
      */
     public CursorPagedResponse<TherapyPostSummaryResponse> getPostsFeed(
-            int size, String cursor, UserRole role, FeedSortType sortType) {
+            int size, String cursor, UserRole role, FeedSortType sortType, PostType postType) {
         size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
-        boolean publicOnly = !visibilityPolicy.canViewPrivate(role);
+        boolean canViewPrivate = visibilityPolicy.canViewPrivate(role);
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(role);
 
         return switch (sortType) {
-            case LATEST -> fetchLatestFeed(size, cursor, publicOnly);
-            case POPULAR -> fetchPopularFeed(size, cursor, publicOnly);
+            case LATEST -> fetchLatestFeed(size, cursor, canViewPrivate, canViewSensitive, postType);
+            case POPULAR -> fetchPopularFeed(size, cursor, canViewPrivate, canViewSensitive, postType);
         };
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchLatestFeed(
-            int size, String cursor, boolean publicOnly) {
+            int size, String cursor, boolean canViewPrivate, boolean canViewSensitive, PostType postType) {
         PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
         List<TherapyPost> posts;
         if (postCursor == null) {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedLatestByVisibility(Visibility.PUBLIC, limit)
-                    : therapyPostRepository.findFeedLatest(limit);
+            posts = therapyPostRepository.findFeedLatest(GENERAL_FEED_VISIBILITIES, postType, limit);
         } else {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedLatestByVisibility(
-                            Visibility.PUBLIC, postCursor.createdAt(), postCursor.id(), limit)
-                    : therapyPostRepository.findFeedLatest(
-                            postCursor.createdAt(), postCursor.id(), limit);
+            posts = therapyPostRepository.findFeedLatest(
+                    GENERAL_FEED_VISIBILITIES, postType, postCursor.createdAt(), postCursor.id(), limit);
         }
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(posts);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, canViewPrivate, canViewSensitive);
 
         return CursorPagedResponse.of(dtos, size, item ->
                 new PostCursor(item.getCreatedAt(), item.getId()).encode());
     }
 
     private CursorPagedResponse<TherapyPostSummaryResponse> fetchPopularFeed(
-            int size, String cursor, boolean publicOnly) {
+            int size, String cursor, boolean canViewPrivate, boolean canViewSensitive, PostType postType) {
         PopularCursor popCursor = cursor != null ? PopularCursor.decode(cursor) : null;
         Pageable limit = PageRequest.of(0, size + 1);
 
         List<TherapyPost> posts;
         if (popCursor == null) {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedPopularByVisibility(Visibility.PUBLIC, limit)
-                    : therapyPostRepository.findFeedPopular(limit);
+            posts = therapyPostRepository.findFeedPopular(GENERAL_FEED_VISIBILITIES, postType, limit);
         } else {
-            posts = publicOnly
-                    ? therapyPostRepository.findFeedPopularByVisibility(
-                            Visibility.PUBLIC, popCursor.score(), popCursor.id(), limit)
-                    : therapyPostRepository.findFeedPopular(
-                            popCursor.score(), popCursor.id(), limit);
+            posts = therapyPostRepository.findFeedPopular(
+                    GENERAL_FEED_VISIBILITIES, postType, popCursor.score(), popCursor.id(), limit);
         }
 
         boolean hasNext = posts.size() > size;
         List<TherapyPost> trimmed = hasNext ? posts.subList(0, size) : posts;
 
-        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(trimmed, canViewPrivate, canViewSensitive);
 
         String nextCursor = hasNext
                 ? new PopularCursor(
@@ -351,17 +279,48 @@ public class PostService {
         return new CursorPagedResponse<>(dtos, nextCursor, hasNext, size);
     }
 
+    public CursorPagedResponse<TherapyPostSummaryResponse> getFollowingFeed(
+            Long currentUserId, UserRole currentUserRole, int size, String cursor, PostType postType) {
+        size = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
+
+        List<Long> followingIds = followService.getFollowingIds(currentUserId);
+        if (followingIds.isEmpty()) {
+            return new CursorPagedResponse<>(List.of(), null, false, size);
+        }
+
+        List<Visibility> visibilities = visibilityPolicy.canViewPrivate(currentUserRole)
+                ? List.of(Visibility.PUBLIC, Visibility.PRIVATE, Visibility.FOLLOWERS_ONLY, Visibility.VERIFIED_FOLLOWERS_ONLY)
+                : List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY);
+
+        PostCursor postCursor = cursor != null ? PostCursor.decode(cursor) : null;
+        Pageable limit = PageRequest.of(0, size + 1);
+
+        List<TherapyPost> posts;
+        if (postCursor == null) {
+            posts = therapyPostRepository.findFollowingFeed(followingIds, visibilities, postType, limit);
+        } else {
+            posts = therapyPostRepository.findFollowingFeed(
+                    followingIds, visibilities, postType, postCursor.createdAt(), postCursor.id(), limit);
+        }
+
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        List<TherapyPostSummaryResponse> dtos = toSummaries(posts, true, canViewSensitive);
+
+        return CursorPagedResponse.of(dtos, size, item ->
+                new PostCursor(item.getCreatedAt(), item.getId()).encode());
+    }
+
     private Sort toSort(PostSortType sortType) {
         return switch (sortType) {
             case MOST_VIEWED -> Sort.by(
                     Sort.Order.desc("viewCount"),
                     Sort.Order.desc("id")
             );
+            // RELEVANCE 는 getPosts() 진입 시 이미 차단되므로 여기 도달 불가
             case LATEST -> Sort.by(
                     Sort.Order.desc("createdAt"),
                     Sort.Order.desc("id")
             );
-            // RELEVANCE 는 getPosts() 진입 시 이미 차단되므로 여기 도달 불가
             case RELEVANCE -> throw new CustomException(ErrorCode.INVALID_SORT_TYPE);
         };
     }
@@ -374,26 +333,38 @@ public class PostService {
             boolean isScrapped
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
 
-        if (postViewCountService.isFirstView(postId, currentUserId)) {
+        boolean firstView = postViewCountService.isFirstView(postId, currentUserId);
+        if (firstView) {
             post.increaseViewCount();
         }
 
-        List<PostAttachmentResponse> attachments = therapyPostAttachmentRepository
-                .findByPostIdOrderByCreatedAtAsc(postId)
-                .stream()
-                .map(PostAttachmentResponse::from)
-                .toList();
+        // 집계 시점에 dedup/window 처리할 수 있도록 매 조회마다 raw 발행.
+        // isFirstView 플래그는 view_count와의 정합성 재구성을 위해 보존.
+        userEventPublisher.publish(
+                currentUserId,
+                UserEventType.POST_VIEW,
+                EventTargetType.POST,
+                postId,
+                Map.of(
+                        "isFirstView", firstView,
+                        "postType", post.getPostType().name(),
+                        "therapyArea", post.getTherapyArea().name(),
+                        "visibility", post.getVisibility().name()
+                )
+        );
 
-        long commentCount = therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(postId);
-        Map<PostReactionType, Long> reactionCounts = buildReactionCountMap(postId);
-        PostReactionType myReactionType = therapyPostReactionRepository
-                .findByPostIdAndUserId(postId, currentUserId)
-                .map(TherapyPostReaction::getReactionType)
-                .orElse(null);
+        // 첨부파일은 PostAttachmentService에 위임 — presigned S3 URL 발급 + audit log INSERT(idempotent).
+        // 발급 == 다운로드 의도로 간주(보기 != 다운로드 정확도는 trade-off).
+        List<PostAttachmentResponse> attachments = postAttachmentService.getAttachmentsForPostUnchecked(post, currentUserId);
 
-        return TherapyPostDetailResponse.from(
+        long commentCount = commentService.getCommentCount(postId);
+        Map<PostReactionType, Long> reactionCounts = postReactionService.getReactionCounts(postId);
+        PostReactionType myReactionType = postReactionService.getMyReaction(postId, currentUserId);
+
+        boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(
                 post,
                 attachments,
                 commentCount,
@@ -401,8 +372,15 @@ public class PostService {
                 myReactionType,
                 currentUserId,
                 currentUserRole,
-                isScrapped
+                isScrapped,
+                profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                postImageService.getImagesForPostUnchecked(postId),
+                postVideoService.getVideosForPostUnchecked(postId),
+                canViewSensitive
         );
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional
@@ -413,19 +391,41 @@ public class PostService {
             UpdateTherapyPostRequest request
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
-        if (request.getVisibility() == Visibility.PRIVATE) {
-            visibilityPolicy.checkCanWritePrivate(currentUserRole);
+        visibilityPolicy.checkCanWriteVisibility(request.getVisibility(), currentUserRole);
+
+        String oldSearchText = post.getSearchText();
+
+        if (post.getPostType() == PostType.CONCERN_CARD) {
+            post.updateConcernCard(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getAgeGroup(),
+                    request.getVisibility(),
+                    request.getDiagnoses(),
+                    request.getOtherNotes()
+            );
+        } else {
+            post.update(
+                    request.getContent(),
+                    request.getTherapyArea(),
+                    request.getVisibility()
+            );
         }
 
-        post.update(
-                request.getContent(),
-                request.getTherapyArea(),
-                request.getVisibility()
-        );
-        return TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        if (!oldSearchText.equals(post.getSearchText())) {
+            eventPublisher.publishEvent(EmbeddingEvent.builder()
+                    .postId(post.getId())
+                    .text(post.getSearchText())
+                    .build());
+        }
+
+        TherapyPostDetailResponse response = TherapyPostDetailResponse.from(post, currentUserId, currentUserRole);
+        AiCommentStatusProvider.AutoCommentStatus acStatus = aiCommentStatusProvider.getStatus(postId);
+        response.setAutoComment(acStatus.status(), acStatus.sourceMode());
+        return response;
     }
 
     @Transactional
@@ -435,7 +435,7 @@ public class PostService {
             Long postId
     ) {
         TherapyPost post = activePostFinder.findOrThrow(postId);
-        visibilityPolicy.checkAccess(post, currentUserRole);
+        visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
         resourceAccessValidator.validateAuthorOrAdmin(post.getAuthor().getId(), currentUserId, currentUserRole, ErrorCode.POST_ACCESS_DENIED);
 
         post.softDelete();
@@ -443,43 +443,49 @@ public class PostService {
 
     // ── Summary DTO 변환 헬퍼 ──────────────────────────────
 
-    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts) {
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate) {
+        return toSummaries(posts, canViewPrivate, canViewPrivate);
+    }
+
+    private List<TherapyPostSummaryResponse> toSummaries(List<TherapyPost> posts, boolean canViewPrivate, boolean canViewSensitiveFields) {
         if (posts.isEmpty()) {
             return List.of();
         }
         List<Long> postIds = posts.stream().map(TherapyPost::getId).toList();
 
-        Map<Long, Long> likeCounts = toCountMap(
-                therapyPostReactionRepository.countByPostIdInAndReactionType(postIds, PostReactionType.LIKE)
-        );
-        Map<Long, Long> commentCounts = toCountMap(
-                therapyPostCommentRepository.countActiveByPostIdIn(postIds)
-        );
+        Map<Long, Map<PostReactionType, Long>> reactionByPostId = postReactionService.getReactionCountsByPostIds(postIds);
+        Map<Long, Long> commentCounts = commentService.getCommentCountsByPostIds(postIds);
+
+        // 권한 없는 사용자에겐 PRIVATE 게시글의 이미지 URL을 DB 조회 자체에서 제외 (효율 + 보안 이중 방어).
+        // DTO 단계의 accessLocked 마스킹은 그대로 유지.
+        List<Long> visiblePostIds = canViewPrivate
+                ? postIds
+                : posts.stream()
+                        .filter(p -> p.getVisibility() == Visibility.PUBLIC)
+                        .map(TherapyPost::getId)
+                        .toList();
+        Map<Long, List<PostImageResponse>> imagesByPostId =
+                postImageService.getImagesByPostIds(visiblePostIds);
 
         return posts.stream()
-                .map(post -> TherapyPostSummaryResponse.from(
-                        post,
-                        likeCounts.getOrDefault(post.getId(), 0L),
-                        commentCounts.getOrDefault(post.getId(), 0L),
-                        false
-                ))
+                .map(post -> {
+                    Map<PostReactionType, Long> counts = reactionByPostId.getOrDefault(post.getId(), Map.of());
+                    return TherapyPostSummaryResponse.from(
+                            post,
+                            counts.getOrDefault(PostReactionType.LIKE, 0L),
+                            counts.getOrDefault(PostReactionType.CURIOUS, 0L),
+                            counts.getOrDefault(PostReactionType.USEFUL, 0L),
+                            commentCounts.getOrDefault(post.getId(), 0L),
+                            false,
+                            canViewPrivate,
+                            canViewSensitiveFields,
+                            profileImageUrlAssembler.toFullUrl(post.getAuthor().getProfileImageUrl()),
+                            imagesByPostId.getOrDefault(post.getId(), List.of()).stream()
+                                    .map(PostImageResponse::getImageUrl)
+                                    .toList(),
+                            null
+                    );
+                })
                 .toList();
-    }
-
-    private Map<Long, Long> toCountMap(List<Object[]> rows) {
-        Map<Long, Long> map = new HashMap<>();
-        for (Object[] row : rows) {
-            map.put((Long) row[0], (Long) row[1]);
-        }
-        return map;
-    }
-
-    private Map<PostReactionType, Long> buildReactionCountMap(Long postId) {
-        Map<PostReactionType, Long> counts = new EnumMap<>(PostReactionType.class);
-        Arrays.stream(PostReactionType.values()).forEach(t -> counts.put(t, 0L));
-        therapyPostReactionRepository.countGroupedByPostId(postId).forEach(row -> {
-            counts.put((PostReactionType) row[0], (Long) row[1]);
-        });
-        return counts;
     }
 }

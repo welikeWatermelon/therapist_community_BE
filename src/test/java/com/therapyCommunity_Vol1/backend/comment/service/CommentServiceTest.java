@@ -1,5 +1,8 @@
 package com.therapyCommunity_Vol1.backend.comment.service;
 
+import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
+import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
+import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
@@ -14,7 +17,7 @@ import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,30 +27,43 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.global.security.ResourceAccessValidator;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class CommentServiceTest {
 
     private TherapyPostCommentRepository commentRepository;
     private ActivePostFinder activePostFinder;
-    private UserRepository userRepository;
+    private UserService userService;
     private ResourceAccessValidator resourceAccessValidator;
     private CommentThreadAssembler commentThreadAssembler;
+    private AiCommentProperties aiCommentProperties;
     private ApplicationEventPublisher eventPublisher;
     private PostVisibilityAccessPolicy visibilityPolicy;
+    private UserEventPublisher userEventPublisher;
     private CommentService commentService;
 
     @BeforeEach
     void setUp() {
         commentRepository = mock(TherapyPostCommentRepository.class);
         activePostFinder = mock(ActivePostFinder.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
-        commentThreadAssembler = new CommentThreadAssembler();
+        aiCommentProperties = mock(AiCommentProperties.class);
+        when(aiCommentProperties.getAiUserEmail()).thenReturn("ai-comment@system.local");
+        com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler profileImageUrlAssembler =
+                mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
+        commentThreadAssembler = new CommentThreadAssembler(aiCommentProperties, profileImageUrlAssembler);
         eventPublisher = mock(ApplicationEventPublisher.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
-        commentService = new CommentService(commentRepository, activePostFinder, userRepository, resourceAccessValidator, commentThreadAssembler, eventPublisher, visibilityPolicy);
+        userEventPublisher = mock(UserEventPublisher.class);
+        commentService = new CommentService(commentRepository, activePostFinder, userService, resourceAccessValidator, commentThreadAssembler, aiCommentProperties, eventPublisher, visibilityPolicy, userEventPublisher,
+                mock(com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostCommentReactionRepository.class),
+                profileImageUrlAssembler);
     }
 
     @Test
@@ -76,7 +92,7 @@ class CommentServiceTest {
         TherapyPostComment saved = TherapyPostComment.createRoot(post, author, "루트 댓글");
         ReflectionTestUtils.setField(saved, "id", 100L);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(author));
+        when(userService.findById(currentUserId)).thenReturn(author);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
 
@@ -122,7 +138,7 @@ class CommentServiceTest {
         TherapyPostComment saved = TherapyPostComment.createReply(post, author, parent, "대댓글");
         ReflectionTestUtils.setField(saved, "id", 101L);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(author));
+        when(userService.findById(currentUserId)).thenReturn(author);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(commentRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(parent));
         when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
@@ -134,6 +150,64 @@ class CommentServiceTest {
         assertThat(response.getId()).isEqualTo(101L);
         assertThat(response.getParentCommentId()).isEqualTo(50L);
         assertThat(response.isCanDelete()).isTrue();
+    }
+
+    @Test
+    void 루트_댓글_작성시_COMMENT_CREATE_이벤트_발행_isReply_false() {
+        Long currentUserId = 1L;
+        User author = User.builder().id(currentUserId).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 10L);
+
+        TherapyPostComment saved = TherapyPostComment.createRoot(post, author, "루트");
+        ReflectionTestUtils.setField(saved, "id", 100L);
+
+        when(userService.findById(currentUserId)).thenReturn(author);
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
+        when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
+
+        commentService.createComment(currentUserId, UserRole.THERAPIST, 10L, new CreateCommentRequest("루트", null));
+
+        verify(userEventPublisher).publish(
+                eq(currentUserId),
+                eq(UserEventType.COMMENT_CREATE),
+                eq(EventTargetType.POST),
+                eq(10L),
+                argThat(m -> Boolean.FALSE.equals(m.get("isReply"))
+                          && Long.valueOf(100L).equals(m.get("commentId"))
+                          && !m.containsKey("parentCommentId"))
+        );
+    }
+
+    @Test
+    void 대댓글_작성시_COMMENT_CREATE_이벤트_발행_isReply_true() {
+        Long currentUserId = 1L;
+        User author = User.builder().id(currentUserId).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 10L);
+
+        TherapyPostComment parent = TherapyPostComment.createRoot(post, author, "부모");
+        ReflectionTestUtils.setField(parent, "id", 50L);
+
+        TherapyPostComment saved = TherapyPostComment.createReply(post, author, parent, "대댓글");
+        ReflectionTestUtils.setField(saved, "id", 101L);
+
+        when(userService.findById(currentUserId)).thenReturn(author);
+        when(activePostFinder.findOrThrow(10L)).thenReturn(post);
+        when(commentRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(parent));
+        when(commentRepository.save(any(TherapyPostComment.class))).thenReturn(saved);
+
+        commentService.createComment(currentUserId, UserRole.THERAPIST, 10L, new CreateCommentRequest("대댓글", 50L));
+
+        verify(userEventPublisher).publish(
+                eq(currentUserId),
+                eq(UserEventType.COMMENT_CREATE),
+                eq(EventTargetType.POST),
+                eq(10L),
+                argThat(m -> Boolean.TRUE.equals(m.get("isReply"))
+                          && Long.valueOf(101L).equals(m.get("commentId"))
+                          && Long.valueOf(50L).equals(m.get("parentCommentId")))
+        );
     }
 
     @Test
@@ -165,7 +239,7 @@ class CommentServiceTest {
 
         CreateCommentRequest request = new CreateCommentRequest("대댓글의 대댓글", 60L);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(author));
+        when(userService.findById(currentUserId)).thenReturn(author);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
         when(commentRepository.findByIdAndDeletedAtIsNull(60L)).thenReturn(Optional.of(reply));
 

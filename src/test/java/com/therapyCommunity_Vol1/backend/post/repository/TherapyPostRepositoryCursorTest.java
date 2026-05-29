@@ -58,7 +58,7 @@ class TherapyPostRepositoryCursorTest {
         TherapyPost postB = createPost("글B", Visibility.PUBLIC, time1);
         TherapyPost postC = createPost("글C", Visibility.PUBLIC, time2);
 
-        List<TherapyPost> result = therapyPostRepository.findFeedLatest(PageRequest.of(0, 10));
+        List<TherapyPost> result = therapyPostRepository.findFeedLatest(List.of(Visibility.PUBLIC, Visibility.PRIVATE), null, PageRequest.of(0, 10));
 
         assertThat(result).hasSize(3);
         // 같은 createdAt일 때 id DESC로 tie-break
@@ -76,13 +76,13 @@ class TherapyPostRepositoryCursorTest {
         }
 
         // 첫 페이지: 2개 + 1 (hasNext 판단용)
-        List<TherapyPost> firstPage = therapyPostRepository.findFeedLatest(PageRequest.of(0, 3));
+        List<TherapyPost> firstPage = therapyPostRepository.findFeedLatest(List.of(Visibility.PUBLIC, Visibility.PRIVATE), null, PageRequest.of(0, 3));
         assertThat(firstPage).hasSize(3);
 
         // 두 번째 페이지: 첫 페이지 마지막(2번째) 항목 기준 커서
         TherapyPost lastOfFirst = firstPage.get(1); // size=2일 때 마지막
         List<TherapyPost> secondPage = therapyPostRepository.findFeedLatest(
-                lastOfFirst.getCreatedAt(), lastOfFirst.getId(), PageRequest.of(0, 3));
+                List.of(Visibility.PUBLIC, Visibility.PRIVATE), null, lastOfFirst.getCreatedAt(), lastOfFirst.getId(), PageRequest.of(0, 3));
 
         // 중복 없이 이어져야 함
         List<Long> firstIds = firstPage.subList(0, 2).stream().map(TherapyPost::getId).toList();
@@ -91,18 +91,19 @@ class TherapyPostRepositoryCursorTest {
     }
 
     @Test
-    void 커서_피드_visibility_필터_PUBLIC만_조회() {
+    void 커서_피드_visibility_필터_PUBLIC_PRIVATE만_조회() {
         LocalDateTime now = LocalDateTime.of(2026, 4, 9, 12, 0, 0);
 
         createPost("공개글", Visibility.PUBLIC, now);
         createPost("비공개글", Visibility.PRIVATE, now.minusSeconds(1));
-        createPost("공개글2", Visibility.PUBLIC, now.minusSeconds(2));
+        createPost("팔로워전용", Visibility.FOLLOWERS_ONLY, now.minusSeconds(2));
+        createPost("공개글2", Visibility.PUBLIC, now.minusSeconds(3));
 
-        List<TherapyPost> publicOnly = therapyPostRepository.findFeedLatestByVisibility(
-                Visibility.PUBLIC, PageRequest.of(0, 10));
+        List<TherapyPost> result = therapyPostRepository.findFeedLatest(
+                List.of(Visibility.PUBLIC, Visibility.PRIVATE), null, PageRequest.of(0, 10));
 
-        assertThat(publicOnly).hasSize(2);
-        assertThat(publicOnly).allMatch(p -> p.getVisibility() == Visibility.PUBLIC);
+        assertThat(result).hasSize(3);
+        assertThat(result).noneMatch(p -> p.getVisibility() == Visibility.FOLLOWERS_ONLY);
     }
 
     @Test
@@ -118,7 +119,7 @@ class TherapyPostRepositoryCursorTest {
         setPopularityScore(postA.getId(), 500L);
         setPopularityScore(postC.getId(), 500L);
 
-        List<TherapyPost> result = therapyPostRepository.findFeedPopular(PageRequest.of(0, 10));
+        List<TherapyPost> result = therapyPostRepository.findFeedPopular(List.of(Visibility.PUBLIC, Visibility.PRIVATE), null, PageRequest.of(0, 10));
 
         assertThat(result).hasSize(3);
         // 가장 높은 점수가 먼저

@@ -40,6 +40,9 @@ class PostSearchValidationTest {
     @Mock
     private ScrapService scrapService;
 
+    @Mock
+    private com.therapyCommunity_Vol1.backend.reaction.service.PostReactionService postReactionService;
+
     @InjectMocks
     private PostController postController;
 

@@ -10,41 +10,77 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.notification.repository.NotificationRepository;
 import com.therapyCommunity_Vol1.backend.notification.sse.SseEmitterRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataAccessException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final SseEmitterRepository sseEmitterRepository;
+    private final TaskScheduler taskScheduler;
 
-    private static final Long SSE_TIMEOUT = 30L * 60 * 1000; // 30분
+    private final long sseTimeoutMillis;
+    private static final long HEARTBEAT_INTERVAL_SECONDS = 30;
+
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            UserService userService,
+            SseEmitterRepository sseEmitterRepository,
+            TaskScheduler taskScheduler,
+            @Value("${notification.sse.timeout-millis:1800000}") long sseTimeoutMillis
+    ) {
+        this.notificationRepository = notificationRepository;
+        this.userService = userService;
+        this.sseEmitterRepository = sseEmitterRepository;
+        this.taskScheduler = taskScheduler;
+        this.sseTimeoutMillis = sseTimeoutMillis;
+    }
 
     public SseEmitter subscribe(Long userId, String lastEventId) {
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
+        SseEmitter emitter = new SseEmitter(sseTimeoutMillis);
         String emitterId = sseEmitterRepository.save(userId, emitter);
 
-        emitter.onCompletion(() -> sseEmitterRepository.remove(userId, emitterId));
-        emitter.onTimeout(() -> sseEmitterRepository.remove(userId, emitterId));
+        ScheduledFuture<?> heartbeat = taskScheduler.scheduleAtFixedRate(() -> {
+            try {
+                emitter.send(SseEmitter.event().comment("heartbeat"));
+            } catch (IOException | IllegalStateException e) {
+                log.debug("heartbeat failed, removing emitter: userId={}, emitterId={}", userId, emitterId);
+                sseEmitterRepository.remove(userId, emitterId);
+            }
+        }, Duration.ofSeconds(HEARTBEAT_INTERVAL_SECONDS));
+
+        Runnable cleanup = () -> {
+            heartbeat.cancel(false);
+            sseEmitterRepository.remove(userId, emitterId);
+        };
+
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(cleanup);
         emitter.onError(e -> {
             log.warn("SSE emitter error userId={}, emitterId={}: {}", userId, emitterId, e.getMessage());
-            sseEmitterRepository.remove(userId, emitterId);
+            cleanup.run();
         });
 
         try {
@@ -52,7 +88,7 @@ public class NotificationService {
                     .name("connect")
                     .data("connected"));
         } catch (IOException e) {
-            sseEmitterRepository.remove(userId, emitterId);
+            cleanup.run();
             throw new CustomException(ErrorCode.SSE_CONNECTION_ERROR);
         }
 
@@ -75,33 +111,66 @@ public class NotificationService {
         return emitter;
     }
 
-    @Transactional
-    public void createAndSend(NotificationEvent event) {
+    public record SsePayload(Long receiverId, String eventId, NotificationResponse response) {}
+
+    /**
+     * 알림 DB 저장 + DTO 변환. 이벤트 리스너 전용 — 다른 서비스에서 직접 호출 금지.
+     * REQUIRES_NEW: 호출자 트랜잭션과 독립적으로 커밋/롤백.
+     * DB 일시 장애 시 최대 3회 재시도 (500ms → 1s → 2s).
+     */
+    @Retryable(retryFor = DataAccessException.class, maxAttempts = 3,
+            backoff = @Backoff(delay = 500, multiplier = 2))
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<SsePayload> createNotifications(NotificationEvent event) {
         List<Long> receiverIds = event.getReceiverIds().stream()
                 .filter(id -> !id.equals(event.getSenderId()))
                 .toList();
 
-        if (receiverIds.isEmpty()) return;
+        if (receiverIds.isEmpty()) return List.of();
 
         User sender = event.getSenderId() != null
-                ? userRepository.findById(event.getSenderId()).orElse(null)
+                ? userService.findByIdOrNull(event.getSenderId())
                 : null;
 
+        String senderNickname;
+        if (sender != null) {
+            senderNickname = sender.getDisplayNickname();
+        } else if (event.getSenderId() != null) {
+            senderNickname = "알 수 없는 사용자";
+        } else {
+            senderNickname = null;
+        }
+        String content = event.getType().formatMessage(senderNickname, event.getExtraParams());
+
+        List<SsePayload> payloads = new java.util.ArrayList<>();
+        // TODO: VERIFICATION_SUBMITTED 활성화 시 receiverIds가 다수(admin 전원)가 되므로
+        //       findAllById(receiverIds) batch 조회로 전환하여 N+1 방지 필요
         for (Long receiverId : receiverIds) {
-            User receiver = userRepository.findById(receiverId).orElse(null);
+            User receiver = userService.findByIdOrNull(receiverId);
             if (receiver == null) continue;
 
             Notification notification = Notification.create(
                     receiver, sender,
-                    event.getType(), event.getReferenceId(), event.getContent()
+                    event.getType(), event.getReferenceId(), event.getPostId(), content
             );
-            notificationRepository.save(notification);
+            Notification saved = notificationRepository.save(notification);
 
-            NotificationResponse response = NotificationResponse.from(notification);
-            String eventId = notification.getId() + "_" + System.currentTimeMillis();
+            NotificationResponse response = NotificationResponse.from(saved);
+            String eventId = SseEmitterRepository.createEventId(saved.getId());
+            payloads.add(new SsePayload(receiverId, eventId, response));
+        }
+        return payloads;
+    }
 
-            sseEmitterRepository.cacheEvent(receiverId, eventId, response);
-            sendToUser(receiverId, eventId, response);
+    public void sendSseNotifications(List<SsePayload> payloads) {
+        for (SsePayload payload : payloads) {
+            try {
+                sseEmitterRepository.cacheEvent(payload.receiverId(), payload.eventId(), payload.response());
+                sendToUser(payload.receiverId(), payload.eventId(), payload.response());
+            } catch (Exception e) {
+                log.error("알림 SSE 전송 실패: receiverId={}, eventId={}",
+                        payload.receiverId(), payload.eventId(), e);
+            }
         }
     }
 
@@ -151,7 +220,10 @@ public class NotificationService {
                         .name("notification")
                         .data(response));
             } catch (IOException e) {
-                log.debug("SSE send failed userId={}, emitterId={}", userId, emitterId);
+                log.debug("SSE send failed (client disconnected) userId={}, emitterId={}", userId, emitterId);
+                sseEmitterRepository.remove(userId, emitterId);
+            } catch (IllegalStateException e) {
+                log.debug("SSE emitter already completed userId={}, emitterId={}", userId, emitterId);
                 sseEmitterRepository.remove(userId, emitterId);
             }
         });

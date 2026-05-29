@@ -6,7 +6,7 @@ import com.therapyCommunity_Vol1.backend.global.cache.UserCacheService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
-import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
+
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
@@ -31,7 +31,6 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     private UserRepository userRepository;
-    private TherapistVerificationService therapistVerificationService;
     private TokenService tokenService;
     private FileStorageService fileStorageService;
     private UserCacheService userCacheService;
@@ -41,14 +40,12 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        therapistVerificationService = mock(TherapistVerificationService.class);
         tokenService = mock(TokenService.class);
         fileStorageService = mock(FileStorageService.class);
         userCacheService = mock(UserCacheService.class);
-        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080");
+        profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080", fileStorageService);
         userService = new UserService(
                 userRepository,
-                therapistVerificationService,
                 tokenService,
                 fileStorageService,
                 userCacheService,
@@ -66,9 +63,8 @@ class UserServiceTest {
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationService.findVerificationStatusByUserId(1L)).thenReturn(Optional.empty());
 
-        CurrentUserResponse response = userService.getCurrentUser(1L);
+        CurrentUserResponse response = userService.getCurrentUser(1L, Optional.empty(), 0, 0);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.email()).isEqualTo("user@example.com");
@@ -90,9 +86,8 @@ class UserServiceTest {
         );
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(therapistVerificationService.findVerificationStatusByUserId(1L)).thenReturn(Optional.of(statusDto));
 
-        CurrentUserResponse response = userService.getCurrentUser(1L);
+        CurrentUserResponse response = userService.getCurrentUser(1L, Optional.of(statusDto), 0, 0);
 
         assertThat(response.therapistVerification().status()).isEqualTo("PENDING");
         assertThat(response.therapistVerification().requestedAt()).isEqualTo(requestedAt);
@@ -103,7 +98,7 @@ class UserServiceTest {
     void 현재_유저가_없으면_예외를_던진다() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        Throwable thrown = catchThrowable(() -> userService.getCurrentUser(99L));
+        Throwable thrown = catchThrowable(() -> userService.getCurrentUser(99L, Optional.empty(), 0, 0));
 
         assertThat(thrown).isInstanceOf(CustomException.class);
         assertThat(((CustomException) thrown).getErrorCode()).isEqualTo(ErrorCode.USER_NOT_FOUND);
@@ -147,11 +142,9 @@ class UserServiceTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userRepository.existsByNicknameAndIdNot("newNick", 1L)).thenReturn(false);
-        when(therapistVerificationService.findVerificationStatusByUserId(1L))
-                .thenReturn(Optional.empty());
 
         UpdateProfileRequest request = new UpdateProfileRequest("newNick");
-        userService.updateProfile(1L, request);
+        userService.updateProfile(1L, request, Optional.empty(), 0, 0);
 
         assertThat(user.getNickname()).isEqualTo("newNick");
         // 프로필 이미지 변경 경로는 PATCH 에서 제거됨 → 기존 값 그대로
