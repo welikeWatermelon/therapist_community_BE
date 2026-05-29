@@ -4,6 +4,8 @@ import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.QueryTimeoutException;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -15,6 +17,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -90,5 +93,32 @@ class UploadRateLimiterTest {
         // increment 결과가 1이 아니면 expire 호출 안 함
         verify(redisTemplate, org.mockito.Mockito.never())
                 .expire(anyString(), anyLong(), org.mockito.ArgumentMatchers.any(TimeUnit.class));
+    }
+
+    /**
+     * Redis 연결 장애 시 rate limit 미적용 (fail-open). 업로드 요청은 통과해야 한다.
+     * 폴백 정책은 {@code LoginAttemptService}와 동일(가용성 우선).
+     */
+    @Test
+    void checkAndIncrement_redisConnectionFailure_failsOpen() {
+        when(valueOps.increment(anyString()))
+                .thenThrow(new RedisConnectionFailureException("simulated"));
+
+        assertThatCode(() -> rateLimiter.checkAndIncrement(1L))
+                .doesNotThrowAnyException();
+    }
+
+    /**
+     * 첫 Redis 호출에서 예외가 던져지면 단일 try-catch로 빠져나가므로
+     * daily 카운터 호출은 아예 발생하지 않는다.
+     */
+    @Test
+    void checkAndIncrement_redisTimeout_doesNotCallDailyCounter() {
+        when(valueOps.increment(anyString()))
+                .thenThrow(new QueryTimeoutException("simulated"));
+
+        rateLimiter.checkAndIncrement(1L);
+
+        verify(valueOps, times(1)).increment(anyString());
     }
 }
