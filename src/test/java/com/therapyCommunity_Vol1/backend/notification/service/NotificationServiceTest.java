@@ -7,7 +7,7 @@ import com.therapyCommunity_Vol1.backend.notification.repository.NotificationRep
 import com.therapyCommunity_Vol1.backend.notification.sse.SseEmitterRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,7 +19,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,7 +30,7 @@ import static org.mockito.Mockito.*;
 class NotificationServiceTest {
 
     private NotificationRepository notificationRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private SseEmitterRepository sseEmitterRepository;
     private TaskScheduler taskScheduler;
     private NotificationService notificationService;
@@ -42,11 +41,11 @@ class NotificationServiceTest {
     @BeforeEach
     void setUp() {
         notificationRepository = mock(NotificationRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         sseEmitterRepository = mock(SseEmitterRepository.class);
         taskScheduler = mock(TaskScheduler.class);
         notificationService = new NotificationService(
-                notificationRepository, userRepository, sseEmitterRepository,
+                notificationRepository, userService, sseEmitterRepository,
                 taskScheduler, 1800000L);
 
         sender = User.builder()
@@ -56,8 +55,8 @@ class NotificationServiceTest {
                 .id(2L).email("receiver@test.com").nickname("수신자").role(UserRole.THERAPIST)
                 .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sender));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(receiver));
+        when(userService.findByIdOrNull(1L)).thenReturn(sender);
+        when(userService.findByIdOrNull(2L)).thenReturn(receiver);
         when(notificationRepository.save(any(Notification.class)))
                 .thenAnswer(invocation -> {
                     Notification n = invocation.getArgument(0);

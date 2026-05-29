@@ -5,7 +5,6 @@ import com.therapyCommunity_Vol1.backend.auth.repository.RefreshTokenRepository;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.security.JwtTokenProvider;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
-import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
@@ -17,6 +16,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,7 +29,6 @@ class TokenServiceTest {
     JwtTokenProvider jwtTokenProvider;
     RefreshTokenRepository refreshTokenRepository;
     RefreshTokenManager refreshTokenManager;
-    TherapistVerificationService therapistVerificationService;
     FileStorageService fileStorageService;
     ProfileImageUrlAssembler profileImageUrlAssembler;
 
@@ -40,7 +39,6 @@ class TokenServiceTest {
         jwtTokenProvider = mock(JwtTokenProvider.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
         refreshTokenManager = mock(RefreshTokenManager.class);
-        therapistVerificationService = mock(TherapistVerificationService.class);
         fileStorageService = mock(FileStorageService.class);
         profileImageUrlAssembler = new ProfileImageUrlAssembler("http://localhost:8080", fileStorageService);
 
@@ -48,7 +46,6 @@ class TokenServiceTest {
                 jwtTokenProvider,
                 refreshTokenRepository,
                 refreshTokenManager,
-                therapistVerificationService,
                 profileImageUrlAssembler
         );
         ReflectionTestUtils.setField(tokenService, "refreshTokenTtlSec", 1209600L);
@@ -82,18 +79,21 @@ class TokenServiceTest {
         when(jwtTokenProvider.createAccessToken(eq(7L), eq("THERAPIST"))).thenReturn("new-access-token");
         when(jwtTokenProvider.getAccessTokenValiditySec()).thenReturn(1800L);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArgument(0));
-        when(therapistVerificationService.findVerificationStatusByUserId(7L))
-                .thenReturn(Optional.of(new TherapistVerificationStatusDto(
-                        "APPROVED",
-                        LocalDateTime.of(2026, 3, 15, 9, 0),
-                        LocalDateTime.of(2026, 3, 16, 9, 0),
-                        null
-                )));
         when(fileStorageService.presignGet(eq("profile-images/abc-123.jpg"), eq(Duration.ofHours(1))))
                 .thenReturn("https://cdn.example.com/profile-images/abc-123.jpg?X-Amz-Signature=fresh");
 
         // when
-        TokenService.RefreshResult result = tokenService.refresh("raw-refresh", "JUnit", "127.0.0.1");
+        TokenService.RefreshResult result = tokenService.refresh(
+                "raw-refresh",
+                "JUnit",
+                "127.0.0.1",
+                userId -> Optional.of(new TherapistVerificationStatusDto(
+                        "APPROVED",
+                        LocalDateTime.of(2026, 3, 15, 9, 0),
+                        LocalDateTime.of(2026, 3, 16, 9, 0),
+                        null
+                ))
+        );
 
         // then
         assertThat(result.response().accessToken()).isEqualTo("new-access-token");

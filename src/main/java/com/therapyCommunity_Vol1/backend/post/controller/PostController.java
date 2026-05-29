@@ -64,11 +64,12 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "LATEST") FeedSortType sort
+            @RequestParam(defaultValue = "LATEST") FeedSortType sort,
+            @RequestParam(required = false) PostType postType
     ) {
         UserRole userRole = userDetails != null ? userDetails.getUserRole() : UserRole.USER;
         CursorPagedResponse<TherapyPostSummaryResponse> response =
-                postService.getPostsFeed(size, cursor, userRole, sort);
+                postService.getPostsFeed(size, cursor, userRole, sort, postType);
 
         Long userId = userDetails != null ? userDetails.getUserId() : null;
         List<Long> postIds = response.getItems().stream()
@@ -88,10 +89,11 @@ public class PostController {
     public ResponseEntity<ApiResponse<CursorPagedResponse<TherapyPostSummaryResponse>>> getFollowingFeed(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String cursor
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) PostType postType
     ) {
         CursorPagedResponse<TherapyPostSummaryResponse> response =
-                postService.getFollowingFeed(userDetails.getUserId(), userDetails.getUserRole(), size, cursor);
+                postService.getFollowingFeed(userDetails.getUserId(), userDetails.getUserRole(), size, cursor, postType);
 
         Long userId = userDetails.getUserId();
         List<Long> postIds = response.getItems().stream()

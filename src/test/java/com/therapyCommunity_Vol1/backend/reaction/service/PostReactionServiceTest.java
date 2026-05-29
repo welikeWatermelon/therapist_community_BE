@@ -12,11 +12,10 @@ import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
 import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
 import com.therapyCommunity_Vol1.backend.reaction.dto.PostReactionStatusResponse;
 import com.therapyCommunity_Vol1.backend.reaction.dto.TogglePostReactionRequest;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,9 +38,8 @@ import static org.mockito.Mockito.*;
 class PostReactionServiceTest {
 
     private TherapyPostReactionRepository postReactionRepository;
-    private PostService postService;
     private ActivePostFinder activePostFinder;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private UserEventPublisher userEventPublisher;
@@ -53,14 +51,13 @@ class PostReactionServiceTest {
     @BeforeEach
     void setUp() {
         postReactionRepository = mock(TherapyPostReactionRepository.class);
-        postService = mock(PostService.class);
         activePostFinder = mock(ActivePostFinder.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         userEventPublisher = mock(UserEventPublisher.class);
         postReactionService = new PostReactionService(
-                postReactionRepository, postService, activePostFinder, userRepository, eventPublisher, visibilityPolicy, userEventPublisher
+                postReactionRepository, activePostFinder, userService, eventPublisher, visibilityPolicy, userEventPublisher
         );
 
         user = User.builder()
@@ -68,7 +65,7 @@ class PostReactionServiceTest {
                 .build();
         post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, user);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(activePostFinder.findOrThrow(10L)).thenReturn(post);
     }
 

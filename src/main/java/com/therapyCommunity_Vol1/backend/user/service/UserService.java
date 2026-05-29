@@ -7,7 +7,7 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
-import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,22 +28,19 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final TherapistVerificationService therapistVerificationService;
     private final TokenService tokenService;
     private final FileStorageService fileStorageService;
     private final UserCacheService userCacheService;
     private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
-    public CurrentUserResponse getCurrentUser(Long currentUserId) {
-        return getCurrentUser(currentUserId, 0, 0);
-    }
-
-    public CurrentUserResponse getCurrentUser(Long currentUserId, long followerCount, long followingCount) {
+    public CurrentUserResponse getCurrentUser(Long currentUserId,
+                                              Optional<TherapistVerificationStatusDto> verification,
+                                              long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
         return CurrentUserResponse.from(
                 user,
-                therapistVerificationService.findVerificationStatusByUserId(currentUserId),
+                verification,
                 profileImageUrlAssembler,
                 followerCount,
                 followingCount
@@ -70,6 +68,7 @@ public class UserService {
 
     @Transactional
     public CurrentUserResponse updateProfile(Long currentUserId, UpdateProfileRequest request,
+                                             Optional<TherapistVerificationStatusDto> verification,
                                              long followerCount, long followingCount) {
         User user = findUserOrThrow(currentUserId);
 
@@ -83,7 +82,7 @@ public class UserService {
 
         return CurrentUserResponse.from(
                 user,
-                therapistVerificationService.findVerificationStatusByUserId(currentUserId),
+                verification,
                 profileImageUrlAssembler,
                 followerCount,
                 followingCount
@@ -101,6 +100,16 @@ public class UserService {
 
     public User findById(Long userId) {
         return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    public User findByIdOrNull(Long userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 

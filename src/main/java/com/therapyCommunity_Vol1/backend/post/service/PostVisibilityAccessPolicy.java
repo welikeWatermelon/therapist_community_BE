@@ -69,4 +69,8 @@ public class PostVisibilityAccessPolicy {
     public boolean canViewPrivate(UserRole role) {
         return role == UserRole.THERAPIST || role == UserRole.ADMIN;
     }
+
+    public boolean canViewConcernCardSensitiveFields(UserRole role) {
+        return role == UserRole.THERAPIST || role == UserRole.ADMIN;
+    }
 }

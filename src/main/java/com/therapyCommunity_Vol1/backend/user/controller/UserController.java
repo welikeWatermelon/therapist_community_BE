@@ -9,6 +9,7 @@ import com.therapyCommunity_Vol1.backend.follow.dto.FollowUserResponse;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
 import com.therapyCommunity_Vol1.backend.global.security.CustomUserDetails;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
@@ -52,9 +53,10 @@ public class UserController {
     public ResponseEntity<ApiResponse<PagedResponse<TherapyPostSummaryResponse>>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) PostType postType
     ) {
-        PagedResponse<TherapyPostSummaryResponse> response = myPageFacade.getMyPosts(userDetails.getUserId(), page, size);
+        PagedResponse<TherapyPostSummaryResponse> response = myPageFacade.getMyPosts(userDetails.getUserId(), page, size, postType);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

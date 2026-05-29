@@ -16,6 +16,12 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # Redis 명령 응답 한도. 미설정 시 Lettuce 기본은 무한 대기 → 호출 측 try-catch가 무의미해진다.
+      # 핫패스 캐시 호출은 ms 단위라 2s면 충분히 보수적이며, 일시 네트워크 흔들림에 false-positive를 피한다.
+      timeout: 2000ms
+      connect-timeout: 1000ms
+      lettuce:
+        shutdown-timeout: 100ms
   servlet:
     multipart:
       max-file-size: 10MB
@@ -51,10 +57,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
   endpoint:
     health:
       show-details: never
+    prometheus:
+      enabled: true
   health:
     db:
       enabled: false

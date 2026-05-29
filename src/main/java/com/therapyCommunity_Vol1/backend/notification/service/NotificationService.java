@@ -10,7 +10,7 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.notification.repository.NotificationRepository;
 import com.therapyCommunity_Vol1.backend.notification.sse.SseEmitterRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -37,7 +37,7 @@ import java.util.concurrent.ScheduledFuture;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final SseEmitterRepository sseEmitterRepository;
     private final TaskScheduler taskScheduler;
 
@@ -46,13 +46,13 @@ public class NotificationService {
 
     public NotificationService(
             NotificationRepository notificationRepository,
-            UserRepository userRepository,
+            UserService userService,
             SseEmitterRepository sseEmitterRepository,
             TaskScheduler taskScheduler,
             @Value("${notification.sse.timeout-millis:1800000}") long sseTimeoutMillis
     ) {
         this.notificationRepository = notificationRepository;
-        this.userRepository = userRepository;
+        this.userService = userService;
         this.sseEmitterRepository = sseEmitterRepository;
         this.taskScheduler = taskScheduler;
         this.sseTimeoutMillis = sseTimeoutMillis;
@@ -129,7 +129,7 @@ public class NotificationService {
         if (receiverIds.isEmpty()) return List.of();
 
         User sender = event.getSenderId() != null
-                ? userRepository.findById(event.getSenderId()).orElse(null)
+                ? userService.findByIdOrNull(event.getSenderId())
                 : null;
 
         String senderNickname;
@@ -146,7 +146,7 @@ public class NotificationService {
         // TODO: VERIFICATION_SUBMITTED 활성화 시 receiverIds가 다수(admin 전원)가 되므로
         //       findAllById(receiverIds) batch 조회로 전환하여 N+1 방지 필요
         for (Long receiverId : receiverIds) {
-            User receiver = userRepository.findById(receiverId).orElse(null);
+            User receiver = userService.findByIdOrNull(receiverId);
             if (receiver == null) continue;
 
             Notification notification = Notification.create(

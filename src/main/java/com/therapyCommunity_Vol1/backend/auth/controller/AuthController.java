@@ -9,6 +9,7 @@ import com.therapyCommunity_Vol1.backend.auth.service.AuthService;
 import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.global.common.ApiResponse;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,6 +31,7 @@ public class AuthController {
     private final AuthService authService;
     private final TokenService tokenService;
     private final RefreshTokenCookieManager refreshTokenCookieManager;
+    private final TherapistVerificationService therapistVerificationService;
 
     @Operation(summary = "회원가입", description = "이메일, 비밀번호(8자 이상), 약관 동의로 가입. 닉네임 자동 생성, 자동 로그인", security = {})
     @PostMapping("/signup")
@@ -80,7 +82,9 @@ public class AuthController {
         String userAgent = httpServletRequest.getHeader("User-Agent");
         String ipAddress = extractClientIp(httpServletRequest);
         String refreshToken = refreshTokenCookieManager.extractRefreshToken(httpServletRequest);
-        TokenService.RefreshResult result = tokenService.refresh(refreshToken, userAgent, ipAddress);
+        TokenService.RefreshResult result = tokenService.refresh(
+                refreshToken, userAgent, ipAddress,
+                therapistVerificationService::findVerificationStatusByUserId);
 
         refreshTokenCookieManager.addRefreshTokenCookie(
                 httpServletResponse,

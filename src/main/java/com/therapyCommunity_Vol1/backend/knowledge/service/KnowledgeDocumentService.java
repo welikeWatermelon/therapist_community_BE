@@ -9,6 +9,8 @@ import com.therapyCommunity_Vol1.backend.knowledge.domain.DocumentStatus;
 import com.therapyCommunity_Vol1.backend.knowledge.domain.KnowledgeDocument;
 import com.therapyCommunity_Vol1.backend.knowledge.dto.KnowledgeDocumentResponse;
 import com.therapyCommunity_Vol1.backend.knowledge.event.KnowledgeDocumentCreatedEvent;
+import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeChunkSearchRepository;
+import com.therapyCommunity_Vol1.backend.knowledge.dto.ChunkSearchResult;
 import com.therapyCommunity_Vol1.backend.knowledge.repository.KnowledgeDocumentRepository;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -30,6 +33,7 @@ import java.util.HexFormat;
 public class KnowledgeDocumentService {
 
     private final KnowledgeDocumentRepository documentRepository;
+    private final KnowledgeChunkSearchRepository chunkSearchRepository;
     private final FileStorageService fileStorageService;
     private final KnowledgeProperties properties;
     private final ApplicationEventPublisher eventPublisher;
@@ -95,6 +99,10 @@ public class KnowledgeDocumentService {
         eventPublisher.publishEvent(new KnowledgeDocumentCreatedEvent(doc.getId()));
 
         return KnowledgeDocumentResponse.from(doc);
+    }
+
+    public List<ChunkSearchResult> findSimilarChunks(float[] queryEmbedding, TherapyArea therapyArea, int topK) {
+        return chunkSearchRepository.findSimilarChunks(queryEmbedding, therapyArea, topK);
     }
 
     private String computeChecksum(MultipartFile file) {

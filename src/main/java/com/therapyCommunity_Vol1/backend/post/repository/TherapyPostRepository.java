@@ -36,6 +36,9 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     @EntityGraph(attributePaths = "author")
     Page<TherapyPost> findByAuthorIdAndDeletedAtIsNull(Long authorId, Pageable pageable);
 
+    @EntityGraph(attributePaths = "author")
+    Page<TherapyPost> findByAuthorIdAndDeletedAtIsNullAndPostType(Long authorId, PostType postType, Pageable pageable);
+
     // 텍스트 검색 (searchText LIKE — GIN trigram 인덱스 idx_therapy_posts_search_text_trgm 활용)
     // LOWER() 제거: GIN trigram 인덱스는 bare LIKE만 가속, LOWER() 래핑 시 Seq Scan.
     // 한글 위주 서비스라 대소문자 구분 문제 없음. 영문 edge case는 /search ILIKE가 커버.
@@ -78,10 +81,12 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
             ORDER BY p.createdAt DESC, p.id DESC
             """)
     List<TherapyPost> findFeedLatest(
             @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             Pageable pageable
     );
 
@@ -91,12 +96,14 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
               AND (p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
     List<TherapyPost> findFeedLatest(
             @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
@@ -109,11 +116,13 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             WHERE p.deletedAt IS NULL
               AND p.author.id IN :authorIds
               AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
             ORDER BY p.createdAt DESC, p.id DESC
             """)
     List<TherapyPost> findFollowingFeed(
             @Param("authorIds") List<Long> authorIds,
             @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             Pageable pageable
     );
 
@@ -124,6 +133,7 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             WHERE p.deletedAt IS NULL
               AND p.author.id IN :authorIds
               AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
               AND (p.createdAt < :cursorCreatedAt OR
                    (p.createdAt = :cursorCreatedAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
@@ -131,22 +141,24 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
     List<TherapyPost> findFollowingFeed(
             @Param("authorIds") List<Long> authorIds,
             @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );
 
-    // RELEVANCE 검색 — pg_trgm <% (word_similarity) 연산자 + ILIKE fallback, 커서 기반 무한스크롤 전용.
     // 인기순 커서 피드 — 전체, 첫 페이지 (커서 없음)
     @EntityGraph(attributePaths = "author")
     @Query("""
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
             ORDER BY p.popularityScore DESC, p.id DESC
             """)
     List<TherapyPost> findFeedPopular(
             @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             Pageable pageable
     );
 
@@ -156,12 +168,14 @@ public interface TherapyPostRepository extends JpaRepository<TherapyPost, Long> 
             SELECT p FROM TherapyPost p
             WHERE p.deletedAt IS NULL
               AND p.visibility IN :visibilities
+              AND (:postType IS NULL OR p.postType = :postType)
               AND (p.popularityScore < :cursorScore OR
                    (p.popularityScore = :cursorScore AND p.id < :cursorId))
             ORDER BY p.popularityScore DESC, p.id DESC
             """)
     List<TherapyPost> findFeedPopular(
             @Param("visibilities") List<Visibility> visibilities,
+            @Param("postType") PostType postType,
             @Param("cursorScore") Long cursorScore,
             @Param("cursorId") Long cursorId,
             Pageable pageable

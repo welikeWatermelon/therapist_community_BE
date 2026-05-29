@@ -8,6 +8,7 @@ import com.therapyCommunity_Vol1.backend.auth.service.AuthService;
 import com.therapyCommunity_Vol1.backend.auth.service.TokenService;
 import com.therapyCommunity_Vol1.backend.auth.support.RefreshTokenCookieManager;
 import com.therapyCommunity_Vol1.backend.global.exception.GlobalExceptionHandler;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,9 @@ class AuthControllerTest {
     @Mock
     private TokenService tokenService;
 
+    @Mock
+    private TherapistVerificationService therapistVerificationService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
@@ -52,7 +56,8 @@ class AuthControllerTest {
         AuthController authController = new AuthController(
                 authService,
                 tokenService,
-                new RefreshTokenCookieManager("refreshToken", "/api/v1/auth", "Lax", false)
+                new RefreshTokenCookieManager("refreshToken", "/api/v1/auth", "Lax", false),
+                therapistVerificationService
         );
 
         objectMapper = new ObjectMapper();
@@ -121,7 +126,7 @@ class AuthControllerTest {
                 new CurrentUserResponse.TherapistVerificationSummary("NOT_REQUESTED", null, null, null),
                 0, 0
         );
-        given(tokenService.refresh("refresh-cookie", "JUnit", "127.0.0.1"))
+        given(tokenService.refresh(eq("refresh-cookie"), eq("JUnit"), eq("127.0.0.1"), any()))
                 .willReturn(new TokenService.RefreshResult(
                         new RefreshResponse("new-access-token", 1800L, refreshedUser),
                         "rotated-refresh-token",

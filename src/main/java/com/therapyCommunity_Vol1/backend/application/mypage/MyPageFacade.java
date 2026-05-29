@@ -8,9 +8,12 @@ import com.therapyCommunity_Vol1.backend.follow.dto.FollowCountResponse;
 import com.therapyCommunity_Vol1.backend.follow.dto.FollowUserResponse;
 import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.global.common.PagedResponse;
+import com.therapyCommunity_Vol1.backend.post.domain.PostType;
 import com.therapyCommunity_Vol1.backend.post.dto.TherapyPostSummaryResponse;
 import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.user.dto.CurrentUserResponse;
+import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
+import com.therapyCommunity_Vol1.backend.therapist.service.TherapistVerificationService;
 import com.therapyCommunity_Vol1.backend.user.dto.UpdateProfileRequest;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,14 +33,16 @@ public class MyPageFacade {
     private final PostService postService;
     private final CommentService commentService;
     private final FollowService followService;
+    private final TherapistVerificationService therapistVerificationService;
 
     public CurrentUserResponse getCurrentUser(Long userId) {
         FollowCountResponse counts = followService.getFollowCounts(userId);
-        return userService.getCurrentUser(userId, counts.getFollowerCount(), counts.getFollowingCount());
+        var verification = therapistVerificationService.findVerificationStatusByUserId(userId);
+        return userService.getCurrentUser(userId, verification, counts.getFollowerCount(), counts.getFollowingCount());
     }
 
-    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size) {
-        return postService.getMyPosts(userId, page, size);
+    public PagedResponse<TherapyPostSummaryResponse> getMyPosts(Long userId, int page, int size, PostType postType) {
+        return postService.getMyPosts(userId, page, size, postType);
     }
 
     public PagedResponse<MyCommentResponse> getMyComments(Long userId, int page, int size) {
@@ -58,7 +63,8 @@ public class MyPageFacade {
 
     public CurrentUserResponse updateProfile(Long userId, UpdateProfileRequest request) {
         FollowCountResponse counts = followService.getFollowCounts(userId);
-        return userService.updateProfile(userId, request, counts.getFollowerCount(), counts.getFollowingCount());
+        var verification = therapistVerificationService.findVerificationStatusByUserId(userId);
+        return userService.updateProfile(userId, request, verification, counts.getFollowerCount(), counts.getFollowingCount());
     }
 
     public String uploadProfileImage(Long userId, MultipartFile file) {

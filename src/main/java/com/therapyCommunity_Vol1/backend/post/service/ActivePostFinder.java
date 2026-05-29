@@ -17,4 +17,9 @@ public class ActivePostFinder {
         return therapyPostRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
     }
+
+    public TherapyPost findOrNull(Long postId) {
+        if (postId == null) return null;
+        return therapyPostRepository.findByIdAndDeletedAtIsNull(postId).orElse(null);
+    }
 }
