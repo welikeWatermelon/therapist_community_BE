@@ -7,7 +7,6 @@ import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
-import com.therapyCommunity_Vol1.backend.post.service.PostService;
 import com.therapyCommunity_Vol1.backend.post.service.PostVisibilityAccessPolicy;
 import com.therapyCommunity_Vol1.backend.scrap.repository.TherapyPostScrapRepository;
 import com.therapyCommunity_Vol1.backend.scrap.domain.TherapyPostScrap;
@@ -16,7 +15,7 @@ import com.therapyCommunity_Vol1.backend.scrap.dto.ScrappedPostResponse;
 import com.therapyCommunity_Vol1.backend.scrap.dto.ScrapStatusResponse;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -34,9 +33,8 @@ import static org.mockito.Mockito.*;
 class ScrapServiceTest {
 
     private TherapyPostScrapRepository scrapRepository;
-    private PostService postService;
     private ActivePostFinder activePostFinder;
-    private UserRepository userRepository;
+    private UserService userService;
     private ApplicationEventPublisher eventPublisher;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private UserEventPublisher userEventPublisher;
@@ -45,16 +43,15 @@ class ScrapServiceTest {
     @BeforeEach
     void setUp() {
         this.scrapRepository = mock(TherapyPostScrapRepository.class);
-        this.postService = mock(PostService.class);
         this.activePostFinder = mock(ActivePostFinder.class);
-        this.userRepository = mock(UserRepository.class);
+        this.userService = mock(UserService.class);
         this.eventPublisher = mock(ApplicationEventPublisher.class);
         this.visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         when(visibilityPolicy.canViewPrivate(UserRole.THERAPIST)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewPrivate(UserRole.USER)).thenReturn(false);
         this.userEventPublisher = mock(UserEventPublisher.class);
-        this.scrapService = new ScrapService(scrapRepository, postService, activePostFinder, userRepository, eventPublisher, visibilityPolicy, userEventPublisher);
+        this.scrapService = new ScrapService(scrapRepository, activePostFinder, userService, eventPublisher, visibilityPolicy, userEventPublisher);
     }
 
     @Test
@@ -77,7 +74,7 @@ class ScrapServiceTest {
                 Visibility.PUBLIC,
                 user
         );
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
 
@@ -111,7 +108,7 @@ class ScrapServiceTest {
                 user
         );
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
 
@@ -130,7 +127,7 @@ class ScrapServiceTest {
         User user = User.builder().id(currentUserId).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
         TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, user);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(false);
 
@@ -151,7 +148,7 @@ class ScrapServiceTest {
         User user = User.builder().id(currentUserId).email("t@t.com").nickname("tester").role(UserRole.THERAPIST).build();
         TherapyPost post = TherapyPost.create("<p>본문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, user);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(activePostFinder.findOrThrow(postId)).thenReturn(post);
         when(scrapRepository.existsByPostIdAndUserId(postId, currentUserId)).thenReturn(true);
 
@@ -220,7 +217,7 @@ class ScrapServiceTest {
                 Sort.Order.desc("id")));
         Page<TherapyPostScrap> page = new PageImpl<>(List.of(scrap), pageable, 1);
 
-        when(userRepository.findById(currentUserId)).thenReturn(Optional.of(user));
+        when(userService.findById(currentUserId)).thenReturn(user);
         when(scrapRepository.findByUserIdAndPost_DeletedAtIsNull(eq(currentUserId),any(Pageable.class)))
                 .thenReturn(page);
 

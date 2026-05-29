@@ -9,13 +9,14 @@ import com.therapyCommunity_Vol1.backend.file.dto.StoredFileInfo;
 import com.therapyCommunity_Vol1.backend.file.dto.StoredFileResource;
 import com.therapyCommunity_Vol1.backend.file.service.FileStorageService;
 import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerification;
+import com.therapyCommunity_Vol1.backend.therapist.domain.TherapistVerificationStatus;
 import com.therapyCommunity_Vol1.backend.therapist.dto.ApplyTherapistVerificationRequest;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResponse;
 import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationStatusDto;
 import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +41,7 @@ public class TherapistVerificationService {
     private static final String EVT_APPLY_FAILED_AFTER_UPLOAD = "THERAPIST_APPLY_FAILED_AFTER_UPLOAD";
 
     private final TherapistVerificationRepository therapistVerificationRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final FileStorageService fileStorageService;
     private final UserCacheService userCacheService;
     private final ApplicationEventPublisher eventPublisher;
@@ -47,8 +51,7 @@ public class TherapistVerificationService {
             Long currentUserId,
             ApplyTherapistVerificationRequest request
     ) {
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userService.findById(currentUserId);
         // 신청 전 사전 검증: 권한, 파일, 자격증 코드 중복을 먼저 차단한다.
         validateUserCanApply(user);
         validateImage(request.getLicenseImage());
@@ -79,7 +82,7 @@ public class TherapistVerificationService {
             }
 
             // TODO: MVP 이후 활성화 — 치료사 인증 신청 시 모든 ADMIN에게 알림 발송
-            // List<Long> adminIds = userRepository.findIdsByRole(UserRole.ADMIN);
+            // List<Long> adminIds = userService.findUserIdsByRole(UserRole.ADMIN);
             // eventPublisher.publishEvent(NotificationEvent.of(
             //         currentUserId, adminIds,
             //         NotificationType.VERIFICATION_SUBMITTED, verification.getId()));
@@ -152,8 +155,7 @@ public class TherapistVerificationService {
 
     @Transactional
     public TherapistVerificationResponse approveVerificationReview(Long verificationId, Long adminUserId) {
-        User admin = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userService.findById(adminUserId);
         TherapistVerification verification = therapistVerificationRepository.findWithUserById(verificationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_FOUND));
         if (!verification.isPending()) {
@@ -168,8 +170,7 @@ public class TherapistVerificationService {
 
     @Transactional
     public TherapistVerificationResponse rejectVerificationReview(Long verificationId, Long adminUserId, String reason) {
-        User admin = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userService.findById(adminUserId);
         TherapistVerification verification = therapistVerificationRepository.findWithUserById(verificationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_FOUND));
         if (!verification.isPending()) {
@@ -250,5 +251,18 @@ public class TherapistVerificationService {
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new CustomException(ErrorCode.INVALID_LICENSE_IMAGE);
         }
+    }
+
+    public Page<TherapistVerification> findAll(Pageable pageable) {
+        return therapistVerificationRepository.findAll(pageable);
+    }
+
+    public Page<TherapistVerification> findByStatus(TherapistVerificationStatus status, Pageable pageable) {
+        return therapistVerificationRepository.findByStatus(status, pageable);
+    }
+
+    public TherapistVerification findWithUserById(Long verificationId) {
+        return therapistVerificationRepository.findWithUserById(verificationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.THERAPIST_VERIFICATION_NOT_FOUND));
     }
 }

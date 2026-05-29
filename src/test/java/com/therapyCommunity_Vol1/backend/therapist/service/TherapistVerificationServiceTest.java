@@ -10,7 +10,7 @@ import com.therapyCommunity_Vol1.backend.therapist.dto.TherapistVerificationResp
 import com.therapyCommunity_Vol1.backend.therapist.repository.TherapistVerificationRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 class TherapistVerificationServiceTest {
 
     private TherapistVerificationRepository therapistVerificationRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private FileStorageService fileStorageService;
     private UserCacheService userCacheService;
     private ApplicationEventPublisher eventPublisher;
@@ -33,13 +33,13 @@ class TherapistVerificationServiceTest {
     @BeforeEach
     void setUp() {
         therapistVerificationRepository = mock(TherapistVerificationRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         fileStorageService = mock(FileStorageService.class);
         userCacheService = mock(UserCacheService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         therapistVerificationService = new TherapistVerificationService(
                 therapistVerificationRepository,
-                userRepository,
+                userService,
                 fileStorageService,
                 userCacheService,
                 eventPublisher
@@ -76,7 +76,7 @@ class TherapistVerificationServiceTest {
                 "image/png"
         );
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
         when(therapistVerificationRepository.existsByLicenseCodeAndUserIdNot("LICENSE-001", 1L)).thenReturn(false);
         when(therapistVerificationRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(fileStorageService.storeTherapistVerificationImage(image))
@@ -115,7 +115,7 @@ class TherapistVerificationServiceTest {
                 .role(UserRole.THERAPIST)
                 .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.findById(1L)).thenReturn(user);
 
         // when / then
         assertThatThrownBy(() -> therapistVerificationService.apply(1L, request))

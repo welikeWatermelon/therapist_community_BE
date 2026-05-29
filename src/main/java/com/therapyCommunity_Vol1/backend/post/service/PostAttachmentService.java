@@ -21,7 +21,7 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRe
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostDownloadRepository;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -48,7 +48,7 @@ public class PostAttachmentService {
     private final ActivePostFinder activePostFinder;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
     private final TherapyPostDownloadRepository therapyPostDownloadRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final FileStorageService fileStorageService;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
@@ -134,8 +134,7 @@ public class PostAttachmentService {
             Long postId,
             Long attachmentId
     ) {
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userService.findById(currentUserId);
 
         TherapyPost post = activePostFinder.findOrThrow(postId);
         visibilityPolicy.checkAccess(post, currentUserRole, currentUserId);
@@ -191,8 +190,7 @@ public class PostAttachmentService {
     }
 
     public PagedResponse<DownloadedPostResponse> getMyDownloads(Long currentUserId, UserRole currentUserRole, int page, int size) {
-        userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        userService.findById(currentUserId);
 
         Pageable pageable = PageRequest.of(
                 page,
@@ -227,8 +225,7 @@ public class PostAttachmentService {
         if (attachments.isEmpty()) {
             return List.of();
         }
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User user = userService.findById(currentUserId);
         recordDownload(post, user);
         return attachments.stream()
                 .map(att -> {

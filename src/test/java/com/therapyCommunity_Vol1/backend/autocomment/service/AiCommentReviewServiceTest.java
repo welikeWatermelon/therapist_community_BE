@@ -8,7 +8,6 @@ import com.therapyCommunity_Vol1.backend.autocomment.domain.SourceMode;
 import com.therapyCommunity_Vol1.backend.autocomment.dto.AiCommentDraftResponse;
 import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyArea;
@@ -16,7 +15,7 @@ import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -31,9 +30,8 @@ import static org.mockito.Mockito.*;
 class AiCommentReviewServiceTest {
 
     private PostAiCommentJobRepository jobRepository;
-    private UserRepository userRepository;
+    private UserService userService;
     private CommentService commentService;
-    private TherapyPostCommentRepository commentRepository;
     private AiCommentProperties properties;
     private AiCommentReviewService reviewService;
 
@@ -45,14 +43,13 @@ class AiCommentReviewServiceTest {
     @BeforeEach
     void setUp() {
         jobRepository = mock(PostAiCommentJobRepository.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         commentService = mock(CommentService.class);
-        commentRepository = mock(TherapyPostCommentRepository.class);
         properties = new AiCommentProperties();
         properties.setAiUserEmail("ai-comment@system.local");
 
         reviewService = new AiCommentReviewService(
-                jobRepository, userRepository, commentService, commentRepository, properties
+                jobRepository, userService, commentService, properties
         );
 
         admin = User.builder().id(99L).email("admin@test.com").nickname("관리자").role(UserRole.ADMIN).build();
@@ -70,8 +67,8 @@ class AiCommentReviewServiceTest {
     @Test
     void approve_성공_댓글생성_review_APPROVED() {
         when(jobRepository.findByPostId(10L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(99L)).thenReturn(Optional.of(admin));
-        when(userRepository.findByEmail("ai-comment@system.local")).thenReturn(Optional.of(aiUser));
+        when(userService.findById(99L)).thenReturn(admin);
+        when(userService.findByEmail("ai-comment@system.local")).thenReturn(aiUser);
 
         CommentResponse mockComment = new CommentResponse(
                 50L, 10L, null, 100L, "Melonne AI", "ADMIN", null, true,
@@ -80,7 +77,6 @@ class AiCommentReviewServiceTest {
                 List.of()
         );
         when(commentService.createComment(eq(100L), eq(UserRole.ADMIN), eq(10L), any())).thenReturn(mockComment);
-        when(commentRepository.findById(50L)).thenReturn(Optional.empty());
 
         AiCommentDraftResponse response = reviewService.approve(10L, 99L);
 
@@ -91,7 +87,7 @@ class AiCommentReviewServiceTest {
     @Test
     void reject_성공_댓글미생성_review_REJECTED() {
         when(jobRepository.findByPostId(10L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(99L)).thenReturn(Optional.of(admin));
+        when(userService.findById(99L)).thenReturn(admin);
 
         AiCommentDraftResponse response = reviewService.reject(10L, 99L);
 

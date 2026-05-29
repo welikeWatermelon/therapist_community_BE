@@ -8,13 +8,12 @@ import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJob
 import com.therapyCommunity_Vol1.backend.comment.domain.TherapyPostComment;
 import com.therapyCommunity_Vol1.backend.comment.dto.CommentResponse;
 import com.therapyCommunity_Vol1.backend.comment.dto.CreateCommentRequest;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
 import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AiCommentReviewService {
 
     private final PostAiCommentJobRepository jobRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final CommentService commentService;
-    private final TherapyPostCommentRepository commentRepository;
     private final AiCommentProperties properties;
 
     public AiCommentDraftResponse getDraft(Long postId) {
@@ -45,12 +43,10 @@ public class AiCommentReviewService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
-        User admin = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userService.findById(adminUserId);
 
         // AI 계정으로 댓글 생성
-        User aiUser = userRepository.findByEmail(properties.getAiUserEmail())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User aiUser = userService.findByEmail(properties.getAiUserEmail());
 
         CommentResponse commentResponse = commentService.createComment(
                 aiUser.getId(),
@@ -59,8 +55,7 @@ public class AiCommentReviewService {
                 new CreateCommentRequest(job.getDraftComment(), null)
         );
 
-        TherapyPostComment savedComment = commentRepository.findById(commentResponse.getId())
-                .orElse(null);
+        TherapyPostComment savedComment = commentService.findActiveComment(commentResponse.getId());
         job.approve(admin, savedComment);
 
         return AiCommentDraftResponse.from(job);
@@ -75,8 +70,7 @@ public class AiCommentReviewService {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
-        User admin = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User admin = userService.findById(adminUserId);
 
         job.reject(admin);
         return AiCommentDraftResponse.from(job);

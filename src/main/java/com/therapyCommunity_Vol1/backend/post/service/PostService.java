@@ -4,7 +4,7 @@ import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
 import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
 import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
 import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -23,12 +23,11 @@ import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.post.event.EmbeddingEvent;
 import com.therapyCommunity_Vol1.backend.post.service.search.PostSearchStrategy;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
-import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
-import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
+import com.therapyCommunity_Vol1.backend.reaction.service.PostReactionService;
 import com.therapyCommunity_Vol1.backend.follow.service.FollowService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -41,9 +40,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -55,10 +51,10 @@ public class PostService {
 
     private final TherapyPostRepository therapyPostRepository;
     private final TherapyPostAttachmentRepository therapyPostAttachmentRepository;
-    private final TherapyPostReactionRepository therapyPostReactionRepository;
-    private final TherapyPostCommentRepository therapyPostCommentRepository;
+    private final PostReactionService postReactionService;
+    private final CommentService commentService;
     private final ActivePostFinder activePostFinder;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ResourceAccessValidator resourceAccessValidator;
     private final PostVisibilityAccessPolicy visibilityPolicy;
     private final PostViewCountService postViewCountService;
@@ -89,8 +85,7 @@ public class PostService {
             CreateTherapyPostRequest request
     ) {
         visibilityPolicy.checkCanWriteVisibility(request.getVisibility(), currentUserRole);
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        User author = userService.findById(userId);
 
         if (request.getPostType() == PostType.CONCERN_CARD
                 && currentUserRole == UserRole.USER) {
@@ -364,12 +359,9 @@ public class PostService {
         // 발급 == 다운로드 의도로 간주(보기 != 다운로드 정확도는 trade-off).
         List<PostAttachmentResponse> attachments = postAttachmentService.getAttachmentsForPostUnchecked(post, currentUserId);
 
-        long commentCount = therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(postId);
-        Map<PostReactionType, Long> reactionCounts = buildReactionCountMap(postId);
-        PostReactionType myReactionType = therapyPostReactionRepository
-                .findByPostIdAndUserId(postId, currentUserId)
-                .map(TherapyPostReaction::getReactionType)
-                .orElse(null);
+        long commentCount = commentService.getCommentCount(postId);
+        Map<PostReactionType, Long> reactionCounts = postReactionService.getReactionCounts(postId);
+        PostReactionType myReactionType = postReactionService.getMyReaction(postId, currentUserId);
 
         boolean canViewSensitive = visibilityPolicy.canViewConcernCardSensitiveFields(currentUserRole);
         TherapyPostDetailResponse response = TherapyPostDetailResponse.from(
@@ -461,17 +453,8 @@ public class PostService {
         }
         List<Long> postIds = posts.stream().map(TherapyPost::getId).toList();
 
-        // 3종 reaction 카운트를 한 번의 GROUP BY로 batch 조회 (postId, type, count) → Map<postId, Map<type, count>>
-        Map<Long, Map<PostReactionType, Long>> reactionByPostId = new HashMap<>();
-        for (Object[] row : therapyPostReactionRepository.countByPostIdInGroupedByType(postIds)) {
-            Long postId = (Long) row[0];
-            PostReactionType type = (PostReactionType) row[1];
-            Long count = (Long) row[2];
-            reactionByPostId.computeIfAbsent(postId, k -> new HashMap<>()).put(type, count);
-        }
-        Map<Long, Long> commentCounts = toCountMap(
-                therapyPostCommentRepository.countActiveByPostIdIn(postIds)
-        );
+        Map<Long, Map<PostReactionType, Long>> reactionByPostId = postReactionService.getReactionCountsByPostIds(postIds);
+        Map<Long, Long> commentCounts = commentService.getCommentCountsByPostIds(postIds);
 
         // 권한 없는 사용자에겐 PRIVATE 게시글의 이미지 URL을 DB 조회 자체에서 제외 (효율 + 보안 이중 방어).
         // DTO 단계의 accessLocked 마스킹은 그대로 유지.
@@ -504,22 +487,5 @@ public class PostService {
                     );
                 })
                 .toList();
-    }
-
-    private Map<Long, Long> toCountMap(List<Object[]> rows) {
-        Map<Long, Long> map = new HashMap<>();
-        for (Object[] row : rows) {
-            map.put((Long) row[0], (Long) row[1]);
-        }
-        return map;
-    }
-
-    private Map<PostReactionType, Long> buildReactionCountMap(Long postId) {
-        Map<PostReactionType, Long> counts = new EnumMap<>(PostReactionType.class);
-        Arrays.stream(PostReactionType.values()).forEach(t -> counts.put(t, 0L));
-        therapyPostReactionRepository.countGroupedByPostId(postId).forEach(row -> {
-            counts.put((PostReactionType) row[0], (Long) row[1]);
-        });
-        return counts;
     }
 }

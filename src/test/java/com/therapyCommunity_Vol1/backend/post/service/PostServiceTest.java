@@ -3,7 +3,7 @@ package com.therapyCommunity_Vol1.backend.post.service;
 import com.therapyCommunity_Vol1.backend.analytics.domain.EventTargetType;
 import com.therapyCommunity_Vol1.backend.analytics.domain.UserEventType;
 import com.therapyCommunity_Vol1.backend.analytics.event.UserEventPublisher;
-import com.therapyCommunity_Vol1.backend.comment.repository.TherapyPostCommentRepository;
+import com.therapyCommunity_Vol1.backend.comment.service.CommentService;
 import com.therapyCommunity_Vol1.backend.global.cache.PostViewCountService;
 import com.therapyCommunity_Vol1.backend.global.exception.CustomException;
 import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
@@ -14,11 +14,10 @@ import com.therapyCommunity_Vol1.backend.post.dto.*;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostAttachmentRepository;
 import com.therapyCommunity_Vol1.backend.post.repository.TherapyPostRepository;
 import com.therapyCommunity_Vol1.backend.reaction.domain.PostReactionType;
-import com.therapyCommunity_Vol1.backend.reaction.domain.TherapyPostReaction;
-import com.therapyCommunity_Vol1.backend.reaction.repository.TherapyPostReactionRepository;
+import com.therapyCommunity_Vol1.backend.reaction.service.PostReactionService;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
-import com.therapyCommunity_Vol1.backend.user.repository.UserRepository;
+import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentStatusProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import com.therapyCommunity_Vol1.backend.post.domain.FeedSortType;
 
 import static org.assertj.core.api.Assertions.*;
@@ -42,10 +41,10 @@ class PostServiceTest {
 
     private TherapyPostRepository therapyPostRepository;
     private TherapyPostAttachmentRepository therapyPostAttachmentRepository;
-    private TherapyPostReactionRepository therapyPostReactionRepository;
-    private TherapyPostCommentRepository therapyPostCommentRepository;
+    private PostReactionService postReactionService;
+    private CommentService commentService;
     private ActivePostFinder activePostFinder;
-    private UserRepository userRepository;
+    private UserService userService;
     private ResourceAccessValidator resourceAccessValidator;
     private PostVisibilityAccessPolicy visibilityPolicy;
     private PostViewCountService postViewCountService;
@@ -61,10 +60,10 @@ class PostServiceTest {
     void setUp() {
         therapyPostRepository = mock(TherapyPostRepository.class);
         therapyPostAttachmentRepository = mock(TherapyPostAttachmentRepository.class);
-        therapyPostReactionRepository = mock(TherapyPostReactionRepository.class);
-        therapyPostCommentRepository = mock(TherapyPostCommentRepository.class);
+        postReactionService = mock(PostReactionService.class);
+        commentService = mock(CommentService.class);
         activePostFinder = mock(ActivePostFinder.class);
-        userRepository = mock(UserRepository.class);
+        userService = mock(UserService.class);
         resourceAccessValidator = mock(ResourceAccessValidator.class);
         visibilityPolicy = mock(PostVisibilityAccessPolicy.class);
         postViewCountService = mock(PostViewCountService.class);
@@ -80,15 +79,15 @@ class PostServiceTest {
         when(visibilityPolicy.canViewConcernCardSensitiveFields(UserRole.ADMIN)).thenReturn(true);
         when(visibilityPolicy.canViewConcernCardSensitiveFields(UserRole.USER)).thenReturn(false);
         when(postViewCountService.isFirstView(anyLong(), anyLong())).thenReturn(true);
-        when(therapyPostReactionRepository.countByPostIdInAndReactionType(anyList(), any()))
-                .thenReturn(List.of());
-        when(therapyPostCommentRepository.countActiveByPostIdIn(anyList()))
-                .thenReturn(List.of());
-        when(therapyPostReactionRepository.countGroupedByPostId(anyLong()))
-                .thenReturn(List.of());
-        when(therapyPostReactionRepository.findByPostIdAndUserId(anyLong(), anyLong()))
-                .thenReturn(Optional.empty());
-        when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(anyLong()))
+        when(postReactionService.getReactionCountsByPostIds(anyList()))
+                .thenReturn(Map.of());
+        when(commentService.getCommentCountsByPostIds(anyList()))
+                .thenReturn(Map.of());
+        when(postReactionService.getReactionCounts(anyLong()))
+                .thenReturn(Map.of());
+        when(postReactionService.getMyReaction(anyLong(), anyLong()))
+                .thenReturn(null);
+        when(commentService.getCommentCount(anyLong()))
                 .thenReturn(0L);
         userEventPublisher = mock(UserEventPublisher.class);
         profileImageUrlAssembler = mock(com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler.class);
@@ -101,10 +100,10 @@ class PostServiceTest {
         postService = new PostService(
                 therapyPostRepository,
                 therapyPostAttachmentRepository,
-                therapyPostReactionRepository,
-                therapyPostCommentRepository,
+                postReactionService,
+                commentService,
                 activePostFinder,
-                userRepository,
+                userService,
                 resourceAccessValidator,
                 visibilityPolicy,
                 postViewCountService,
@@ -155,7 +154,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(savedPost, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(savedPost, "updatedAt", LocalDateTime.now());
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(author));
+        when(userService.findById(userId)).thenReturn(author);
         when(therapyPostRepository.save(any(TherapyPost.class))).thenReturn(savedPost);
 
         // when
@@ -202,10 +201,10 @@ class PostServiceTest {
 
         when(therapyPostRepository.findByDeletedAtIsNullAndVisibilityIn(anyList(), any(Pageable.class)))
                 .thenReturn(page);
-        when(therapyPostReactionRepository.countByPostIdInGroupedByType(eq(List.of(1L))))
-                .thenReturn(List.<Object[]>of(new Object[]{1L, PostReactionType.LIKE, 5L}));
-        when(therapyPostCommentRepository.countActiveByPostIdIn(eq(List.of(1L))))
-                .thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
+        when(postReactionService.getReactionCountsByPostIds(eq(List.of(1L))))
+                .thenReturn(Map.of(1L, Map.of(PostReactionType.LIKE, 5L)));
+        when(commentService.getCommentCountsByPostIds(eq(List.of(1L))))
+                .thenReturn(Map.of(1L, 3L));
 
         // when
         PostSearchCondition condition = new PostSearchCondition(null, null, null);
@@ -247,16 +246,12 @@ class PostServiceTest {
         when(activePostFinder.findOrThrow(1L)).thenReturn(post);
         when(therapyPostAttachmentRepository.findByPostIdOrderByCreatedAtAsc(1L))
                 .thenReturn(List.of());
-        when(therapyPostCommentRepository.countByPostIdAndDeletedAtIsNull(1L))
+        when(commentService.getCommentCount(1L))
                 .thenReturn(7L);
-        when(therapyPostReactionRepository.countGroupedByPostId(1L))
-                .thenReturn(List.<Object[]>of(
-                        new Object[]{PostReactionType.LIKE, 4L},
-                        new Object[]{PostReactionType.CURIOUS, 2L}
-                ));
-        TherapyPostReaction myReaction = TherapyPostReaction.create(post, author, PostReactionType.LIKE);
-        when(therapyPostReactionRepository.findByPostIdAndUserId(1L, 1L))
-                .thenReturn(Optional.of(myReaction));
+        when(postReactionService.getReactionCounts(1L))
+                .thenReturn(Map.of(PostReactionType.LIKE, 4L, PostReactionType.CURIOUS, 2L, PostReactionType.USEFUL, 0L));
+        when(postReactionService.getMyReaction(1L, 1L))
+                .thenReturn(PostReactionType.LIKE);
 
         // when
         TherapyPostDetailResponse response = postService.getPostDetail(
@@ -761,7 +756,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(savedPost, "createdAt", LocalDateTime.now());
         ReflectionTestUtils.setField(savedPost, "updatedAt", LocalDateTime.now());
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(author));
+        when(userService.findById(userId)).thenReturn(author);
         when(therapyPostRepository.save(any(TherapyPost.class))).thenReturn(savedPost);
 
         // when
@@ -1002,7 +997,7 @@ class PostServiceTest {
                 .role(UserRole.THERAPIST)
                 .build();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(author));
+        when(userService.findById(userId)).thenReturn(author);
         when(therapyPostRepository.save(any(TherapyPost.class))).thenAnswer(invocation -> {
             TherapyPost post = invocation.getArgument(0);
             ReflectionTestUtils.setField(post, "id", 100L);
@@ -1091,7 +1086,7 @@ class PostServiceTest {
                 .role(UserRole.USER)
                 .build();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userService.findById(userId)).thenReturn(user);
 
         // when & then — USER는 CONCERN_CARD 작성 불가
         assertThatThrownBy(() -> postService.createPost(userId, UserRole.USER, request))
