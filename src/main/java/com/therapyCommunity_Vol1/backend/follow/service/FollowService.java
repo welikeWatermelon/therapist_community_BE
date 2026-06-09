@@ -14,6 +14,7 @@ import com.therapyCommunity_Vol1.backend.notification.event.NotificationEvent;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -33,6 +34,7 @@ public class FollowService {
     private final FollowRepository followRepository;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ProfileImageUrlAssembler profileImageUrlAssembler;
 
     @Transactional
     public FollowStatusResponse follow(Long currentUserId, Long targetUserId) {
@@ -97,7 +99,11 @@ public class FollowService {
         Page<Follow> result = followRepository.findFollowersByUserId(userId, pageable);
 
         List<FollowUserResponse> items = result.getContent().stream()
-                .map(f -> FollowUserResponse.from(f.getFollower()))
+                .map(f -> {
+                    User follower = f.getFollower();
+                    String profileImageUrl = profileImageUrlAssembler.toFullUrl(follower.getProfileImageUrl());
+                    return FollowUserResponse.from(follower, profileImageUrl);
+                })
                 .toList();
 
         return PagedResponse.from(result, items);
@@ -109,7 +115,11 @@ public class FollowService {
         Page<Follow> result = followRepository.findFollowingsByUserId(userId, pageable);
 
         List<FollowUserResponse> items = result.getContent().stream()
-                .map(f -> FollowUserResponse.from(f.getFollowing()))
+                .map(f -> {
+                    User following = f.getFollowing();
+                    String profileImageUrl = profileImageUrlAssembler.toFullUrl(following.getProfileImageUrl());
+                    return FollowUserResponse.from(following, profileImageUrl);
+                })
                 .toList();
 
         return PagedResponse.from(result, items);
