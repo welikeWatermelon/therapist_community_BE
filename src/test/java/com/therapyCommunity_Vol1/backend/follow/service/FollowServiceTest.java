@@ -11,6 +11,7 @@ import com.therapyCommunity_Vol1.backend.global.exception.ErrorCode;
 import com.therapyCommunity_Vol1.backend.user.domain.User;
 import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
+import com.therapyCommunity_Vol1.backend.user.support.ProfileImageUrlAssembler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,6 +30,7 @@ class FollowServiceTest {
     private FollowRepository followRepository;
     private UserService userService;
     private ApplicationEventPublisher eventPublisher;
+    private ProfileImageUrlAssembler profileImageUrlAssembler;
     private FollowService followService;
 
     private User userFollower;
@@ -39,7 +41,9 @@ class FollowServiceTest {
         followRepository = mock(FollowRepository.class);
         userService = mock(UserService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        followService = new FollowService(followRepository, userService, eventPublisher);
+        profileImageUrlAssembler = mock(ProfileImageUrlAssembler.class);
+        when(profileImageUrlAssembler.toFullUrl(any())).thenAnswer(inv -> inv.getArgument(0));
+        followService = new FollowService(followRepository, userService, eventPublisher, profileImageUrlAssembler);
 
         userFollower = User.builder()
                 .id(1L).email("user@test.com").nickname("유저").role(UserRole.USER).build();

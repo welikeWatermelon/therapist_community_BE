@@ -21,4 +21,13 @@ public class FollowUserResponse {
                 user.getRole().getCode()
         );
     }
+
+    public static FollowUserResponse from(User user, String profileImageUrl) {
+        return new FollowUserResponse(
+                user.getId(),
+                user.getDisplayNickname(),
+                profileImageUrl,
+                user.getRole().getCode()
+        );
+    }
 }
