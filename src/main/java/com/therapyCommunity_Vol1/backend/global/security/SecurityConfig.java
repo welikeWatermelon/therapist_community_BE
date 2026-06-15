@@ -25,17 +25,17 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
+
     /**
-     * Capacitor 모바일 앱(WebView) origin — 환경변수와 무관하게 모든 환경에서 항상 허용한다.
+     * Capacitor 모바일 앱(WebView) origin (config-owned, application.yaml 에 기본값 보유).
      * capacitor://localhost : iOS Capacitor WebView
      * http://localhost      : Android Capacitor WebView
      * (커스텀 스킴이므로 allowedOriginPatterns 가 아닌 setAllowedOrigins 리터럴 매칭으로만 동작)
      */
-    private static final List<String> CAPACITOR_ORIGINS =
-            List.of("capacitor://localhost", "http://localhost");
-
-    @Value("${app.cors.allowed-origins}")
-    private String allowedOrigins;
+    @Value("${app.cors.mobile-origins}")
+    private String mobileOrigins;
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -102,17 +102,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .collect(Collectors.toList());
-
-        // 코드 베이스라인 병합: property origin 유지 + Capacitor origin 항상 추가, 중복 제거(distinct)
-        List<String> mergedOrigins = Stream.concat(origins.stream(), CAPACITOR_ORIGINS.stream())
+        // web origins + 모바일(Capacitor) origins 병합, 중복 제거(distinct)
+        List<String> origins = Stream.concat(
+                        parseOrigins(allowedOrigins).stream(),
+                        parseOrigins(mobileOrigins).stream())
                 .distinct()
                 .collect(Collectors.toList());
 
-        config.setAllowedOrigins(mergedOrigins);
+        config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization","Content-Type"));
         config.setExposedHeaders(List.of("Content-Disposition"));
@@ -121,6 +118,16 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    private List<String> parseOrigins(String raw) {
+        if (raw == null) {
+            return List.of();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toList());
     }
 
 }

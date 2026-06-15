@@ -31,3 +31,4 @@ app:
       bucket: test-bucket
   cors:
     allowed-origins: http://localhost:3000,http://127.0.0.1:3000
+    mobile-origins: capacitor://localhost,http://localhost
