@@ -18,11 +18,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    /**
+     * Capacitor 모바일 앱(WebView) origin — 환경변수와 무관하게 모든 환경에서 항상 허용한다.
+     * capacitor://localhost : iOS Capacitor WebView
+     * http://localhost      : Android Capacitor WebView
+     * (커스텀 스킴이므로 allowedOriginPatterns 가 아닌 setAllowedOrigins 리터럴 매칭으로만 동작)
+     */
+    private static final List<String> CAPACITOR_ORIGINS =
+            List.of("capacitor://localhost", "http://localhost");
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
@@ -97,7 +107,12 @@ public class SecurityConfig {
                 .filter(s -> !s.isBlank())
                 .collect(Collectors.toList());
 
-        config.setAllowedOrigins(origins);
+        // 코드 베이스라인 병합: property origin 유지 + Capacitor origin 항상 추가, 중복 제거(distinct)
+        List<String> mergedOrigins = Stream.concat(origins.stream(), CAPACITOR_ORIGINS.stream())
+                .distinct()
+                .collect(Collectors.toList());
+
+        config.setAllowedOrigins(mergedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization","Content-Type"));
         config.setExposedHeaders(List.of("Content-Disposition"));
