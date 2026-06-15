@@ -18,6 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +27,15 @@ public class SecurityConfig {
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
+
+    /**
+     * Capacitor 모바일 앱(WebView) origin (config-owned, application.yaml 에 기본값 보유).
+     * capacitor://localhost : iOS Capacitor WebView
+     * http://localhost      : Android Capacitor WebView
+     * (커스텀 스킴이므로 allowedOriginPatterns 가 아닌 setAllowedOrigins 리터럴 매칭으로만 동작)
+     */
+    @Value("${app.cors.mobile-origins}")
+    private String mobileOrigins;
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -92,9 +102,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
+        // web origins + 모바일(Capacitor) origins 병합, 중복 제거(distinct)
+        List<String> origins = Stream.concat(
+                        parseOrigins(allowedOrigins).stream(),
+                        parseOrigins(mobileOrigins).stream())
+                .distinct()
                 .collect(Collectors.toList());
 
         config.setAllowedOrigins(origins);
@@ -106,6 +118,16 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    private List<String> parseOrigins(String raw) {
+        if (raw == null) {
+            return List.of();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toList());
     }
 
 }
