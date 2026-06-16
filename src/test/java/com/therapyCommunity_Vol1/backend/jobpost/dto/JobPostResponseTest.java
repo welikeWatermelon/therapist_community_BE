@@ -53,6 +53,18 @@ class JobPostResponseTest {
     }
 
     @Test
+    void detail_canClose는_이미_마감된_공고면_작성자여도_false다() {
+        LocalDate today = LocalDate.of(2026, 6, 16);
+        JobPost post = jobPost(1L, today.plusDays(5));
+        post.closeManually();
+
+        JobPostDetailResponse res = JobPostDetailResponse.from(post, today, 1L, UserRole.USER);
+
+        assertThat(res.isCanEdit()).isTrue();
+        assertThat(res.isCanClose()).isFalse();
+    }
+
+    @Test
     void detail_canEdit는_admin이면_true다() {
         LocalDate today = LocalDate.of(2026, 6, 16);
         JobPostDetailResponse res = JobPostDetailResponse.from(jobPost(1L, today.plusDays(5)), today, 999L, UserRole.ADMIN);

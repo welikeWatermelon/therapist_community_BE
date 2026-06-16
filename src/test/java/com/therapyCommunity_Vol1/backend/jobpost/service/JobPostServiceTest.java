@@ -19,6 +19,7 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import com.therapyCommunity_Vol1.backend.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -190,5 +191,43 @@ class JobPostServiceTest {
         jobPostService.getJobPosts(JobPostStatus.CLOSED, null, null, null, null, 20);
 
         verify(jobPostRepository).findClosedFeed(any(), any(), any(), any(), any(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void size가_0이면_500없이_1로_clamp되어_조회된다() {
+        User author = user(1L, UserRole.USER);
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        when(jobPostRepository.findOpenFeed(any(), any(), any(), any(), any(), any(), captor.capture()))
+                .thenReturn(List.of(jobPost(1L, author), jobPost(2L, author)));
+
+        CursorPagedResponse<JobPostSummaryResponse> res =
+                jobPostService.getJobPosts(null, null, null, null, null, 0);
+
+        assertThat(captor.getValue().getPageSize()).isEqualTo(2); // effective 1 + 1
+        assertThat(res.getItems()).hasSize(1);
+        assertThat(res.isHasNext()).isTrue();
+        assertThat(res.getNextCursor()).isNotNull();
+    }
+
+    @Test
+    void size가_음수면_1로_clamp된다() {
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        when(jobPostRepository.findOpenFeed(any(), any(), any(), any(), any(), any(), captor.capture()))
+                .thenReturn(List.of());
+
+        jobPostService.getJobPosts(null, null, null, null, null, -1);
+
+        assertThat(captor.getValue().getPageSize()).isEqualTo(2); // 1 + 1
+    }
+
+    @Test
+    void size가_상한을_넘으면_50으로_clamp된다() {
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        when(jobPostRepository.findOpenFeed(any(), any(), any(), any(), any(), any(), captor.capture()))
+                .thenReturn(List.of());
+
+        jobPostService.getJobPosts(null, null, null, null, null, 1000);
+
+        assertThat(captor.getValue().getPageSize()).isEqualTo(51); // 50 + 1
     }
 }
