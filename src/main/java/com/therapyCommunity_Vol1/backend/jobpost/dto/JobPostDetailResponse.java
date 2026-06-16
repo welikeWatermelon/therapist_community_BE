@@ -44,6 +44,8 @@ public class JobPostDetailResponse {
                                              Long currentUserId, UserRole currentUserRole) {
         boolean editable = currentUserRole == UserRole.ADMIN
                 || (currentUserId != null && post.isAuthor(currentUserId));
+        JobPostStatus status = post.deriveStatus(today);
+        boolean closable = editable && status == JobPostStatus.OPEN;
         return new JobPostDetailResponse(
                 post.getId(),
                 post.getOrganizationName() + " 채용공고",
@@ -61,13 +63,13 @@ public class JobPostDetailResponse {
                 post.getSourceUrl(),
                 post.getDeadlineDate(),
                 post.dDay(today),
-                post.deriveStatus(today),
+                status,
                 post.getAuthor().getId(),
                 post.getAuthor().getNickname(),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 editable,
-                editable
+                closable
         );
     }
 }

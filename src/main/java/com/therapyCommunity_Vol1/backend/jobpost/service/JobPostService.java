@@ -32,6 +32,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class JobPostService {
 
+    private static final int FEED_MAX_SIZE = 50;
+
     private final JobPostRepository jobPostRepository;
     private final UserService userService;
     private final ResourceAccessValidator resourceAccessValidator;
@@ -87,6 +89,7 @@ public class JobPostService {
             EmploymentType employmentType, String cursor, int size) {
         LocalDate today = LocalDate.now();
         JobPostStatus effective = (status == null) ? JobPostStatus.OPEN : status;
+        int pageSize = Math.min(Math.max(size, 1), FEED_MAX_SIZE);
 
         LocalDate cursorDeadline = null;
         Long cursorId = null;
@@ -96,7 +99,7 @@ public class JobPostService {
             cursorId = decoded.id();
         }
 
-        Pageable pageable = PageRequest.of(0, size + 1);
+        Pageable pageable = PageRequest.of(0, pageSize + 1);
         List<JobPost> rows = (effective == JobPostStatus.OPEN)
                 ? jobPostRepository.findOpenFeed(today, therapyArea, region, employmentType, cursorDeadline, cursorId, pageable)
                 : jobPostRepository.findClosedFeed(today, therapyArea, region, employmentType, cursorDeadline, cursorId, pageable);
@@ -105,7 +108,7 @@ public class JobPostService {
                 .map(j -> JobPostSummaryResponse.from(j, today))
                 .toList();
 
-        return CursorPagedResponse.of(items, size,
+        return CursorPagedResponse.of(items, pageSize,
                 item -> new JobPostCursor(item.getDeadlineDate(), item.getId()).encode());
     }
 
