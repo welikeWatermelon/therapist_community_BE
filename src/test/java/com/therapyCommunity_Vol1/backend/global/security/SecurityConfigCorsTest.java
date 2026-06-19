@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SecurityConfigCorsTest {
 
     // application.yaml 의 app.cors.mobile-origins 기본값과 동일
-    private static final String DEFAULT_MOBILE_ORIGINS = "capacitor://localhost,http://localhost";
+    private static final String DEFAULT_MOBILE_ORIGINS = "capacitor://localhost,http://localhost,https://localhost";
 
     private CorsConfiguration buildCors(String allowedOrigins) {
         return buildCors(allowedOrigins, DEFAULT_MOBILE_ORIGINS);
@@ -34,7 +34,7 @@ class SecurityConfigCorsTest {
         CorsConfiguration cors = buildCors("http://localhost:3000,http://127.0.0.1:3000");
 
         assertThat(cors.getAllowedOrigins())
-                .contains("capacitor://localhost", "http://localhost");
+                .contains("capacitor://localhost", "http://localhost", "https://localhost");
     }
 
     @Test
@@ -87,6 +87,7 @@ class SecurityConfigCorsTest {
 
         assertThat(cors.checkOrigin("capacitor://localhost")).isEqualTo("capacitor://localhost");
         assertThat(cors.checkOrigin("http://localhost")).isEqualTo("http://localhost");
+        assertThat(cors.checkOrigin("https://localhost")).isEqualTo("https://localhost");
         assertThat(cors.checkOrigin("http://localhost:3000")).isEqualTo("http://localhost:3000");
         assertThat(cors.checkOrigin("https://evil.example.com")).isNull();
     }
