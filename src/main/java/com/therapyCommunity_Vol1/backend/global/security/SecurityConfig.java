@@ -31,7 +31,8 @@ public class SecurityConfig {
     /**
      * Capacitor 모바일 앱(WebView) origin (config-owned, application.yaml 에 기본값 보유).
      * capacitor://localhost : iOS Capacitor WebView
-     * http://localhost      : Android Capacitor WebView
+     * http://localhost      : Android Capacitor WebView (Capacitor 2, androidScheme=http)
+     * https://localhost     : Android Capacitor WebView (Capacitor 3+ 기본값, androidScheme=https)
      * (커스텀 스킴이므로 allowedOriginPatterns 가 아닌 setAllowedOrigins 리터럴 매칭으로만 동작)
      */
     @Value("${app.cors.mobile-origins}")
