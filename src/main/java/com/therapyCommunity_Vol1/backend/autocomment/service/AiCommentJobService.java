@@ -38,6 +38,7 @@ public class AiCommentJobService {
     private final GeminiChatClient chatClient;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final AiCommentProperties properties;
+    private final AiCommentToggleService toggleService;
     private final ObjectMapper objectMapper;
     private final AiCommentJobService self;
 
@@ -47,6 +48,7 @@ public class AiCommentJobService {
             GeminiChatClient chatClient,
             KnowledgeDocumentService knowledgeDocumentService,
             AiCommentProperties properties,
+            AiCommentToggleService toggleService,
             ObjectMapper objectMapper,
             @org.springframework.context.annotation.Lazy AiCommentJobService self
     ) {
@@ -55,13 +57,14 @@ public class AiCommentJobService {
         this.chatClient = chatClient;
         this.knowledgeDocumentService = knowledgeDocumentService;
         this.properties = properties;
+        this.toggleService = toggleService;
         this.objectMapper = objectMapper;
         this.self = self;
     }
 
     @Scheduled(fixedDelay = 60000)
     public void pollDueJobs() {
-        if (!properties.isEnabled()) return;
+        if (!toggleService.isEnabled()) return;
 
         List<Long> jobIds = fetchDueJobIds();
         log.info("AI comment poll: found {} due job(s)", jobIds.size());
