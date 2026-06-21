@@ -92,6 +92,7 @@ jobs:
               "echo APP_CORS_ALLOWED_ORIGINS=$CORS >> /tmp/staging.env",
               "[ x$MOBILE != x ] && echo APP_CORS_MOBILE_ORIGINS=$MOBILE >> /tmp/staging.env || echo cors-mobile-origins absent, using yaml default",
               "aws secretsmanager get-secret-value --secret-id community/melonne/google-ai/staging --region ap-northeast-2 --query SecretString --output text >> /tmp/staging.env 2>/dev/null || echo google-ai secret absent, ai-comment key not injected",
+              "echo KNOWLEDGE_ENABLED=true >> /tmp/staging.env",
               "docker run -d --name builders-backend-new --env-file /tmp/staging.env -p 8081:8080 $IMAGE",
               "for i in $(seq 1 12); do curl -sf http://localhost:8081/actuator/health && echo Health check passed && break || { [ $i -eq 12 ] && echo Health check failed && docker rm -f builders-backend-new && rm -f /tmp/staging.env && exit 1; }; sleep 5; done",
               "docker stop builders-backend || true",
