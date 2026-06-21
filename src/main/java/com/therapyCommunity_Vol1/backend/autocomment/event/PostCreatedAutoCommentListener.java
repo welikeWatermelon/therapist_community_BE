@@ -3,6 +3,7 @@ package com.therapyCommunity_Vol1.backend.autocomment.event;
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
 import com.therapyCommunity_Vol1.backend.autocomment.repository.PostAiCommentJobRepository;
+import com.therapyCommunity_Vol1.backend.autocomment.service.AiCommentToggleService;
 import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.event.PostCreatedEvent;
 import com.therapyCommunity_Vol1.backend.post.service.ActivePostFinder;
@@ -25,6 +26,7 @@ public class PostCreatedAutoCommentListener {
     private final ActivePostFinder activePostFinder;
     private final UserService userService;
     private final AiCommentProperties properties;
+    private final AiCommentToggleService toggleService;
     private final ApplicationEventPublisher eventPublisher;
 
     @EventListener
@@ -35,7 +37,7 @@ public class PostCreatedAutoCommentListener {
         User author = userService.findByIdOrNull(event.getAuthorId());
         if (post == null || author == null) return;
 
-        if (!properties.isEnabled() || properties.getApiKey() == null || properties.getApiKey().isBlank()) {
+        if (!toggleService.isEnabled() || properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             PostAiCommentJob failedJob = PostAiCommentJob.createFailed(
                     post, author, "FEATURE_DISABLED", "AI comment feature is disabled");
             jobRepository.save(failedJob);
