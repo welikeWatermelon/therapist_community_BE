@@ -160,7 +160,7 @@ jobs:
               "echo APP_AWS_ENABLED=true >> /tmp/prod.env",
               "echo SPRING_AI_OPENAI_API_KEY=dummy-key-not-used >> /tmp/prod.env",
               "echo APP_BASE_URL=https://api.melonnetherapists.com >> /tmp/prod.env",
-              "S3_BUCKET=$(aws ssm get-parameter --name /community/melonne/config/prod/melonne-therapists-bucket --region ap-northeast-2 --query Parameter.Value --output text)",
+              "S3_BUCKET=$(aws ssm get-parameter --name /community/melonne/config/prod/s3-bucket-name --region ap-northeast-2 --query Parameter.Value --output text)",
               "S3_REGION=$(aws ssm get-parameter --name /community/melonne/config/prod/s3-region --region ap-northeast-2 --query Parameter.Value --output text)",
               "CORS=$(aws ssm get-parameter --name /community/melonne/config/prod/cors-origins --region ap-northeast-2 --query Parameter.Value --output text)",
               "MOBILE=$(aws ssm get-parameter --name /community/melonne/config/prod/cors-mobile-origins --region ap-northeast-2 --query Parameter.Value --output text 2>/dev/null || true)",
