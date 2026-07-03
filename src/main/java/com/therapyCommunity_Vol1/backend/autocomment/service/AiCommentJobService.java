@@ -38,6 +38,7 @@ public class AiCommentJobService {
     private final GeminiChatClient chatClient;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final AiCommentProperties properties;
+    private final AiCommentToggleService toggleService;
     private final ObjectMapper objectMapper;
     private final AiCommentJobService self;
 
@@ -47,6 +48,7 @@ public class AiCommentJobService {
             GeminiChatClient chatClient,
             KnowledgeDocumentService knowledgeDocumentService,
             AiCommentProperties properties,
+            AiCommentToggleService toggleService,
             ObjectMapper objectMapper,
             @org.springframework.context.annotation.Lazy AiCommentJobService self
     ) {
@@ -55,13 +57,14 @@ public class AiCommentJobService {
         this.chatClient = chatClient;
         this.knowledgeDocumentService = knowledgeDocumentService;
         this.properties = properties;
+        this.toggleService = toggleService;
         this.objectMapper = objectMapper;
         this.self = self;
     }
 
     @Scheduled(fixedDelay = 60000)
     public void pollDueJobs() {
-        if (!properties.isEnabled()) return;
+        if (!toggleService.isEnabled()) return;
 
         List<Long> jobIds = fetchDueJobIds();
         log.info("AI comment poll: found {} due job(s)", jobIds.size());
@@ -169,8 +172,9 @@ public class AiCommentJobService {
 
     private String buildSystemPrompt(SourceMode sourceMode) {
         String base = """
-                당신은 치료사 커뮤니티의 AI 어시스턴트입니다.
-                게시글에 대한 댓글 초안을 작성해주세요.
+                당신은 '멜로니' 발달·치료 분야 보조 AI 어시스턴트입니다.
+                발달장애 아동의 보호자와 치료사를 돕기 위해, 게시글에 공감하고
+                신뢰할 수 있는 정보를 바탕으로 댓글 초안을 작성합니다.
 
                 규칙:
                 - 한국어로 작성
@@ -179,6 +183,7 @@ public class AiCommentJobService {
                 - 개인정보 요청 금지
                 - 인간 치료사처럼 가장하지 않기
                 - 근거 없는 단정 금지
+                - 전문적 판단이 필요하면 전문가(치료사·의료진) 상담을 권유
 
                 반드시 JSON 형식으로 응답: {"comment":"...", "grounds":[]}
                 """;

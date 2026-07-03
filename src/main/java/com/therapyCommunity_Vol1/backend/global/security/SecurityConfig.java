@@ -18,6 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +27,16 @@ public class SecurityConfig {
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
+
+    /**
+     * Capacitor 모바일 앱(WebView) origin (config-owned, application.yaml 에 기본값 보유).
+     * capacitor://localhost : iOS Capacitor WebView
+     * http://localhost      : Android Capacitor WebView (Capacitor 2, androidScheme=http)
+     * https://localhost     : Android Capacitor WebView (Capacitor 3+ 기본값, androidScheme=https)
+     * (커스텀 스킴이므로 allowedOriginPatterns 가 아닌 setAllowedOrigins 리터럴 매칭으로만 동작)
+     */
+    @Value("${app.cors.mobile-origins}")
+    private String mobileOrigins;
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -49,6 +60,8 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    // 구인공고 목록/상세 — 비회원 공개
+                    .requestMatchers(HttpMethod.GET, "/api/v1/job-posts", "/api/v1/job-posts/**").permitAll()
                     .requestMatchers(
                             "/api/v1/auth/signup",
                             "/api/v1/auth/refresh",
@@ -71,6 +84,10 @@ public class SecurityConfig {
                     .requestMatchers("/api/v1/me/messages/**").authenticated()
                     // 관리자 API
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                    // 구인공고 쓰기 — 로그인 유저 누구나(작성자/admin 권한은 서비스에서 체크)
+                    .requestMatchers(HttpMethod.POST, "/api/v1/job-posts").authenticated()
+                    .requestMatchers(HttpMethod.PATCH, "/api/v1/job-posts/**").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/job-posts/**").authenticated()
                     // 커뮤니티 — USER 포함 (서비스에서 PUBLIC/PRIVATE 체크)
                     .requestMatchers("/api/v1/posts/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
                     .requestMatchers("/api/v1/comments/**").hasAnyRole("USER", "THERAPIST", "ADMIN")
@@ -92,9 +109,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
+        // web origins + 모바일(Capacitor) origins 병합, 중복 제거(distinct)
+        List<String> origins = Stream.concat(
+                        parseOrigins(allowedOrigins).stream(),
+                        parseOrigins(mobileOrigins).stream())
+                .distinct()
                 .collect(Collectors.toList());
 
         config.setAllowedOrigins(origins);
@@ -106,6 +125,16 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    private List<String> parseOrigins(String raw) {
+        if (raw == null) {
+            return List.of();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toList());
     }
 
 }

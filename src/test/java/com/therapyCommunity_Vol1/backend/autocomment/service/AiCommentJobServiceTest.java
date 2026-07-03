@@ -32,6 +32,7 @@ class AiCommentJobServiceTest {
     private GeminiChatClient chatClient;
     private KnowledgeDocumentService knowledgeDocumentService;
     private AiCommentProperties properties;
+    private AiCommentToggleService toggleService;
     private AiCommentJobService service;
 
     @BeforeEach
@@ -43,10 +44,12 @@ class AiCommentJobServiceTest {
         properties = new AiCommentProperties();
         properties.setEnabled(true);
         properties.setApiKey("test-key");
+        toggleService = mock(AiCommentToggleService.class);
+        when(toggleService.isEnabled()).thenReturn(true);
 
         service = new AiCommentJobService(
                 jobRepository, embeddingClient, chatClient,
-                knowledgeDocumentService, properties, new ObjectMapper(), null
+                knowledgeDocumentService, properties, toggleService, new ObjectMapper(), null
         );
         ReflectionTestUtils.setField(service, "self", service);
     }

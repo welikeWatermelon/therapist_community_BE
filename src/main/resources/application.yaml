@@ -75,6 +75,8 @@ app:
   base-url: http://localhost:8080
   cors:
     allowed-origins: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+    # Capacitor 모바일 앱(WebView) origin — 기본값 보유로 모든 프로필(운영 포함) 상속, env override 가능
+    mobile-origins: ${APP_CORS_MOBILE_ORIGINS:capacitor://localhost,http://localhost,https://localhost}
   knowledge:
     enabled: ${KNOWLEDGE_ENABLED:false}
     api-key: ${GOOGLE_AI_API_KEY:}
