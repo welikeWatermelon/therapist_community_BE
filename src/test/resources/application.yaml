@@ -12,6 +12,10 @@ spring:
   ai:
     openai:
       api-key: test-key
+    # 이 파일은 main의 application.yaml을 대체하므로 model 비활성화도 여기 반영 필요.
+    # chat을 켜두면 Vertex Gemini 오토컨피그가 project-id 없이 부팅 실패.
+    model:
+      chat: none
   autoconfigure:
     exclude: org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
 
