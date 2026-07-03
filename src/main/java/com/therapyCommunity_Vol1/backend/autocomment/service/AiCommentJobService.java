@@ -1,7 +1,7 @@
 package com.therapyCommunity_Vol1.backend.autocomment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.therapyCommunity_Vol1.backend.autocomment.client.GeminiChatClient;
+import com.therapyCommunity_Vol1.backend.autocomment.client.AiCommentChatClient;
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.AutoCommentJobStatus;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
@@ -35,7 +35,7 @@ public class AiCommentJobService {
 
     private final PostAiCommentJobRepository jobRepository;
     private final GeminiEmbeddingClient embeddingClient;
-    private final GeminiChatClient chatClient;
+    private final AiCommentChatClient chatClient;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final AiCommentProperties properties;
     private final AiCommentToggleService toggleService;
@@ -45,7 +45,7 @@ public class AiCommentJobService {
     public AiCommentJobService(
             PostAiCommentJobRepository jobRepository,
             GeminiEmbeddingClient embeddingClient,
-            GeminiChatClient chatClient,
+            AiCommentChatClient chatClient,
             KnowledgeDocumentService knowledgeDocumentService,
             AiCommentProperties properties,
             AiCommentToggleService toggleService,
@@ -127,7 +127,7 @@ public class AiCommentJobService {
             String userPrompt = buildUserPrompt(cleanContent, post.getTherapyArea(), chunks, sourceMode);
 
             log.info("AI comment chat start: jobId={}, sourceMode={}", jobId, sourceMode);
-            GeminiChatClient.ChatResponse chatResponse = chatClient.generate(systemPrompt, userPrompt);
+            AiCommentChatClient.ChatResult chatResponse = chatClient.generate(systemPrompt, userPrompt);
             log.info("AI comment chat done: jobId={}", jobId);
 
             if (chatResponse.comment() == null || chatResponse.comment().isBlank()) {

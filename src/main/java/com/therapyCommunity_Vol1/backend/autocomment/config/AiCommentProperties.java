@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 public class AiCommentProperties {
 
     private boolean enabled = false;
+    // 채팅 생성 경로: gemini-api(기존 REST) | vertex(Spring AI ChatClient)
+    private String chatProvider = "gemini-api";
     private String apiKey;
     private String chatModel = "gemini-2.5-flash";
     private String embeddingModel = "gemini-embedding-001";

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.MediaType;
@@ -16,7 +17,9 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class GeminiChatClient {
+@ConditionalOnProperty(prefix = "app.ai-comment", name = "chat-provider",
+        havingValue = "gemini-api", matchIfMissing = true)
+public class GeminiChatClient implements AiCommentChatClient {
 
     private final AiCommentProperties properties;
     private final RestClient restClient;
@@ -35,11 +38,8 @@ public class GeminiChatClient {
                 .build();
     }
 
-    public record ChatResponse(String comment, List<Ground> grounds) {
-        public record Ground(Long documentId, String title) {}
-    }
-
-    public ChatResponse generate(String systemPrompt, String userPrompt) {
+    @Override
+    public ChatResult generate(String systemPrompt, String userPrompt) {
         String url = String.format("/v1beta/models/%s:generateContent", properties.getChatModel());
 
         Map<String, Object> body = Map.of(
@@ -73,18 +73,18 @@ public class GeminiChatClient {
             JsonNode parsed = objectMapper.readTree(text);
             String comment = parsed.path("comment").asText(null);
 
-            List<ChatResponse.Ground> grounds = List.of();
+            List<ChatResult.Ground> grounds = List.of();
             try {
                 JsonNode groundsNode = parsed.path("grounds");
                 if (groundsNode.isArray() && !groundsNode.isEmpty() && groundsNode.get(0).isObject()) {
                     grounds = objectMapper.convertValue(groundsNode,
-                            objectMapper.getTypeFactory().constructCollectionType(List.class, ChatResponse.Ground.class));
+                            objectMapper.getTypeFactory().constructCollectionType(List.class, ChatResult.Ground.class));
                 }
             } catch (Exception ignored) {
                 // grounds 파싱 실패해도 comment만 있으면 OK
             }
 
-            return new ChatResponse(comment, grounds);
+            return new ChatResult(comment, grounds);
         } catch (Exception e) {
             throw new RuntimeException("Gemini chat response parsing failed", e);
         }

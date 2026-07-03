@@ -1,7 +1,7 @@
 package com.therapyCommunity_Vol1.backend.autocomment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.therapyCommunity_Vol1.backend.autocomment.client.GeminiChatClient;
+import com.therapyCommunity_Vol1.backend.autocomment.client.AiCommentChatClient;
 import com.therapyCommunity_Vol1.backend.autocomment.config.AiCommentProperties;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.AutoCommentJobStatus;
 import com.therapyCommunity_Vol1.backend.autocomment.domain.PostAiCommentJob;
@@ -30,7 +30,7 @@ class AiCommentJobServiceTest {
 
     private PostAiCommentJobRepository jobRepository;
     private GeminiEmbeddingClient embeddingClient;
-    private GeminiChatClient chatClient;
+    private AiCommentChatClient chatClient;
     private KnowledgeDocumentService knowledgeDocumentService;
     private AiCommentProperties properties;
     private AiCommentToggleService toggleService;
@@ -40,7 +40,7 @@ class AiCommentJobServiceTest {
     void setUp() {
         jobRepository = mock(PostAiCommentJobRepository.class);
         embeddingClient = mock(GeminiEmbeddingClient.class);
-        chatClient = mock(GeminiChatClient.class);
+        chatClient = mock(AiCommentChatClient.class);
         knowledgeDocumentService = mock(KnowledgeDocumentService.class);
         properties = new AiCommentProperties();
         properties.setEnabled(true);
@@ -70,7 +70,7 @@ class AiCommentJobServiceTest {
         when(knowledgeDocumentService.findSimilarChunks(any(), eq(TherapyArea.SPEECH), anyInt()))
                 .thenReturn(List.of(new ChunkSearchResult(1L, 1L, "근거 텍스트", "문서 제목", 0.8)));
         when(chatClient.generate(anyString(), anyString()))
-                .thenReturn(new GeminiChatClient.ChatResponse("좋은 질문입니다.", List.of()));
+                .thenReturn(new AiCommentChatClient.ChatResult("좋은 질문입니다.", List.of()));
 
         service.processJob(1L);
 
@@ -94,7 +94,7 @@ class AiCommentJobServiceTest {
         when(knowledgeDocumentService.findSimilarChunks(any(), any(), anyInt()))
                 .thenReturn(List.of());
         when(chatClient.generate(anyString(), anyString()))
-                .thenReturn(new GeminiChatClient.ChatResponse("응원합니다.", List.of()));
+                .thenReturn(new AiCommentChatClient.ChatResult("응원합니다.", List.of()));
 
         service.processJob(1L);
 
@@ -117,7 +117,7 @@ class AiCommentJobServiceTest {
         when(knowledgeDocumentService.findSimilarChunks(any(), any(), anyInt()))
                 .thenReturn(List.of());
         when(chatClient.generate(anyString(), anyString()))
-                .thenReturn(new GeminiChatClient.ChatResponse("응원합니다.", List.of()));
+                .thenReturn(new AiCommentChatClient.ChatResult("응원합니다.", List.of()));
 
         service.processJob(1L);
 
