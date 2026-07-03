@@ -32,6 +32,19 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
+    # 자동답글 job이 자체 백오프(1·5·30분)를 가지므로 Spring AI 내장 재시도는 끈다
+    retry:
+      max-attempts: 1
+    # Vertex AI Gemini — spring.ai.model.chat=vertex-ai-gemini로 켜질 때만 활성 (MEL-74 자격증명 필요)
+    vertex:
+      ai:
+        gemini:
+          project-id: ${GCP_PROJECT_ID:}
+          location: ${GCP_LOCATION:asia-northeast3}
+          chat:
+            options:
+              model: ${AI_COMMENT_CHAT_MODEL:gemini-2.5-flash}
+              temperature: 0.7
     # Spring AI starter는 OPENAI_API_KEY가 비면 부팅 시 audio.speech 등 bean 생성에서 IllegalArgumentException 발생.
     # 운영에선 OpenAI 사용 안 하므로 모든 모델을 none으로 비활성화. 사용 시 환경별 yaml에서 override.
     model:
@@ -83,6 +96,8 @@ app:
     embedding-model: ${KNOWLEDGE_EMBEDDING_MODEL:gemini-embedding-001}
   ai-comment:
     enabled: ${AI_COMMENT_ENABLED:false}
+    # 채팅 생성 경로 선택: gemini-api(기존 REST 직접 호출) | vertex(Spring AI ChatClient, MEL-74 후)
+    chat-provider: ${AI_COMMENT_CHAT_PROVIDER:gemini-api}
     api-key: ${GOOGLE_AI_API_KEY:}
     chat-model: ${AI_COMMENT_CHAT_MODEL:gemini-2.5-flash}
     embedding-model: ${AI_COMMENT_EMBEDDING_MODEL:gemini-embedding-001}

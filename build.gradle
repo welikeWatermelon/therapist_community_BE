@@ -38,6 +38,8 @@ dependencies {
 	// Spring AI — OpenAI 임베딩 (pgvector 검색 전략용)
 	implementation platform('org.springframework.ai:spring-ai-bom:1.0.0')
 	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+	// Spring AI — Vertex AI Gemini (자동답글 chat, app.ai-comment.chat-provider=vertex일 때 사용)
+	implementation 'org.springframework.ai:spring-ai-starter-model-vertex-ai-gemini'
 
 	// Caffeine — 임베딩 쿼리 캐시 LRU 관리
 	implementation 'com.github.ben-manes.caffeine:caffeine'
