@@ -14,6 +14,8 @@ import com.therapyCommunity_Vol1.backend.post.domain.TherapyPost;
 import com.therapyCommunity_Vol1.backend.post.domain.Visibility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -153,6 +155,10 @@ public class AiCommentJobService {
             handleRetryable(job, "SERVER_ERROR_" + e.getStatusCode().value(), e.getMessage());
         } catch (ResourceAccessException e) {
             handleRetryable(job, "TIMEOUT", e.getMessage());
+        } catch (TransientAiException e) {
+            handleRetryable(job, "AI_TRANSIENT", e.getMessage());
+        } catch (NonTransientAiException e) {
+            job.markFailed("AI_CLIENT_ERROR", truncate(e.getMessage()), null);
         } catch (Exception e) {
             log.error("AI comment processJob error: jobId={}", jobId, e);
             job.markFailed(e.getClass().getSimpleName(), truncate(e.getMessage()), null);

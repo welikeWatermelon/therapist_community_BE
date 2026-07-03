@@ -18,6 +18,8 @@ import com.therapyCommunity_Vol1.backend.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -160,6 +162,48 @@ class AiCommentJobServiceTest {
         service.processJob(1L);
 
         assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.CANCELLED);
+    }
+
+    @Test
+    void TransientAiException은_백오프_재시도() {
+        User author = User.builder().id(1L).email("t@t.com").nickname("t").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>질문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 10L);
+        PostAiCommentJob job = PostAiCommentJob.create(post, author);
+        ReflectionTestUtils.setField(job, "id", 1L);
+
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
+        when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
+                .thenReturn(new float[768]);
+        when(knowledgeDocumentService.findSimilarChunks(any(), any(), anyInt())).thenReturn(List.of());
+        when(chatClient.generate(anyString(), anyString()))
+                .thenThrow(new TransientAiException("429 quota exceeded"));
+
+        service.processJob(1L);
+
+        assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.QUEUED);  // 재큐잉
+        assertThat(job.getNextAttemptAt()).isNotNull();  // 백오프 재시도 예약됨
+    }
+
+    @Test
+    void NonTransientAiException은_즉시_실패() {
+        User author = User.builder().id(1L).email("t@t.com").nickname("t").role(UserRole.THERAPIST).build();
+        TherapyPost post = TherapyPost.create("<p>질문</p>", TherapyArea.SPEECH, Visibility.PUBLIC, author);
+        ReflectionTestUtils.setField(post, "id", 10L);
+        PostAiCommentJob job = PostAiCommentJob.create(post, author);
+        ReflectionTestUtils.setField(job, "id", 1L);
+
+        when(jobRepository.findByIdWithPostForUpdate(1L)).thenReturn(Optional.of(job));
+        when(embeddingClient.embed(anyString(), anyString(), anyString(), anyString(), anyInt()))
+                .thenReturn(new float[768]);
+        when(knowledgeDocumentService.findSimilarChunks(any(), any(), anyInt())).thenReturn(List.of());
+        when(chatClient.generate(anyString(), anyString()))
+                .thenThrow(new NonTransientAiException("invalid request"));
+
+        service.processJob(1L);
+
+        assertThat(job.getStatus()).isEqualTo(AutoCommentJobStatus.FAILED);
+        assertThat(job.getNextAttemptAt()).isNull();  // 재시도 없음
     }
 
     @Test
