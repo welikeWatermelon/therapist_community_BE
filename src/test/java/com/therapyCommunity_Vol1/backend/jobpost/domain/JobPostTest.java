@@ -72,6 +72,32 @@ class JobPostTest {
     }
 
     @Test
+    void 마감일이_상시모집_sentinel이면_alwaysOpen이고_항상_OPEN이다() {
+        LocalDate today = LocalDate.of(2026, 6, 16);
+        JobPost post = jobPost(author(1L), JobPost.ALWAYS_OPEN_DEADLINE);
+
+        assertThat(post.isAlwaysOpen()).isTrue();
+        assertThat(post.deriveStatus(today)).isEqualTo(JobPostStatus.OPEN);
+    }
+
+    @Test
+    void 일반_마감일이면_alwaysOpen이_아니다() {
+        JobPost post = jobPost(author(1L), LocalDate.of(2026, 12, 31));
+
+        assertThat(post.isAlwaysOpen()).isFalse();
+    }
+
+    @Test
+    void 상시모집이어도_조기마감하면_CLOSED다() {
+        LocalDate today = LocalDate.of(2026, 6, 16);
+        JobPost post = jobPost(author(1L), JobPost.ALWAYS_OPEN_DEADLINE);
+
+        post.closeManually();
+
+        assertThat(post.deriveStatus(today)).isEqualTo(JobPostStatus.CLOSED);
+    }
+
+    @Test
     void isAuthor는_작성자id와_일치할때만_true다() {
         JobPost post = jobPost(author(7L), LocalDate.of(2026, 12, 31));
 

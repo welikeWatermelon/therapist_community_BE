@@ -36,9 +36,27 @@ class JobPostResponseTest {
         assertThat(res.getDeadlineDate()).isEqualTo(today.plusDays(5));
         assertThat(res.getDDay()).isEqualTo(5);
         assertThat(res.getStatus()).isEqualTo(JobPostStatus.OPEN);
+        assertThat(res.isAlwaysOpen()).isFalse();
         assertThat(res.getTherapyAreaLabel()).isEqualTo("언어치료");
         assertThat(res.getRegionLabel()).isEqualTo("서울");
         assertThat(res.getEmploymentTypeLabel()).isEqualTo("정규직");
+    }
+
+    @Test
+    void summary는_상시모집_sentinel이면_alwaysOpen을_true로_담고_OPEN이다() {
+        LocalDate today = LocalDate.of(2026, 6, 16);
+        JobPostSummaryResponse res = JobPostSummaryResponse.from(jobPost(1L, JobPost.ALWAYS_OPEN_DEADLINE), today);
+
+        assertThat(res.isAlwaysOpen()).isTrue();
+        assertThat(res.getStatus()).isEqualTo(JobPostStatus.OPEN);
+    }
+
+    @Test
+    void detail도_상시모집_sentinel이면_alwaysOpen을_true로_담는다() {
+        LocalDate today = LocalDate.of(2026, 6, 16);
+        JobPostDetailResponse res = JobPostDetailResponse.from(jobPost(1L, JobPost.ALWAYS_OPEN_DEADLINE), today, 1L, UserRole.USER);
+
+        assertThat(res.isAlwaysOpen()).isTrue();
     }
 
     @Test

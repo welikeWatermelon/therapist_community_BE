@@ -123,11 +123,21 @@ public class JobPost extends BaseEntity {
         return author.getId().equals(userId);
     }
 
+    /**
+     * 상시모집(마감 없음)을 나타내는 sentinel 마감일. 이 값이면 마감으로 넘어가지 않고 항상 OPEN이며,
+     * 응답의 alwaysOpen=true 로 파생된다. 프론트는 이 플래그로 "상시모집" 렌더 + D-day 숨김 처리.
+     */
+    public static final LocalDate ALWAYS_OPEN_DEADLINE = LocalDate.of(9999, 12, 31);
+
     public JobPostStatus deriveStatus(LocalDate today) {
         if (closedManually || deadlineDate.isBefore(today)) {
             return JobPostStatus.CLOSED;
         }
         return JobPostStatus.OPEN;
+    }
+
+    public boolean isAlwaysOpen() {
+        return ALWAYS_OPEN_DEADLINE.equals(deadlineDate);
     }
 
     public long dDay(LocalDate today) {

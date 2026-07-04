@@ -32,6 +32,7 @@ public class JobPostDetailResponse {
     private String sourceUrl;
     private LocalDate deadlineDate;
     private long dDay;
+    private boolean alwaysOpen;
     private JobPostStatus status;
     private Long authorId;
     private String authorNickname;
@@ -63,6 +64,7 @@ public class JobPostDetailResponse {
                 post.getSourceUrl(),
                 post.getDeadlineDate(),
                 post.dDay(today),
+                post.isAlwaysOpen(),
                 status,
                 post.getAuthor().getId(),
                 post.getAuthor().getNickname(),
