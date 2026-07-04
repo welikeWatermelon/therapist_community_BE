@@ -27,6 +27,7 @@ public class JobPostSummaryResponse {
     private String salaryText;
     private LocalDate deadlineDate;
     private long dDay;
+    private boolean alwaysOpen;
     private JobPostStatus status;
     private LocalDateTime createdAt;
 
@@ -44,6 +45,7 @@ public class JobPostSummaryResponse {
                 post.getSalaryText(),
                 post.getDeadlineDate(),
                 post.dDay(today),
+                post.isAlwaysOpen(),
                 post.deriveStatus(today),
                 post.getCreatedAt()
         );
