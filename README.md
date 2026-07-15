@@ -347,9 +347,3 @@ docker compose up -d
 - **Sentry**: 5xx 예외 자동 수집 (환경별 태깅)
 - **검색 접근 로그**: AOP가 검색 요청마다 keyword/결과 수/응답시간/zero-result 여부를 JSON으로 별도 파일에 기록 (일별 롤링 30일) — pgvector 도입 판단의 데이터 근거로 활용
 - **헬스체크**: DB/Redis 인디케이터를 의도적으로 비활성화해, 의존 인프라 장애가 애플리케이션 헬스체크 실패(→ 재시작 루프)로 번지지 않게 했습니다.
-
----
-
-## 문서
-
-설계 결정과 트러블슈팅 전 과정은 `docs/`에 기록되어 있습니다. 핵심 문서: [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) · [DEPENDENCY_ARCHITECTURE.md](docs/architecture/DEPENDENCY_ARCHITECTURE.md) · [API_SPEC.md](docs/api/API_SPEC.md) · ADR([decisions/](docs/decisions/)) · 벡터 검색 진단 20편([vector/diagnostic/](docs/vector/diagnostic/)) · 성능 실측([perf/](docs/perf/))
