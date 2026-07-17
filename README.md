@@ -24,7 +24,6 @@
 
 - [프로젝트 목표](#프로젝트-목표)
 - [기술 스택](#기술-스택)
-- [아키텍처](#아키텍처)
 - [도메인 모듈](#도메인-모듈)
 - [핵심 기능 상세](#핵심-기능-상세)
 - [기술적 이슈 해결 과정](#기술적-이슈-해결-과정)
@@ -61,38 +60,6 @@
 
 ---
 
-## 아키텍처
-
-```mermaid
-flowchart LR
-    Client["Client<br/>Web · Mobile Capacitor"]
-
-    subgraph Backend["Spring Boot 3.5 모놀리스"]
-        direction TB
-        Filter["JwtAuthenticationFilter<br/>STATELESS · Redis 유저 캐시 핫패스"]
-        API["REST Controllers 24개<br/>/api/v1/**"]
-        SVC["Domain Services · 18개 도메인<br/>DDD 경계 - 크로스 도메인은 Service 경유"]
-        EVT["ApplicationEventPublisher<br/>AFTER_COMMIT + @Async · 전용 스레드풀 5개"]
-        SSE["SSE 알림<br/>인메모리 Emitter + 이벤트 캐시"]
-        Filter --> API --> SVC --> EVT --> SSE
-    end
-
-    PG[("PostgreSQL 16<br/>pg_trgm GIN · pgvector HNSW")]
-    RD[("Redis 7<br/>유저 캐시 · Rate Limit · 조회수 SETNX")]
-    S3[("AWS S3<br/>presigned URL 직접 업로드/다운로드")]
-    OpenAI["OpenAI API<br/>검색 임베딩 1536D"]
-    Gemini["Gemini API<br/>RAG · AI 자동댓글 3072D"]
-    OBS["Prometheus · Sentry"]
-
-    Client -->|"Bearer JWT"| Filter
-    SSE -->|"text/event-stream<br/>Last-Event-ID 복구"| Client
-    SVC --> PG
-    SVC --> RD
-    SVC --> S3
-    SVC -.-> OpenAI
-    SVC -.-> Gemini
-    Backend -.-> OBS
-```
 
 ### 요청 처리 흐름
 
